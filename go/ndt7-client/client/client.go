@@ -1,4 +1,5 @@
-package main
+// Package client implements a minimal ndt7 client.
+package client
 
 import (
 	"net/http"

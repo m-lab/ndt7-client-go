@@ -7,6 +7,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/client"
 )
 
 var hostname = flag.String("hostname", "localhost", "Host to connect to")
@@ -17,7 +18,7 @@ func main() {
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
 	flag.Parse()
-	var clnt Client
+	var clnt client.Client
 	clnt.URL.Scheme = "wss"
 	clnt.URL.Host = *hostname + ":" + *port
 	if *insecure {
