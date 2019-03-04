@@ -38,14 +38,36 @@ type Client struct {
 	URL url.URL
 }
 
+type websocketConn interface {
+	Close() error
+	ReadMessage()(int, []byte, error)
+	SetReadLimit(int64)
+	SetReadDeadline(time.Time) error
+}
+
+type dependencies interface {
+	Dial(websocket.Dialer, string, http.Header)(websocketConn, *http.Response, error)
+}
+
+type defaultDependencies struct {
+}
+
+func (defaultDependencies) Dial(dialer websocket.Dialer, URL string, header http.Header)(websocketConn, *http.Response, error) {
+	return dialer.Dial(URL, header)
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
+	return cl.downloadWithDeps(defaultDependencies{})
+}
+
+func (cl Client) downloadWithDeps(deps dependencies) error {
 	cl.URL.Path = downloadURLPath
 	log.Debugf("Conncting to: %s", cl.URL.String())
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", secWebSocketProtocol)
 	cl.Dialer.HandshakeTimeout = defaultTimeout
-	conn, _, err := cl.Dialer.Dial(cl.URL.String(), headers)
+	conn, _, err := deps.Dial(cl.Dialer, cl.URL.String(), headers)
 	if err != nil {
 		log.WithError(err).Warn("Connecting failed")
 		return err
