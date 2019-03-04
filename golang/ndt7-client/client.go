@@ -72,11 +72,19 @@ func (cl Client) downloadWithDeps(deps dependencies) error {
 		log.WithError(err).Warn("Connecting failed")
 		return err
 	}
+	// We discard the return value of Close. In the download context this is
+	// fine. We either wait for the close message or don't care. When we care,
+	// it's consistent to return nil because we're in the good path. In all
+	// the other cases, we already have an error to return.
 	defer conn.Close()
 	conn.SetReadLimit(minMaxMessageSize)
 	log.Debug("Starting download")
 	for {
-		conn.SetReadDeadline(time.Now().Add(defaultTimeout))
+		err = conn.SetReadDeadline(time.Now().Add(defaultTimeout))
+		if err != nil {
+			log.WithError(err).Warn("Cannot set read deadline")
+			return err
+		}
 		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
