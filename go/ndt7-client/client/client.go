@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -101,6 +102,11 @@ func reader(conn *websocket.Conn) <-chan readerinfo {
 	return out
 }
 
+// logmeasurement logs a measurement received from the server
+func logmeasurement(data []byte) {
+	log.Infof("%s", strings.TrimRight(string(data), "\n"))
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
@@ -122,7 +128,7 @@ func (cl Client) Download() error {
 			return nil
 		}
 		if rinfo.kind == websocket.TextMessage {
-			log.Infof("%s", rinfo.data)
+			logmeasurement(rinfo.data)
 		}
 	}
 	log.Debug("Download complete")
