@@ -4,6 +4,7 @@ package client
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -104,17 +105,21 @@ func logmeasurement(data []byte) {
 	log.Infof("%s", strings.TrimRight(string(data), "\n"))
 }
 
+// closeandwarn will warn if closing a close causes a failure
+func closeandwarn(closer io.Closer, message string) {
+	err := closer.Close()
+	if err != nil {
+		log.WithError(err).Warn(message)
+	}
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
 	if err != nil {
 		return err
 	}
-	// We discard the return value of Close. In the download context this is
-	// fine. We either wait for the close message or don't care. When we care,
-	// it's consistent to return nil because we're in the good path. In all
-	// the other cases, we already have an error to return.
-	defer conn.Close()
+	defer closeandwarn(conn, "Ignored error when closing download connection")
 	for rinfo := range reader(conn) {
 		if rinfo.err != nil {
 			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
@@ -134,6 +139,14 @@ func uploaderreader(conn *websocket.Conn) {
 	go func() {
 		for rinfo := range reader(conn) {
 			if rinfo.err != nil {
+				// Implementation note: using Debug here because this error
+				// really isn't very actionable by us. If there is a real
+				// network error, we'll see if _also_ when writing. If the
+				// server doesn't send us anything, we'll just see that
+				// after the timeout we'll stop reading here.
+				log.WithError(rinfo.err).Debug(
+					"Ignored error when reading messages during upload",
+				)
 				return
 			}
 			if rinfo.kind == websocket.TextMessage {
@@ -161,11 +174,7 @@ func (cl Client) Upload() error {
 	if err != nil {
 		return err
 	}
-	// We discard the return value of Close. In the download context this is
-	// fine. We either wait for the close message or don't care. When we care,
-	// it's consistent to return nil because we're in the good path. In all
-	// the other cases, we already have an error to return.
-	defer conn.Close()
+	defer closeandwarn(conn, "Ignored error when closing upload connection")
 	uploaderreader(conn)
 	timer := time.NewTimer(10 * time.Second)
 	for {
