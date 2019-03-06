@@ -14,23 +14,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// minMeasurementInterval is the minimum value of the interval betwen
-// two consecutive measurements performed by either party. An implementation
-// MAY choose to close the connection if it is receiving too frequent
-// Measurement messages from the other endpoint.
-const minMeasurementInterval = 250 * time.Millisecond
-
-// minMaxMessageSize is the minimum value of the maximum message size
-// that an implementation MAY want to configure. Messages smaller than this
-// threshold MUST always be accepted by an implementation.
-const minMaxMessageSize = 1 << 17
-
-// secWebSocketProtocol is the WebSocket subprotocol used by ndt7.
-const secWebSocketProtocol = "net.measurementlab.ndt.v7"
-
-// downloadURLPath selects the download subtest.
-const downloadURLPath = "/ndt/v7/download"
-
 // defaultTimeout is the default I/O timeout.
 const defaultTimeout = 7 * time.Second
 
@@ -73,20 +56,22 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	}
 	log.Debugf("Connecting to: %s", URL.String())
 	headers := http.Header{}
-	headers.Add("Sec-WebSocket-Protocol", secWebSocketProtocol)
+	headers.Add("Sec-WebSocket-Protocol", "net.measurementlab.ndt.v7")
 	dialer.HandshakeTimeout = defaultTimeout
 	conn, _, err := dial(dialer, URL.String(), headers)
 	if err != nil {
 		log.WithError(err).Warn("Connecting failed")
 		return nil, err
 	}
-	conn.SetReadLimit(minMaxMessageSize)
+	// According to the specification we must be prepared to read messages
+	// that are smaller than the following value.
+	conn.SetReadLimit(1 << 17)
 	return conn, nil
 }
 
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
-	conn, err := cl.dial(downloadURLPath)
+	conn, err := cl.dial("/ndt/v7/download")
 	if err != nil {
 		return err
 	}
