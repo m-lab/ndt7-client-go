@@ -1,7 +1,4 @@
-// Package client implements a minimal ndt7 client. This implementation is
-// compliang with version v0.7.0 of the specification.
-//
-// See <https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md>.
+// Package client implements a minimal ndt7 client.
 package client
 
 import (
