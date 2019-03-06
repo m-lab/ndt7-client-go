@@ -42,7 +42,7 @@ type Client struct {
 	URL url.URL
 }
 
-// dial allows to inject failures when wunning tests
+// dial allows to inject failures when running tests
 var dial = func(dialer websocket.Dialer, URL string, header http.Header)(*websocket.Conn, *http.Response, error) {
 	return dialer.Dial(URL, header)
 }
