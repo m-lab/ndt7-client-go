@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
@@ -22,6 +21,6 @@ func main() {
 	clnt.Port = *port
 	clnt.Insecure = *insecure
 	if err := clnt.Download(); err != nil {
-		os.Exit(1)
+		log.WithError(err).Warn("Download failed")
 	}
 }

@@ -48,7 +48,6 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	dialer.HandshakeTimeout = defaultTimeout
 	conn, _, err := dial(dialer, URL.String(), headers)
 	if err != nil {
-		log.WithError(err).Warn("Connecting failed")
 		return nil, err
 	}
 	// According to the specification we must be prepared to read messages
@@ -119,7 +118,6 @@ func (cl Client) Download() error {
 	for rinfo := range reader(conn) {
 		if rinfo.err != nil {
 			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
-				log.WithError(rinfo.err).Warn("read failed")
 				return rinfo.err
 			}
 			break
