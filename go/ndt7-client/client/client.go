@@ -30,7 +30,7 @@ type Client struct {
 }
 
 // dial allows to inject failures when running tests
-var dial = func(dialer websocket.Dialer, URL string, header http.Header)(*websocket.Conn, *http.Response, error) {
+var dial = func(dialer websocket.Dialer, URL string, header http.Header) (*websocket.Conn, *http.Response, error) {
 	return dialer.Dial(URL, header)
 }
 
@@ -40,7 +40,7 @@ var setReadDeadline = func(conn *websocket.Conn, time time.Time) error {
 }
 
 // readMessage allows to inject failures when running tests
-var readMessage = func(conn *websocket.Conn)(int, []byte, error) {
+var readMessage = func(conn *websocket.Conn) (int, []byte, error) {
 	return conn.ReadMessage()
 }
 
@@ -69,6 +69,38 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	return conn, nil
 }
 
+// readrinfo contains the result of reading a websocket message
+type readerinfo struct {
+	// kind is the message type
+	kind int
+
+	// data contains the message data
+	data []byte
+
+	// err is the error
+	err error
+}
+
+// reader posts read websocket messages in the returned channel.
+func reader(conn *websocket.Conn) <-chan readerinfo {
+	out := make(chan readerinfo)
+	go func() {
+		for {
+			err := setReadDeadline(conn, time.Now().Add(defaultTimeout))
+			if err != nil {
+				out <- readerinfo{err: err}
+				return
+			}
+			kind, data, err := readMessage(conn)
+			out <- readerinfo{kind: kind, data: data, err: err}
+			if err != nil {
+				return
+			}
+		}
+	}()
+	return out
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
@@ -81,24 +113,17 @@ func (cl Client) Download() error {
 	// the other cases, we already have an error to return.
 	defer conn.Close()
 	log.Debug("Starting download")
-	for {
-		err = setReadDeadline(conn, time.Now().Add(defaultTimeout))
-		if err != nil {
-			log.WithError(err).Warn("Cannot set read deadline")
-			return err
-		}
-		mtype, mdata, err := readMessage(conn)
-		if err != nil {
-			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				log.WithError(err).Warn("Download failed")
-				return err
+	for rinfo := range reader(conn) {
+		if rinfo.err != nil {
+			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
+				log.WithError(rinfo.err).Warn("read failed")
+				return rinfo.err
 			}
-			break
+			return nil
 		}
-		if mtype != websocket.TextMessage {
-			continue
+		if rinfo.kind == websocket.TextMessage {
+			log.Infof("%s", rinfo.data)
 		}
-		log.Infof("%s", mdata)
 	}
 	log.Debug("Download complete")
 	return nil
