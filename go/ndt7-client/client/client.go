@@ -5,6 +5,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/url"
 	"time"
@@ -35,11 +36,14 @@ const defaultTimeout = 7 * time.Second
 
 // Client is a ndt7 client.
 type Client struct {
-	// Dialer is the websocket dialer.
-	Dialer websocket.Dialer
+	// Hostname is the hostname to use
+	Hostname string
 
-	// URL is the URL to use.
-	URL url.URL
+	// Port is the port to use
+	Port string
+
+	// Insecure controls whether to skip TLS verification
+	Insecure bool
 }
 
 // dial allows to inject failures when running tests
@@ -59,12 +63,20 @@ var readMessage = func(conn *websocket.Conn)(int, []byte, error) {
 
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
-	cl.URL.Path = downloadURLPath
-	log.Debugf("Connecting to: %s", cl.URL.String())
+	var URL url.URL
+	URL.Scheme = "wss"
+	URL.Path = downloadURLPath
+	URL.Host = cl.Hostname + ":" + cl.Port
+	var dialer websocket.Dialer
+	if cl.Insecure {
+		config := tls.Config{InsecureSkipVerify: true}
+		dialer.TLSClientConfig = &config
+	}
+	log.Debugf("Connecting to: %s", URL.String())
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", secWebSocketProtocol)
-	cl.Dialer.HandshakeTimeout = defaultTimeout
-	conn, _, err := dial(cl.Dialer, cl.URL.String(), headers)
+	dialer.HandshakeTimeout = defaultTimeout
+	conn, _, err := dial(dialer, URL.String(), headers)
 	if err != nil {
 		log.WithError(err).Warn("Connecting failed")
 		return err

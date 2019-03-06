@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"os"
 
@@ -19,12 +18,9 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	flag.Parse()
 	var clnt client.Client
-	clnt.URL.Scheme = "wss"
-	clnt.URL.Host = *hostname + ":" + *port
-	if *insecure {
-		config := tls.Config{InsecureSkipVerify: true}
-		clnt.Dialer.TLSClientConfig = &config
-	}
+	clnt.Hostname = *hostname
+	clnt.Port = *port
+	clnt.Insecure = *insecure
 	if err := clnt.Download(); err != nil {
 		os.Exit(1)
 	}
