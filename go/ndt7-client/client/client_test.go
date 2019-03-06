@@ -11,7 +11,7 @@ import (
 
 func TestDialFailure(t *testing.T) {
 	orig := dial
-	dial = func(d websocket.Dialer, u string, h http.Header)(*websocket.Conn, *http.Response, error) {
+	dial = func(d websocket.Dialer, u string, h http.Header) (*websocket.Conn, *http.Response, error) {
 		return nil, nil, errors.New("Cannot dial at this time")
 	}
 	var cl Client
@@ -37,7 +37,7 @@ func TestSetReadDeadlineFailure(t *testing.T) {
 
 func TestReadMessageFailure(t *testing.T) {
 	orig := readMessage
-	readMessage = func(c *websocket.Conn)(int, []byte, error) {
+	readMessage = func(c *websocket.Conn) (int, []byte, error) {
 		return 0, nil, errors.New("Oh, noes, cannot read a message")
 	}
 	var cl Client
