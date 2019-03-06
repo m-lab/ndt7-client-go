@@ -125,7 +125,7 @@ func (cl Client) Download() error {
 				log.WithError(rinfo.err).Warn("read failed")
 				return rinfo.err
 			}
-			return nil
+			break
 		}
 		if rinfo.kind == websocket.TextMessage {
 			logmeasurement(rinfo.data)
