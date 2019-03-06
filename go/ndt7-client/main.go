@@ -23,4 +23,7 @@ func main() {
 	if err := clnt.Download(); err != nil {
 		log.WithError(err).Warn("Download failed")
 	}
+	if err := clnt.Upload(); err != nil {
+		log.WithError(err).Warn("Download failed")
+	}
 }

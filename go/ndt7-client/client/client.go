@@ -2,6 +2,7 @@
 package client
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"net/http"
 	"net/url"
@@ -119,10 +120,69 @@ func (cl Client) Download() error {
 			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
 				return rinfo.err
 			}
-			return nil
+			break
 		}
 		if rinfo.kind == websocket.TextMessage {
 			logmeasurement(rinfo.data)
+		}
+	}
+	return nil
+}
+
+// uploaderreader drains incoming messages and logs them
+func uploaderreader(conn *websocket.Conn) {
+	go func() {
+		for rinfo := range reader(conn) {
+			if rinfo.err != nil {
+				return
+			}
+			if rinfo.kind == websocket.TextMessage {
+				logmeasurement(rinfo.data)
+			}
+		}
+	}()
+}
+
+// newprepared creates a new random prepared message.
+func newprepared() (*websocket.PreparedMessage, error) {
+	const size = 1 << 13
+	data := make([]byte, size)
+	rand.Read(data)
+	return websocket.NewPreparedMessage(websocket.BinaryMessage, data)
+}
+
+// Upload runs a ndt7 upload test.
+func (cl Client) Upload() error {
+	prepared, err := newprepared()
+	if err != nil {
+		return err
+	}
+	conn, err := cl.dial("/ndt/v7/upload")
+	if err != nil {
+		return err
+	}
+	// We discard the return value of Close. In the download context this is
+	// fine. We either wait for the close message or don't care. When we care,
+	// it's consistent to return nil because we're in the good path. In all
+	// the other cases, we already have an error to return.
+	defer conn.Close()
+	uploaderreader(conn)
+	timer := time.NewTimer(10 * time.Second)
+	for {
+		select {
+		case <-timer.C:
+			msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+			deadline := time.Now().Add(defaultTimeout)
+			return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+		default:
+			err := conn.SetWriteDeadline(time.Now().Add(defaultTimeout))
+			if err != nil {
+				return err
+			}
+			err = conn.WritePreparedMessage(prepared)
+			if err != nil {
+				return err
+			}
 		}
 	}
 }
