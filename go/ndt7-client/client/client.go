@@ -61,16 +61,15 @@ var readMessage = func(conn *websocket.Conn)(int, []byte, error) {
 	return conn.ReadMessage()
 }
 
-// Download runs a ndt7 download test.
-func (cl Client) Download() error {
+// dial creates and configures the websocket connection
+func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	var URL url.URL
 	URL.Scheme = "wss"
-	URL.Path = downloadURLPath
+	URL.Path = urlpath
 	URL.Host = cl.Hostname + ":" + cl.Port
 	var dialer websocket.Dialer
 	if cl.Insecure {
-		config := tls.Config{InsecureSkipVerify: true}
-		dialer.TLSClientConfig = &config
+		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	log.Debugf("Connecting to: %s", URL.String())
 	headers := http.Header{}
@@ -79,6 +78,16 @@ func (cl Client) Download() error {
 	conn, _, err := dial(dialer, URL.String(), headers)
 	if err != nil {
 		log.WithError(err).Warn("Connecting failed")
+		return nil, err
+	}
+	conn.SetReadLimit(minMaxMessageSize)
+	return conn, nil
+}
+
+// Download runs a ndt7 download test.
+func (cl Client) Download() error {
+	conn, err := cl.dial(downloadURLPath)
+	if err != nil {
 		return err
 	}
 	// We discard the return value of Close. In the download context this is
@@ -86,7 +95,6 @@ func (cl Client) Download() error {
 	// it's consistent to return nil because we're in the good path. In all
 	// the other cases, we already have an error to return.
 	defer conn.Close()
-	conn.SetReadLimit(minMaxMessageSize)
 	log.Debug("Starting download")
 	for {
 		err = setReadDeadline(conn, time.Now().Add(defaultTimeout))
