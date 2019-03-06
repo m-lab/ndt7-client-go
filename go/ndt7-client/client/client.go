@@ -113,6 +113,34 @@ func closeandwarn(closer io.Closer, message string) {
 	}
 }
 
+// downloaderreader is a reader that also records how much we have
+// received so far and attempts to update the server.
+func downloaderreader(conn *websocket.Conn) <-chan readerinfo {
+	out := make(chan readerinfo)
+	go func() {
+		begin := time.Now()
+		var count int64
+		in := reader(conn)
+		ticker := time.NewTicker(250 * time.Millisecond)
+		for {
+			select {
+			case now := <-ticker.C:
+				diff := float64(now.Sub(begin)) / float64(time.Second)
+				log.Infof("%f %d", diff, count)
+			case rinfo := <-in:
+				if rinfo.err == nil {
+					count += int64(len(rinfo.data))
+				}
+				out <- rinfo
+				if rinfo.err != nil {
+					return  // Detach outself from the pipeline
+				}
+			}
+		}
+	}()
+	return out
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
@@ -120,7 +148,7 @@ func (cl Client) Download() error {
 		return err
 	}
 	defer closeandwarn(conn, "Ignored error when closing download connection")
-	for rinfo := range reader(conn) {
+	for rinfo := range downloaderreader(conn) {
 		if rinfo.err != nil {
 			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
 				return rinfo.err
