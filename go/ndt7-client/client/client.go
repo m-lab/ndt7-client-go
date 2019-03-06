@@ -114,18 +114,15 @@ func (cl Client) Download() error {
 	// it's consistent to return nil because we're in the good path. In all
 	// the other cases, we already have an error to return.
 	defer conn.Close()
-	log.Debug("Starting download")
 	for rinfo := range reader(conn) {
 		if rinfo.err != nil {
 			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
 				return rinfo.err
 			}
-			break
+			return nil
 		}
 		if rinfo.kind == websocket.TextMessage {
 			logmeasurement(rinfo.data)
 		}
 	}
-	log.Debug("Download complete")
-	return nil
 }
