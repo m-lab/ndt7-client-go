@@ -1,4 +1,7 @@
-// Package client implements a minimal ndt7 client.
+// Package client implements a minimal ndt7 client. This implementation is
+// compliang with version v0.7.0 of the specification.
+//
+// See <https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md>.
 package client
 
 import (
@@ -16,9 +19,6 @@ import (
 // Measurement messages from the other endpoint.
 const minMeasurementInterval = 250 * time.Millisecond
 
-// defaultTimeout is the default I/O timeout.
-const defaultTimeout = 7 * time.Second
-
 // minMaxMessageSize is the minimum value of the maximum message size
 // that an implementation MAY want to configure. Messages smaller than this
 // threshold MUST always be accepted by an implementation.
@@ -30,6 +30,9 @@ const secWebSocketProtocol = "net.measurementlab.ndt.v7"
 // downloadURLPath selects the download subtest.
 const downloadURLPath = "/ndt/v7/download"
 
+// defaultTimeout is the default I/O timeout.
+const defaultTimeout = 7 * time.Second
+
 // Client is a ndt7 client.
 type Client struct {
 	// Dialer is the websocket dialer.
@@ -39,36 +42,29 @@ type Client struct {
 	URL url.URL
 }
 
-type websocketConn interface {
-	Close() error
-	ReadMessage()(int, []byte, error)
-	SetReadLimit(int64)
-	SetReadDeadline(time.Time) error
-}
-
-type dependencies interface {
-	Dial(websocket.Dialer, string, http.Header)(websocketConn, *http.Response, error)
-}
-
-type defaultDependencies struct {
-}
-
-func (defaultDependencies) Dial(dialer websocket.Dialer, URL string, header http.Header)(websocketConn, *http.Response, error) {
+// dial allows to inject failures when wunning tests
+var dial = func(dialer websocket.Dialer, URL string, header http.Header)(*websocket.Conn, *http.Response, error) {
 	return dialer.Dial(URL, header)
+}
+
+// setReadDeadline allows to inject failures when running tests
+var setReadDeadline = func(conn *websocket.Conn, time time.Time) error {
+	return conn.SetReadDeadline(time)
+}
+
+// readMessage allows to inject failures when running tests
+var readMessage = func(conn *websocket.Conn)(int, []byte, error) {
+	return conn.ReadMessage()
 }
 
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
-	return cl.downloadWithDeps(defaultDependencies{})
-}
-
-func (cl Client) downloadWithDeps(deps dependencies) error {
 	cl.URL.Path = downloadURLPath
-	log.Debugf("Conncting to: %s", cl.URL.String())
+	log.Debugf("Connecting to: %s", cl.URL.String())
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", secWebSocketProtocol)
 	cl.Dialer.HandshakeTimeout = defaultTimeout
-	conn, _, err := deps.Dial(cl.Dialer, cl.URL.String(), headers)
+	conn, _, err := dial(cl.Dialer, cl.URL.String(), headers)
 	if err != nil {
 		log.WithError(err).Warn("Connecting failed")
 		return err
@@ -81,12 +77,12 @@ func (cl Client) downloadWithDeps(deps dependencies) error {
 	conn.SetReadLimit(minMaxMessageSize)
 	log.Debug("Starting download")
 	for {
-		err = conn.SetReadDeadline(time.Now().Add(defaultTimeout))
+		err = setReadDeadline(conn, time.Now().Add(defaultTimeout))
 		if err != nil {
 			log.WithError(err).Warn("Cannot set read deadline")
 			return err
 		}
-		mtype, mdata, err := conn.ReadMessage()
+		mtype, mdata, err := readMessage(conn)
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				log.WithError(err).Warn("Download failed")
