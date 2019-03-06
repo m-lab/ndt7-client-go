@@ -4,6 +4,7 @@ package client
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -113,6 +114,50 @@ func closeandwarn(closer io.Closer, message string) {
 	}
 }
 
+// ddappinfo is a ddata field sent to the server
+type ddappinfo struct {
+	// NumBytes is the number of bytes received so far
+	NumBytes int64 `json:"num_bytes"`
+}
+
+// ddata contains application level download measurements
+type ddata struct {
+	// Elapsed is the time elapsed since we started
+	Elapsed float64 `json:"elapsed"`
+
+	// AppInfo contains the real measurement
+	AppInfo ddappinfo `json:"app_info"`
+}
+
+// textwriter is a writer sending out textual data
+func textwriter(conn *websocket.Conn, ch <-chan ddata) {
+	go func() {
+		for {
+			ddata, good := <-ch
+			if !good {
+				return // No more messages to send will come
+			}
+			data, err := json.Marshal(ddata)
+			if err != nil {
+				log.WithError(err).Debug(
+					"Error when marshalling JSON for server; stopping writing",
+				)
+				break // must drain the channel
+			}
+			err = conn.WriteMessage(websocket.TextMessage, data)
+			if err != nil {
+				log.WithError(err).Debug(
+					"Error when writing to the server; stopping writing",
+				)
+				break // must drain the channel
+			}
+		}
+		for range ch {
+			// do nothing and just drain
+		}
+	}()
+}
+
 // downloaderreader is a reader that also records how much we have
 // received so far and attempts to update the server.
 func downloaderreader(conn *websocket.Conn) <-chan readerinfo {
@@ -122,18 +167,28 @@ func downloaderreader(conn *websocket.Conn) <-chan readerinfo {
 		var count int64
 		in := reader(conn)
 		ticker := time.NewTicker(250 * time.Millisecond)
+		ddch := make(chan ddata)
+		defer close(ddch)
+		textwriter(conn, ddch)
 		for {
 			select {
 			case now := <-ticker.C:
-				diff := float64(now.Sub(begin)) / float64(time.Second)
-				log.Infof("%f %d", diff, count)
+				var dd ddata
+				dd.Elapsed = float64(now.Sub(begin)) / float64(time.Second)
+				dd.AppInfo.NumBytes = count
+				select {
+				case ddch <- dd:
+					// nothing
+				default:
+					log.Debug("cannot submit to the sender channel") // actionable?
+				}
 			case rinfo := <-in:
 				if rinfo.err == nil {
 					count += int64(len(rinfo.data))
 				}
 				out <- rinfo
 				if rinfo.err != nil {
-					return  // Detach outself from the pipeline
+					return // Detach outself from the pipeline
 				}
 			}
 		}
