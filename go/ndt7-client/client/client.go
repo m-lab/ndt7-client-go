@@ -35,16 +35,6 @@ var dial = func(dialer websocket.Dialer, URL string, header http.Header) (*webso
 	return dialer.Dial(URL, header)
 }
 
-// setReadDeadline allows to inject failures when running tests
-var setReadDeadline = func(conn *websocket.Conn, time time.Time) error {
-	return conn.SetReadDeadline(time)
-}
-
-// readMessage allows to inject failures when running tests
-var readMessage = func(conn *websocket.Conn) (int, []byte, error) {
-	return conn.ReadMessage()
-}
-
 // dial creates and configures the websocket connection
 func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	var URL url.URL
@@ -80,6 +70,16 @@ type readerinfo struct {
 
 	// err is the error
 	err error
+}
+
+// setReadDeadline allows to inject failures when running tests
+var setReadDeadline = func(conn *websocket.Conn, time time.Time) error {
+	return conn.SetReadDeadline(time)
+}
+
+// readMessage allows to inject failures when running tests
+var readMessage = func(conn *websocket.Conn) (int, []byte, error) {
+	return conn.ReadMessage()
 }
 
 // reader posts read websocket messages in the returned channel.
