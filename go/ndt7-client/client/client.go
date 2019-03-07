@@ -249,15 +249,30 @@ func closeandwarn(closer io.Closer, message string) {
 	}
 }
 
+func writeclose(conn *websocket.Conn) error {
+	msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+	deadline := time.Now().Add(defaultTimeout)
+	return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+}
+
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
 	if err != nil {
 		return err
 	}
+	// TODO(bassosimone): EXPLAIN EXPLAIN EXPLAIN!
+	conn.SetCloseHandler(func (int, string) error {
+		log.Debug("Got CLOSE message; defer replying until we stop sending")
+		return nil
+	})
 	defer closeandwarn(conn, "Ignored error when closing download connection")
-	return measurementuploader(conn, measuringreceiver(
+	err = measurementuploader(conn, measuringreceiver(
 		logreceiver(internalreceiver(conn))))
+	if err != nil {
+		return err
+	}
+	return writeclose(conn)
 }
 
 // newprepared creates a new random prepared message.
@@ -316,7 +331,5 @@ func (cl Client) Upload() error {
 	if err != nil {
 		return err
 	}
-	msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
-	deadline := time.Now().Add(defaultTimeout)
-	return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+	return writeclose(conn)
 }
