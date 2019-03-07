@@ -23,6 +23,8 @@ func newprepared() (*websocket.PreparedMessage, error) {
 func Writer(conn *websocket.Conn) <-chan error {
 	out := make(chan error)
 	go func() {
+		log.Debug("Writer: start")
+		defer log.Debug("Writer: stop")
 		defer close(out)
 		prepared, err := newprepared()
 		if err != nil {
@@ -32,6 +34,14 @@ func Writer(conn *websocket.Conn) <-chan error {
 		for {
 			select {
 			case <-timer.C:
+				msg := websocket.FormatCloseMessage(
+					websocket.CloseNormalClosure, "Done with sending in-flow messages")
+				deadline := time.Now().Add(3 * time.Second)
+				err = conn.WriteControl(websocket.CloseMessage, msg, deadline)
+				if err != nil {
+					log.WithError(err).Warn("WriteControl failed")
+					return
+				}
 				return
 			default:
 				err := conn.SetWriteDeadline(time.Now().Add(7 * time.Second))

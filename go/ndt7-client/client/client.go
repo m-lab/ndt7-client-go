@@ -262,7 +262,7 @@ func (cl Client) Download() error {
 		return err
 	}
 	// TODO(bassosimone): EXPLAIN EXPLAIN EXPLAIN!
-	conn.SetCloseHandler(func (int, string) error {
+	conn.SetCloseHandler(func(int, string) error {
 		log.Debug("Got CLOSE message; defer replying until we stop sending")
 		return nil
 	})

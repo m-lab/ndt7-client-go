@@ -23,7 +23,7 @@ func logmeasurement(data []byte) {
 // such message when the other party sends a CloseMessage to us is
 // in general too early and we should do that when we're done.
 func Reader(conn *websocket.Conn) <-chan int64 {
-	conn.SetCloseHandler(func (code int, message string) error {
+	conn.SetCloseHandler(func(code int, message string) error {
 		log.Debugf("Reader: got close %s: %d", message, code)
 		log.Debugf("Reader: we are not replying now because it's too early")
 		return nil
