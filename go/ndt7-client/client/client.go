@@ -59,16 +59,16 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	return conn, nil
 }
 
-// readrinfo contains the result of reading a websocket message
-type readerinfo struct {
-	// kind is the message type
+// received is the result of receiving a websocket message.
+type received struct {
+	// err indicates whether the message contains an error.
+	err error
+
+	// kind is the websocket message type (e.g. websocket.TextMessage).
 	kind int
 
-	// data contains the message data
+	// data contains the websocket message data.
 	data []byte
-
-	// err is the error
-	err error
 }
 
 // setReadDeadline allows to inject failures when running tests
@@ -81,119 +81,172 @@ var readMessage = func(conn *websocket.Conn) (int, []byte, error) {
 	return conn.ReadMessage()
 }
 
-// reader posts read websocket messages in the returned channel.
-func reader(conn *websocket.Conn) <-chan readerinfo {
-	out := make(chan readerinfo)
+// internalreceiver is a generator that receives all the possible messages
+// from the websocket and emits them on a channel. The channel will be
+// closed if the connection is cleanly closed or receiving fails. Unless
+// the connection is cleanly closed, we also return the error. The consumer
+// of the channel must drain it until completion.
+func internalreceiver(conn *websocket.Conn) <-chan received {
+	out := make(chan received)
 	go func() {
+		log.Debug("internalreceiver: start")
+		defer log.Debug("internalreceiver: stop")
+		defer close(out) // signal the receiver we're done
 		for {
 			err := setReadDeadline(conn, time.Now().Add(defaultTimeout))
 			if err != nil {
-				out <- readerinfo{err: err}
+				out <- received{err: err}
 				return
 			}
 			kind, data, err := readMessage(conn)
-			out <- readerinfo{kind: kind, data: data, err: err}
 			if err != nil {
+				if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					out <- received{err: err} // no error on clean close
+				}
 				return
 			}
+			out <- received{kind: kind, data: data}
 		}
 	}()
 	return out
 }
 
-// logmeasurement logs a measurement received from the server
+// logmeasurement logs a measurement received from the server. We trim the
+// trailing newlines such that the logs are more compact.
 func logmeasurement(data []byte) {
 	log.Infof("%s", strings.TrimRight(string(data), "\n"))
 }
 
-// closeandwarn will warn if closing a close causes a failure
+// logreceiver is a filter that drains the input channel and writes all
+// the messages to the output channel. If any message contains a measurement
+// from the server, this message is also logged. The consumer of the
+// returned channel is supposed to drain all messages from it.
+func logreceiver(in <-chan received) <-chan received {
+	out := make(chan received)
+	go func() {
+		log.Debug("logreceiver: start")
+		defer log.Debug("logreceiver: stop")
+		defer close(out) // signal the reader we're done
+		for received := range in {
+			if received.err == nil && received.kind == websocket.TextMessage {
+				logmeasurement(received.data)
+			}
+			out <- received
+		}
+	}()
+	return out
+}
+
+// measured is an application level measurement we performed
+type measured struct {
+	// err indicates that a previous stage failed
+	err error
+
+	// elapsed is the time elapsed since the beginning
+	elapsed time.Duration
+
+	// count is the number of bytes read so far
+	count int64
+}
+
+// measurementInterval is the minimum interval between measurements
+const measurementInterval = 250 * time.Millisecond
+
+// measuringreceiver is a filter that drains the input channel to compute
+// application level measurements. Such measurements will be emitted on
+// the output channel. The consumer of this channel must fully drain such
+// channel because otherwise this goroutine will block.
+func measuringreceiver(in <-chan received) <-chan measured {
+	out := make(chan measured)
+	go func() {
+		log.Debug("measuringreceiver: start")
+		defer log.Debug("measuringreceiver: stop")
+		defer close(out) // signal the reader we're done
+		defer func() {
+			for range in {
+				// to be strict drain and ignore possible subsequent messages
+				// even though this should not be required
+			}
+		}()
+		prev := time.Now()
+		var count int64
+		for received := range in {
+			if received.err != nil {
+				out <- measured{err: received.err}
+				return // in channel is drained
+			}
+			now := time.Now()
+			elapsed := now.Sub(prev)
+			count += int64(len(received.data)) // overflow here is unlikely
+			if elapsed < measurementInterval {
+				continue
+			}
+			prev = now
+			out <- measured{elapsed: elapsed, count: count}
+		}
+	}()
+	return out
+}
+
+// appinfo is a field of measurement
+type appinfo struct {
+	// NumBytes indicates the number of bytes read so far
+	NumBytes int64 `json:"num_bytes"`
+}
+
+// measurement is an application level measurement formatted according
+// to the specification of ndt7
+type measurement struct {
+	// Elapsed is the number of seconds elapsed
+	Elapsed float64 `json:"elapsed"`
+
+	// AppInfo contains application level measurements
+	AppInfo appinfo `json:"app_info"`
+}
+
+// measurementupload is a reducer that fully drains the input channel
+// and sends the application level measurements to the server. In
+// case of any marshalling or sending error, we will still continue
+// draining the input channel. Yet, in such case, our error will
+// take precedence over the error that the channel may report.
+func measurementuploader(conn *websocket.Conn, in <-chan measured) error {
+	log.Debug("measurementuploader: start")
+	defer log.Debug("measurementuploader: stop")
+	defer func() {
+		for range in {
+			// Make sure we drain the input channel. This is necessary if
+			// we leave this context early because of a marshalling or I/O
+			// error below. The common case should be that we fully drain
+			// in because the download is done.
+		}
+	}()
+	for measured := range in {
+		if measured.err != nil {
+			return measured.err // in channel is drained
+		}
+		// Prepare a ndt7 application level measurement message
+		var mm measurement
+		mm.Elapsed = float64(measured.elapsed) / float64(time.Second)
+		mm.AppInfo.NumBytes = measured.count
+		data, err := json.Marshal(mm)
+		if err != nil {
+			return err // in channel is drained
+		}
+		// Submit the message to the server
+		err = conn.WriteMessage(websocket.TextMessage, data)
+		if err != nil {
+			return err // in channel is drained
+		}
+	}
+	return nil
+}
+
+// closeandwarn will warn if closing a closer causes a failure
 func closeandwarn(closer io.Closer, message string) {
 	err := closer.Close()
 	if err != nil {
 		log.WithError(err).Warn(message)
 	}
-}
-
-// ddappinfo is a ddata field sent to the server
-type ddappinfo struct {
-	// NumBytes is the number of bytes received so far
-	NumBytes int64 `json:"num_bytes"`
-}
-
-// ddata contains application level download measurements
-type ddata struct {
-	// Elapsed is the time elapsed since we started
-	Elapsed float64 `json:"elapsed"`
-
-	// AppInfo contains the real measurement
-	AppInfo ddappinfo `json:"app_info"`
-}
-
-// textwriter is a writer sending out textual data
-func textwriter(conn *websocket.Conn, ch <-chan ddata) {
-	go func() {
-		for {
-			ddata, good := <-ch
-			if !good {
-				return // No more messages to send will come
-			}
-			data, err := json.Marshal(ddata)
-			if err != nil {
-				log.WithError(err).Debug(
-					"Error when marshalling JSON for server; stopping writing",
-				)
-				break // must drain the channel
-			}
-			err = conn.WriteMessage(websocket.TextMessage, data)
-			if err != nil {
-				log.WithError(err).Debug(
-					"Error when writing to the server; stopping writing",
-				)
-				break // must drain the channel
-			}
-		}
-		for range ch {
-			// do nothing and just drain
-		}
-	}()
-}
-
-// downloaderreader is a reader that also records how much we have
-// received so far and attempts to update the server.
-func downloaderreader(conn *websocket.Conn) <-chan readerinfo {
-	out := make(chan readerinfo)
-	go func() {
-		begin := time.Now()
-		var count int64
-		in := reader(conn)
-		ticker := time.NewTicker(250 * time.Millisecond)
-		ddch := make(chan ddata)
-		defer close(ddch)
-		textwriter(conn, ddch)
-		for {
-			select {
-			case now := <-ticker.C:
-				var dd ddata
-				dd.Elapsed = float64(now.Sub(begin)) / float64(time.Second)
-				dd.AppInfo.NumBytes = count
-				select {
-				case ddch <- dd:
-					// nothing
-				default:
-					log.Debug("cannot submit to the sender channel") // actionable?
-				}
-			case rinfo := <-in:
-				if rinfo.err == nil {
-					count += int64(len(rinfo.data))
-				}
-				out <- rinfo
-				if rinfo.err != nil {
-					return // Detach outself from the pipeline
-				}
-			}
-		}
-	}()
-	return out
 }
 
 // Download runs a ndt7 download test.
@@ -203,40 +256,8 @@ func (cl Client) Download() error {
 		return err
 	}
 	defer closeandwarn(conn, "Ignored error when closing download connection")
-	for rinfo := range downloaderreader(conn) {
-		if rinfo.err != nil {
-			if !websocket.IsCloseError(rinfo.err, websocket.CloseNormalClosure) {
-				return rinfo.err
-			}
-			break
-		}
-		if rinfo.kind == websocket.TextMessage {
-			logmeasurement(rinfo.data)
-		}
-	}
-	return nil
-}
-
-// uploaderreader drains incoming messages and logs them
-func uploaderreader(conn *websocket.Conn) {
-	go func() {
-		for rinfo := range reader(conn) {
-			if rinfo.err != nil {
-				// Implementation note: using Debug here because this error
-				// really isn't very actionable by us. If there is a real
-				// network error, we'll see if _also_ when writing. If the
-				// server doesn't send us anything, we'll just see that
-				// after the timeout we'll stop reading here.
-				log.WithError(rinfo.err).Debug(
-					"Ignored error when reading messages during upload",
-				)
-				return
-			}
-			if rinfo.kind == websocket.TextMessage {
-				logmeasurement(rinfo.data)
-			}
-		}
-	}()
+	return measurementuploader(conn, measuringreceiver(
+		logreceiver(internalreceiver(conn))))
 }
 
 // newprepared creates a new random prepared message.
@@ -247,25 +268,21 @@ func newprepared() (*websocket.PreparedMessage, error) {
 	return websocket.NewPreparedMessage(websocket.BinaryMessage, data)
 }
 
-// Upload runs a ndt7 upload test.
-func (cl Client) Upload() error {
+// binaryuploader will send binary messages for the expected upload time
+// and returns whether there was an error. The connection will still be
+// open when this function returns and you shall close it.
+func binaryuploader(conn *websocket.Conn) error {
+	log.Debug("binaryuploader: start")
+	defer log.Debug("binaryuploader: stop")
 	prepared, err := newprepared()
 	if err != nil {
 		return err
 	}
-	conn, err := cl.dial("/ndt/v7/upload")
-	if err != nil {
-		return err
-	}
-	defer closeandwarn(conn, "Ignored error when closing upload connection")
-	uploaderreader(conn)
 	timer := time.NewTimer(10 * time.Second)
 	for {
 		select {
 		case <-timer.C:
-			msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
-			deadline := time.Now().Add(defaultTimeout)
-			return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+			return nil
 		default:
 			err := conn.SetWriteDeadline(time.Now().Add(defaultTimeout))
 			if err != nil {
@@ -277,4 +294,29 @@ func (cl Client) Upload() error {
 			}
 		}
 	}
+}
+
+// Upload runs a ndt7 upload test.
+func (cl Client) Upload() error {
+	conn, err := cl.dial("/ndt/v7/upload")
+	if err != nil {
+		return err
+	}
+	defer closeandwarn(conn, "Ignored error when closing upload connection")
+	go func() {
+		// Just make sure we drain the receiver channel
+		for received := range logreceiver(internalreceiver(conn)) {
+			if received.err != nil {
+				// Error not really actionable by us, so use the Debug level
+				log.WithError(received.err).Debug("Read error")
+			}
+		}
+	}()
+	err = binaryuploader(conn)
+	if err != nil {
+		return err
+	}
+	msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
+	deadline := time.Now().Add(defaultTimeout)
+	return conn.WriteControl(websocket.CloseMessage, msg, deadline)
 }
