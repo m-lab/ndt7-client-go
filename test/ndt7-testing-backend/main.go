@@ -8,7 +8,8 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/gorilla/websocket"
-	"github.com/m-lab/ndt7-clients/go/ndt7-client/protocol"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/sink"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/source"
 )
 
 // closeandwarn will warn if closing a closer causes a failure
@@ -44,7 +45,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
-	err = protocol.Counterflow(conn, protocol.Measurer(protocol.Reader(conn)))
+	err = sink.Writer(conn, sink.Measurer(sink.Reader(conn)))
 	if err != nil {
 		return
 	}
@@ -58,11 +59,11 @@ func download(w http.ResponseWriter, r *http.Request) {
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
 	go func() {
-		for range protocol.Reader(conn) {
+		for range sink.Reader(conn) { // XXX
 			// discard
 		}
 	}()
-	err = <-protocol.Writer(conn)
+	err = <-source.Writer(conn)
 	if err != nil {
 		return
 	}

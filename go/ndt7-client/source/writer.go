@@ -1,5 +1,4 @@
-// Package protocol implements the ndt7 client-server protocol
-package protocol
+package source
 
 import (
 	"crypto/rand"

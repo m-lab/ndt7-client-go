@@ -1,4 +1,4 @@
-package protocol
+package sink
 
 import (
 	"time"
@@ -7,11 +7,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Counterflow is a reducer that receives measurements ready to be sent
+// Writer is a reducer that receives measurements ready to be sent
 // to the other party and sends them using the connection. When it is
-// done, Counterflow will send a websocket.CloseMessage message so that
+// done, Writer will send a websocket.CloseMessage message so that
 // it is clear we are done with sending counterflow measurements.
-func Counterflow(conn *websocket.Conn, in <-chan []byte) error {
+func Writer(conn *websocket.Conn, in <-chan []byte) error {
 	defer func() {
 		for range in {
 			// make sure we drain the channel

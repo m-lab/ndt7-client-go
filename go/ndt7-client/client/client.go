@@ -10,7 +10,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/gorilla/websocket"
-	"github.com/m-lab/ndt7-clients/go/ndt7-client/protocol"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/sink"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/source"
 )
 
 // Client is a ndt7 client.
@@ -69,7 +70,7 @@ func (cl Client) Download() error {
 		return err
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
-	return protocol.Counterflow(conn, protocol.Measurer(protocol.Reader(conn)))
+	return sink.Writer(conn, sink.Measurer(sink.Reader(conn)))
 }
 
 // Upload runs a ndt7 upload test.
@@ -80,9 +81,9 @@ func (cl Client) Upload() error {
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
 	go func() {
-		for range protocol.Reader(conn) {
+		for range sink.Reader(conn) { // XXX
 			// discard
 		}
 	}()
-	return <-protocol.Writer(conn)
+	return <-source.Writer(conn)
 }
