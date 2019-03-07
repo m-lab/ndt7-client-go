@@ -1,4 +1,4 @@
-package sink
+package source
 
 import (
 	"strings"
@@ -14,34 +14,34 @@ func logmeasurement(data []byte) {
 	log.Infof("%s", strings.TrimRight(string(data), "\n"))
 }
 
-// Reader reads messages from the websocket connection in a background
-// goroutine. The length of messages will be posted on the returned
-// channel. Additionally, measurement messages will be logged. In case
-// on any error, the reader will close the returned channel.
-func Reader(conn *websocket.Conn) <-chan int64 {
-	const timeout = 1 * time.Second
-	out := make(chan int64)
+// Reader runs in a background goroutine and processes all incoming
+// websocket messages. Text messages are logged. The Reader will
+// post any error that may occur on the returned channel. It will
+// then close the channel. It will close the channel without any
+// error being posted in case of normal websocket closure.
+func Reader(conn *websocket.Conn) <-chan error {
+	const timeout = 7 * time.Second
+	out := make(chan error)
 	go func() {
-		log.Debug("sink.Reader: start")
-		defer log.Debug("sink.Reader: stop")
+		log.Debug("source.Reader: start")
+		defer log.Debug("source.Reader: stop")
 		defer close(out)
 		for {
 			err := conn.SetReadDeadline(time.Now().Add(timeout))
 			if err != nil {
-				log.WithError(err).Warn("SetReadDeadline failed")
+				out <- err
 				return
 			}
 			kind, data, err := conn.ReadMessage()
 			if err != nil {
 				if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-					log.WithError(err).Warn("ReadMessage failed")
+					out <- err
 				}
 				return
 			}
 			if kind == websocket.TextMessage {
 				logmeasurement(data)
 			}
-			out <- int64(len(data))
 		}
 	}()
 	return out

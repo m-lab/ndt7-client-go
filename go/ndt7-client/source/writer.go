@@ -2,6 +2,7 @@ package source
 
 import (
 	"crypto/rand"
+	"errors"
 	"time"
 
 	"github.com/apex/log"
@@ -17,46 +18,50 @@ func newprepared() (*websocket.PreparedMessage, error) {
 }
 
 // Writer writes messages that load the network in a background
-// goroutine. It returns a channel that tells you whether the
-// writer encountered an error performing its task.
-func Writer(conn *websocket.Conn) <-chan error {
-	out := make(chan error)
-	go func() {
-		log.Debug("Writer: start")
-		defer log.Debug("Writer: stop")
-		defer close(out)
-		prepared, err := newprepared()
-		if err != nil {
-			out <- err
-		}
-		timer := time.NewTimer(10 * time.Second)
-		for {
-			select {
-			case <-timer.C:
-				msg := websocket.FormatCloseMessage(
-					websocket.CloseNormalClosure, "Done with sending in-flow messages")
-				deadline := time.Now().Add(3 * time.Second)
-				err = conn.WriteControl(websocket.CloseMessage, msg, deadline)
-				if err != nil {
-					log.WithError(err).Warn("WriteControl failed")
-					return
-				}
-				return
-			default:
-				err := conn.SetWriteDeadline(time.Now().Add(7 * time.Second))
-				if err != nil {
-					log.WithError(err).Warn("SetWriteDeadline failed")
-					out <- err
-					return
-				}
-				err = conn.WritePreparedMessage(prepared)
-				if err != nil {
-					log.WithError(err).Warn("WritePreparedMessage failed")
-					out <- err
-					return
-				}
-			}
+// goroutine. It also keeps an eye on an input channel where
+// the Reader may post any error. The writer will return early
+// with an error if the Reader reports an error or received
+// a clean CloseMessage. Otherwise, it will continue writing
+// until the test duration has expired. At that point, it will
+// send a clean CloseMessage to indicate it is done.
+func Writer(conn *websocket.Conn, in <-chan error) error {
+	defer func() {
+		log.Debug("source.Writer: draining reader output channel")
+		for range in {
+			// drain
 		}
 	}()
-	return out
+	log.Debug("source.Writer: start")
+	defer log.Debug("source.Writer: stop")
+	prepared, err := newprepared()
+	if err != nil {
+		return err
+	}
+	timer := time.NewTimer(10 * time.Second)
+	for {
+		select {
+		case err := <-in:
+			if err == nil {
+				err = errors.New("source.Writer: the reader disconnected early")
+			}
+			return err
+		case <-timer.C:
+			log.Debug("source.Writer: closing the connection cleanly")
+			msg := websocket.FormatCloseMessage(
+				websocket.CloseNormalClosure, "Measurement complete")
+			deadline := time.Now().Add(3 * time.Second)
+			return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+		default:
+			err := conn.SetWriteDeadline(time.Now().Add(7 * time.Second))
+			if err != nil {
+				log.WithError(err).Warn("SetWriteDeadline failed")
+				return err
+			}
+			err = conn.WritePreparedMessage(prepared)
+			if err != nil {
+				log.WithError(err).Warn("WritePreparedMessage failed")
+				return err
+			}
+		}
+	}
 }

@@ -58,12 +58,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
-	go func() {
-		for range sink.Reader(conn) { // XXX
-			// discard
-		}
-	}()
-	err = <-source.Writer(conn)
+	err = source.Writer(conn, source.Reader(conn))
 	if err != nil {
 		return
 	}

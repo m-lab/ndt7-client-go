@@ -18,15 +18,15 @@ type measurement struct {
 
 // Measurer is a filter that runs in a goroutine. It fully drains the input
 // channel that returns the read bytes. It returns a channel where it will
-// periodically posts application level measurements ready to be sent by some
-// other goroutine to the other party.
+// periodically posts application level measurements ready to be sent to the
+// other party by the consumer goroutine reading the channel.
 func Measurer(in <-chan int64) <-chan []byte {
 	out := make(chan []byte)
 	go func() {
-		log.Debug("Measurer: start")
-		defer log.Debug("Measurer: stop")
+		log.Debug("sink.Measurer: start")
+		defer log.Debug("sink.Measurer: stop")
 		defer func() {
-			log.Debug("Measurer: reader detached; draining channel")
+			log.Debug("sink.Measurer: draining reader's channel")
 			for range in {
 				// Just drain the channel
 			}

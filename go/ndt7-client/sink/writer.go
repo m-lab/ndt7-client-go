@@ -1,17 +1,15 @@
 package sink
 
 import (
-	"time"
-
 	"github.com/apex/log"
 	"github.com/gorilla/websocket"
 )
 
 // Writer is a reducer that receives measurements ready to be sent
-// to the other party and sends them using the connection. When it is
-// done, Writer will send a websocket.CloseMessage message so that
-// it is clear we are done with sending counterflow measurements.
+// to the other party and sends them using the connection.
 func Writer(conn *websocket.Conn, in <-chan []byte) error {
+	log.Debug("sink.Writer: start")
+	defer log.Debug("sink.Writer: stop")
 	defer func() {
 		for range in {
 			// make sure we drain the channel
@@ -24,8 +22,5 @@ func Writer(conn *websocket.Conn, in <-chan []byte) error {
 			return err
 		}
 	}
-	msg := websocket.FormatCloseMessage(
-		websocket.CloseNormalClosure, "Done with sending counterflow measurements")
-	deadline := time.Now().Add(3 * time.Second)
-	return conn.WriteControl(websocket.CloseMessage, msg, deadline)
+	return nil
 }

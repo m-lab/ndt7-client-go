@@ -57,6 +57,7 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 
 // closeandwarn will warn if closing a closer causes a failure
 func closeandwarn(closer io.Closer, message string) {
+	time.Sleep(1 * time.Second)
 	err := closer.Close()
 	if err != nil {
 		log.WithError(err).Warn(message)
@@ -80,10 +81,5 @@ func (cl Client) Upload() error {
 		return err
 	}
 	defer closeandwarn(conn, "Ignored error when closing connection")
-	go func() {
-		for range sink.Reader(conn) { // XXX
-			// discard
-		}
-	}()
-	return <-source.Writer(conn)
+	return source.Writer(conn, source.Reader(conn))
 }
