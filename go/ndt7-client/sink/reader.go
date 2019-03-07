@@ -19,7 +19,7 @@ func logmeasurement(data []byte) {
 // channel. Additionally, measurement messages will be logged. In case
 // on any error, the reader will close the returned channel.
 func Reader(conn *websocket.Conn) <-chan int64 {
-	const timeout = 1 * time.Second
+	const timeout = 7 * time.Second
 	out := make(chan int64)
 	go func() {
 		log.Debug("sink.Reader: start")

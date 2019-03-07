@@ -49,7 +49,7 @@ func Writer(conn *websocket.Conn, in <-chan error) error {
 			log.Debug("source.Writer: closing the connection cleanly")
 			msg := websocket.FormatCloseMessage(
 				websocket.CloseNormalClosure, "Measurement complete")
-			deadline := time.Now().Add(3 * time.Second)
+			deadline := time.Now().Add(7 * time.Second)
 			return conn.WriteControl(websocket.CloseMessage, msg, deadline)
 		default:
 			err := conn.SetWriteDeadline(time.Now().Add(7 * time.Second))
