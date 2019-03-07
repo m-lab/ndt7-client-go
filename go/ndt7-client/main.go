@@ -20,12 +20,12 @@ func main() {
 	clnt.Hostname = *hostname
 	clnt.Port = *port
 	clnt.Insecure = *insecure
-	/*
 	if err := clnt.Download(); err != nil {
 		log.WithError(err).Warn("Download failed")
 	}
-	*/
+	/*
 	if err := clnt.Upload(); err != nil {
 		log.WithError(err).Warn("Download failed")
 	}
+	*/
 }

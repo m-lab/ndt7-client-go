@@ -43,7 +43,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer closeandwarn(conn, "Ignored upload connection error")
+	defer closeandwarn(conn, "Ignored error when closing connection")
 	err = protocol.Counterflow(conn, protocol.Measurer(protocol.Reader(conn)))
 	if err != nil {
 		return
@@ -56,7 +56,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer closeandwarn(conn, "Ignored download connection error")
+	defer closeandwarn(conn, "Ignored error when closing connection")
 	go func() {
 		for range protocol.Reader(conn) {
 			// discard

@@ -26,7 +26,7 @@ func Measurer(in <-chan int64) <-chan []byte {
 		log.Debug("Measurer: start")
 		defer log.Debug("Measurer: stop")
 		defer func() {
-			log.Debug("Measurer: abnormal close; draining channel")
+			log.Debug("Measurer: reader detached; draining channel")
 			for range in {
 				// Just drain the channel
 			}
