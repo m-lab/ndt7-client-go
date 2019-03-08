@@ -5,22 +5,29 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Writer is a reducer that receives measurements ready to be sent
-// to the other party and sends them using the connection.
-func Writer(conn *websocket.Conn, in <-chan []byte) error {
-	log.Debug("sink.Writer: start")
-	defer log.Debug("sink.Writer: stop")
-	defer func() {
-		for range in {
-			// make sure we drain the channel
+func Writer(conn *websocket.Conn, input <-chan MeasureResult) <-chan error {
+	output := make(chan error)
+	go func() {
+		defer close(output)
+		defer log.Debug("sink.Writer: stop")
+		defer func() {
+			for range input {
+				// Just drain the channel
+			}
+		}()
+		log.Debug("sink.Writer: start")
+		for mr := range input {
+			if mr.Err != nil {
+				output <- mr.Err
+				return
+			}
+			err := conn.WriteMessage(websocket.TextMessage, mr.Measurement)
+			if err != nil {
+				log.WithError(err).Warn("WriteMessage failed")
+				output <- err
+				return
+			}
 		}
 	}()
-	for data := range in {
-		err := conn.WriteMessage(websocket.TextMessage, data)
-		if err != nil {
-			log.WithError(err).Warn("WriteMessage failed")
-			return err
-		}
-	}
-	return nil
+	return output
 }

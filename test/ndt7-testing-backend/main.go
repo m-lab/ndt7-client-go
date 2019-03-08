@@ -2,23 +2,15 @@ package main
 
 import (
 	"errors"
-	"io"
 	"net/http"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/common"
 	"github.com/m-lab/ndt7-clients/go/ndt7-client/sink"
 	"github.com/m-lab/ndt7-clients/go/ndt7-client/source"
 )
-
-// closeandwarn will warn if closing a closer causes a failure
-func closeandwarn(closer io.Closer, message string) {
-	err := closer.Close()
-	if err != nil {
-		log.WithError(err).Warn(message)
-	}
-}
 
 // upgrade upgrades the connection to websocket
 func upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
@@ -44,8 +36,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer closeandwarn(conn, "Ignored error when closing connection")
-	err = sink.Writer(conn, sink.Measurer(sink.Reader(conn)))
+	err = common.Closer(conn, sink.Writer(conn, sink.Measurer(sink.Reader(conn))))
 	if err != nil {
 		return
 	}
@@ -57,8 +48,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer closeandwarn(conn, "Ignored error when closing connection")
-	err = source.Writer(conn, source.Reader(conn))
+	err = common.Closer(conn, source.Writer(conn, source.Reader(conn)))
 	if err != nil {
 		return
 	}

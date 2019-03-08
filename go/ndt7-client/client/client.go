@@ -3,13 +3,13 @@ package client
 
 import (
 	"crypto/tls"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/apex/log"
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-clients/go/ndt7-client/common"
 	"github.com/m-lab/ndt7-clients/go/ndt7-client/sink"
 	"github.com/m-lab/ndt7-clients/go/ndt7-client/source"
 )
@@ -55,23 +55,13 @@ func (cl Client) dial(urlpath string) (*websocket.Conn, error) {
 	return conn, nil
 }
 
-// closeandwarn will warn if closing a closer causes a failure
-func closeandwarn(closer io.Closer, message string) {
-	time.Sleep(1 * time.Second)
-	err := closer.Close()
-	if err != nil {
-		log.WithError(err).Warn(message)
-	}
-}
-
 // Download runs a ndt7 download test.
 func (cl Client) Download() error {
 	conn, err := cl.dial("/ndt/v7/download")
 	if err != nil {
 		return err
 	}
-	defer closeandwarn(conn, "Ignored error when closing connection")
-	return sink.Writer(conn, sink.Measurer(sink.Reader(conn)))
+	return common.Closer(conn, sink.Writer(conn, sink.Measurer(sink.Reader(conn))))
 }
 
 // Upload runs a ndt7 upload test.
@@ -80,6 +70,5 @@ func (cl Client) Upload() error {
 	if err != nil {
 		return err
 	}
-	defer closeandwarn(conn, "Ignored error when closing connection")
-	return source.Writer(conn, source.Reader(conn))
+	return common.Closer(conn, source.Writer(conn, source.Reader(conn)))
 }
