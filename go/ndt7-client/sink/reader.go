@@ -29,14 +29,9 @@ func Reader(conn *websocket.Conn) <-chan ReadResult {
 		log.Debug("sink.Reader: start")
 		defer log.Debug("sink.Reader: stop")
 		defer close(output)
-		conn.SetCloseHandler(func (int, string) error {
-			log.Debug("sink.Reader: got close message; deferring response")
-			return nil
-		})
 		for {
 			kind, data, err := conn.ReadMessage()
 			if err != nil {
-				log.WithError(err).Debug("sink.Reader error")
 				output <- ReadResult{Err: err}
 				return
 			}

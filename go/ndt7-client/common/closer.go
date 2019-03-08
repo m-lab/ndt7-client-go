@@ -33,7 +33,9 @@ func Closer(conn *websocket.Conn, in <-chan error) error {
 	case <-timer.C:
 		err = ErrTimeout
 	case err = <-in:
-		// nothing
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+			err = nil
+		}
 	}
 	if err != nil {
 		err2 := conn.Close()

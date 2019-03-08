@@ -48,7 +48,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	err = common.Closer(conn, source.Writer(conn, source.Reader(conn)))
+	err = common.Closer(conn, source.Reader(conn, source.Writer(conn)))
 	if err != nil {
 		return
 	}

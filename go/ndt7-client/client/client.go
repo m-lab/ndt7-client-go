@@ -70,5 +70,5 @@ func (cl Client) Upload() error {
 	if err != nil {
 		return err
 	}
-	return common.Closer(conn, source.Writer(conn, source.Reader(conn)))
+	return common.Closer(conn, source.Reader(conn, source.Writer(conn)))
 }
