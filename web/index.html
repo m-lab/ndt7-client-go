@@ -55,13 +55,13 @@
           console.log('Close: ' + JSON.stringify(msg.value))
         } else if (msg.key === libndt7.events.error) {
           console.log('Error: ' + JSON.stringify(msg.value))
-        } else if (msg.key === libndt7.events.downloadClient) {
+        } else if (msg.key === libndt7.events.clientMeasurement) {
           const d = msg.value
           WithMeasurementDo(function (elem) {
             const speed = 8 * d.app_info.num_bytes / d.elapsed / 1000 / 1000
             elem.innerHTML = speed.toFixed(0) + ' Mbit/s'
           })
-        } else if (msg.key === libndt7.events.downloadServer) {
+        } else if (msg.key === libndt7.events.serverMeasurement) {
           console.log('Measurement from server: ' + JSON.stringify(msg.value))
         } else {
           console.log('Received unexpected message: ' + msg.key)

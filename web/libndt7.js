@@ -20,14 +20,14 @@ const libndt7 = (function () {
     // object bound to this event is always null.
     error: 'ndt7.error',
 
-    // downloadServer is a event emitted periodically during a
-    // ndt7 subtest. It represents a measurement performed by the
+    // serverMeasurement is a event emitted periodically during a
+    // ndt7 download. It represents a measurement performed by the
     // server and sent to us over the WebSocket channel.
-    downloadServer: 'ndt7.download.server',
+    serverMeasurement: 'ndt7.measurement.server',
 
-    // downloadClient is a event emitted periodically during a
-    // ndt7 subtest. It represents a measurement performed by the client.
-    downloadClient: 'ndt7.download.client'
+    // clientMeasurement is a event emitted periodically during a
+    // ndt7 download. It represents a measurement performed by the client.
+    clientMeasurement: 'ndt7.measurement.client'
   }
 
   const version = 0.7
@@ -50,11 +50,11 @@ const libndt7 = (function () {
         }
       }
 
-      // makeurl creates the URL from |settings|.
-      const makeurl = function (settings) {
+      // makeurl creates the URL from |settings| and |subtest| name.
+      const makeurl = function (settings, subtest) {
         let url = new URL(settings.href)
         url.protocol = (url.protocol === 'https:') ? 'wss:' : 'ws:'
-        url.pathname = '/ndt/v7/download'
+        url.pathname = '/ndt/v7/' + subtest
         let params = new URLSearchParams()
         settings.meta = (settings.meta !== undefined) ? settings : {}
         settings.meta['library.name'] = 'libndt7.js'
@@ -70,9 +70,9 @@ const libndt7 = (function () {
 
       // setupconn creates the WebSocket connection and initializes all
       // the event handlers except for the message handler. To setup the
-      // WebSocket connection we use the provided |settings|.
-      const setupconn = function (settings) {
-        const url = makeurl(settings)
+      // WebSocket connection we use the |settings| and the |subtest|.
+      const setupconn = function (settings, subtest) {
+        const url = makeurl(settings, subtest)
         const socket = new WebSocket(url, 'net.measurementlab.ndt.v7')
         socket.onopen = function (event) {
           emit(events.open, null)
@@ -96,13 +96,13 @@ const libndt7 = (function () {
           if (event.data instanceof Blob) {
             count += event.data.size
           } else {
-            emit(events.downloadServer, JSON.parse(event.data))
+            emit(events.serverMeasurement, JSON.parse(event.data))
             count += event.data.length
           }
           let t1 = new Date().getTime()
           const every = 250  // millisecond
           if (t1 - tlast > every) {
-            emit(events.downloadClient, {
+            emit(events.clientMeasurement, {
               elapsed: (t1 - t0) / 1000,  // second
               app_info: {
                 num_bytes: count
@@ -123,7 +123,7 @@ const libndt7 = (function () {
 
         // startDownload starts the ndt7 download.
         startDownload: function () {
-          measure(setupconn(settings))
+          measure(setupconn(settings, 'download'))
         }
       }
     }
