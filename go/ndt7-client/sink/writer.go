@@ -5,6 +5,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Writer reads measurement results from the input channel and submits
+// them to the peer using the websocket connection. In case of any error,
+// this function will post in on the returned channel and terminate.
 func Writer(conn *websocket.Conn, input <-chan MeasureResult) <-chan error {
 	output := make(chan error)
 	go func() {

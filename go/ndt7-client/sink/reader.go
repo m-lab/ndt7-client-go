@@ -13,16 +13,19 @@ func logmeasurement(data []byte) {
 	log.Infof("%s", strings.TrimRight(string(data), "\n"))
 }
 
+// ReadResult is the result emitted by Reader on its output channel.
 type ReadResult struct {
+	// Err is the error that may have occurred.
 	Err error
 
+	// Count is the number of read bytes.
 	Count int64
 }
 
-// Reader reads messages from the websocket connection in a background
-// goroutine. The length of messages will be posted on the returned
-// channel. Additionally, measurement messages will be logged. In case
-// on any error, the reader will close the returned channel.
+// Reader reads messages from the websocket connection and posts the
+// amount of read bytes on the output channel. If an error occurs,
+// the error is posted on the output channel and we terminate. Also,
+// we log all the received measurement messages.
 func Reader(conn *websocket.Conn) <-chan ReadResult {
 	output := make(chan ReadResult)
 	go func() {

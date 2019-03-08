@@ -22,6 +22,18 @@ func makedata() []byte {
 // maxSendTime is the max time for which we are supposed to send
 const maxSendTime = 10 * time.Second
 
+// Writer writes binary messages on the connection for ten seconds, then
+// sends a close message and terminates. It will also send on the returned
+// channel connection status updates. Those will either be `nil` if all
+// is good, or a specififc error. After any I/O error the Writer terminates.
+//
+// Because the Writer must go as fast as possible, any connection status
+// update that is not an error must be sent in nonblocking fashion so that
+// we can resume writing ASAP. It does not matter to lose one of these
+// updates, because it means that the reader is waiting for messages and
+// not reading the channel. So this design is fine. The reason why the
+// Reader needs to be after the Writer in the pipeline is explained in the
+// documentation of the Reader, so we'll not repeat ourselves here.
 func Writer(conn *websocket.Conn) <-chan error {
 	output := make(chan error)
 	go func() {
@@ -44,6 +56,8 @@ func Writer(conn *websocket.Conn) <-chan error {
 					output <- err // Forward I/O error when writing
 					return
 				}
+				// Make sure we don't block but at the same time make sure
+				// we'll unblock the Reader if required.
 				select {
 				case output <- nil:
 				default:

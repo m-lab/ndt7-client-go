@@ -22,7 +22,7 @@ const maxDuration = 15 * time.Second
 func Closer(conn *websocket.Conn, in <-chan error) error {
 	defer func() {
 		for range in {
-			// drain
+			// Just drain the channel
 		}
 	}()
 	defer log.Debug("common.Closer: stop")
@@ -34,7 +34,7 @@ func Closer(conn *websocket.Conn, in <-chan error) error {
 		err = ErrTimeout
 	case err = <-in:
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-			err = nil
+			err = nil // This is what a successful test looks like
 		}
 	}
 	if err != nil {

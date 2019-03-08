@@ -27,6 +27,7 @@ func upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 		log.WithError(err).Warn("Upgrade failed")
 		return nil, err
 	}
+	conn.SetReadLimit(1 << 17) // consistent with the spec
 	return conn, nil
 }
 

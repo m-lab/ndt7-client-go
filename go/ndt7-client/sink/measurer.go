@@ -1,3 +1,5 @@
+// Package sink implements a ndt7 sink. This is the role of the client
+// during the download and of the server during the upload.
 package sink
 
 import (
@@ -7,23 +9,41 @@ import (
 	"github.com/apex/log"
 )
 
+// appinfo contains an application level measurement. It is part of
+// the ndt7 specification.
 type appinfo struct {
+	// NumBytes indicates the number of bytes received so far.
 	NumBytes int64 `json:"num_bytes"`
-	// Speed is not part of the spec but it helps to see it on the
-	// wire when we're not using BBR-enabled ndt7
+
+	// Speed contains the speed in Mbit/s. This is not part of the spec
+	// but is useful to understand how fast we're going here.
 	Speed float64 `json:"speed"`
 }
 
+// measurement is a measurement message compliant with the ndt7 spec.
 type measurement struct {
+	// Elapsed is the number of seconds since the beginning.
 	Elapsed float64 `json:"elapsed"`
+
+	// AppInfo contains application level measurements.
 	AppInfo appinfo `json:"app_info"`
 }
 
+// MeasureResult is one of the results emitted by Measurer
+// on the channel that it returns.
 type MeasureResult struct {
+	// Err is the error that may have occurred.
 	Err error
+
+	// Measurement is a serialized measurement to be sent to
+	// the peer using a counterflow message.
 	Measurement []byte
 }
 
+// Measurer aggregates read results coming from the input channel and
+// periodically emits serialized measurements to be uploaded on the
+// output channel. If an error comes in the input channel, we will pass
+// the error on the output channel and leave.
 func Measurer(input <-chan ReadResult) <-chan MeasureResult {
 	output := make(chan MeasureResult)
 	go func() {
@@ -35,7 +55,7 @@ func Measurer(input <-chan ReadResult) <-chan MeasureResult {
 		}()
 		defer close(output)
 		log.Debug("sink.Measurer: start")
-		const interval = 250 * time.Millisecond
+		const interval = 250 * time.Millisecond // min counter-flow interval
 		var total int64
 		prev := time.Now()
 		begin := prev
