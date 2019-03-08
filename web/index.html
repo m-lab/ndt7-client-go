@@ -4,16 +4,17 @@
   <script type='text/javascript' src='libndt7.js'></script>
   <style>
 
-.container {
-  height: 100%;
-  width: 100%;
+.row {
   display: flex;
-  position: fixed;
-  align-items: center;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
-#measurement {
+.result {
+  position: relative;
+  align-items: center;
+  justify-content: center;
   font-size: 1000%;
   align: center;
 }
@@ -22,24 +23,30 @@
   <title>ndt7 Speed Test</title>
 </head>
 <body>
-  <div class='container'><div id='measurement'></div></div>
+  <div>
+    <div id='download' class='result row'>[Download]</div>
+    <div id='upload' class='result row'>[Upload]</div>
+  </div>
   <script type='text/javascript'>
     /* jshint esversion: 6, asi: true */
     /* exported Run */
     /* globals libndt7 */
 
-    function WithMeasurementDo(callable) {
-      const elem = document.getElementById('measurement')
+    function WithElementIdDo(elementId, callable) {
+      const elem = document.getElementById(elementId)
       if (elem) {
         callable(elem)
       }
     }
 
-    function Run() {
-      WithMeasurementDo(function (elem) {
-        elem.innerHTML = ''
+    function UpdateView(elementId, data) {
+      WithElementIdDo(elementId, function (elem) {
+        const speed = 8 * data.app_info.num_bytes / data.elapsed / 1000 / 1000
+        elem.innerHTML = speed.toFixed(3) + ' Mbit/s'
       })
+    }
 
+    function RunDownload(callback) {
       let worker = new Worker('ndt7-worker.js')
       worker.postMessage({
         key: 'download',
@@ -49,27 +56,36 @@
       })
       worker.onmessage = function (ev) {
         const msg = ev.data
-        if (msg.key === libndt7.events.open) {
-          console.log('Open: ' + JSON.stringify(msg.value))
-        } else if (msg.key === libndt7.events.close) {
-          console.log('Close: ' + JSON.stringify(msg.value))
-        } else if (msg.key === libndt7.events.error) {
-          console.log('Error: ' + JSON.stringify(msg.value))
-        } else if (msg.key === libndt7.events.clientMeasurement) {
-          const d = msg.value
-          WithMeasurementDo(function (elem) {
-            const speed = 8 * d.app_info.num_bytes / d.elapsed / 1000 / 1000
-            elem.innerHTML = speed.toFixed(0) + ' Mbit/s'
-          })
-        } else if (msg.key === libndt7.events.serverMeasurement) {
-          console.log('Measurement from server: ' + JSON.stringify(msg.value))
+        if (msg.key === libndt7.events.clientMeasurement) {
+          UpdateView('download', msg.value)
         } else {
-          console.log('Received unexpected message: ' + msg.key)
+          console.log('Worker event: ' + msg.key)
+          if (msg.key === libndt7.events.close) {
+            callback()
+          }
         }
       }
     }
 
-    Run()  // When you load the page
+    function RunUpload() {
+      let worker = new Worker('ndt7-worker.js')
+      worker.postMessage({
+        key: 'upload',
+        value: {
+          href: window.location.href
+        },
+      })
+      worker.onmessage = function (ev) {
+        const msg = ev.data
+        if (msg.key === libndt7.events.clientMeasurement) {
+          UpdateView('upload', msg.value)
+        } else {
+          console.log('Worker event: ' + msg.key)
+        }
+      }
+    }
+
+    RunDownload(function() { RunUpload(); })
   </script>
 </body>
 </html>
