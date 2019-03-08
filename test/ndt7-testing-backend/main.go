@@ -58,11 +58,10 @@ func download(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.DebugLevel)
+	http.Handle("/", http.FileServer(http.Dir("web")))
 	http.HandleFunc("/ndt/v7/download", download)
 	http.HandleFunc("/ndt/v7/upload", upload)
-	err := http.ListenAndServeTLS(
-		"127.0.0.1:4443", "cert.pem", "key.pem", nil,
-	)
+	err := http.ListenAndServeTLS(":443", "cert.pem", "key.pem", nil)
 	if err != nil {
 		log.WithError(err).Fatal("ListenAndServeTLS failed")
 	}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang='en'>
+<head>
+  <script type='text/javascript' src='libndt7.js'></script>
+  <style>
+
+.container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  position: fixed;
+  align-items: center;
+  justify-content: center;
+}
+
+#measurement {
+  font-size: 1000%;
+  align: center;
+}
+  </style>
+  <meta charset='utf-8'>
+  <title>ndt7 Speed Test</title>
+</head>
+<body>
+  <div class='container'><div id='measurement'></div></div>
+  <script type='text/javascript'>
+    /* jshint esversion: 6, asi: true */
+    /* exported Run */
+    /* globals libndt7 */
+
+    function WithMeasurementDo(callable) {
+      const elem = document.getElementById('measurement')
+      if (elem) {
+        callable(elem)
+      }
+    }
+
+    function Run() {
+      WithMeasurementDo(function (elem) {
+        elem.innerHTML = ''
+      })
+
+      let worker = new Worker('ndt7-worker.js')
+      worker.postMessage({
+        key: 'download',
+        value: {
+          href: window.location.href
+        },
+      })
+      worker.onmessage = function (ev) {
+        const msg = ev.data
+        if (msg.key === libndt7.events.open) {
+          console.log('Open: ' + JSON.stringify(msg.value))
+        } else if (msg.key === libndt7.events.close) {
+          console.log('Close: ' + JSON.stringify(msg.value))
+        } else if (msg.key === libndt7.events.error) {
+          console.log('Error: ' + JSON.stringify(msg.value))
+        } else if (msg.key === libndt7.events.downloadClient) {
+          const d = msg.value
+          WithMeasurementDo(function (elem) {
+            const speed = 8 * d.app_info.num_bytes / d.elapsed / 1000 / 1000
+            elem.innerHTML = speed.toFixed(0) + ' Mbit/s'
+          })
+        } else if (msg.key === libndt7.events.downloadServer) {
+          console.log('Measurement from server: ' + JSON.stringify(msg.value))
+        } else {
+          console.log('Received unexpected message: ' + msg.key)
+        }
+      }
+    }
+
+    Run()  // When you load the page
+  </script>
+</body>
+</html>
