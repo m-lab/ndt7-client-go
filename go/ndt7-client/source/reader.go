@@ -41,10 +41,14 @@ func Reader(conn *websocket.Conn, input <-chan error) <-chan error {
 			}
 		}()
 		log.Debug("source.Reader: start")
-		for err := range input {
-			if err != nil {
-				output <- err
-				return
+		for {
+			select {
+			case err, ok := <-input:
+				if ok && err != nil {
+					output <- err
+					return
+				}
+			default:
 			}
 			kind, data, err := conn.ReadMessage()
 			if err != nil {

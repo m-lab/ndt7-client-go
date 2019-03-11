@@ -56,12 +56,6 @@ func Writer(conn *websocket.Conn) <-chan error {
 					output <- err // Forward I/O error when writing
 					return
 				}
-				// Make sure we don't block but at the same time make sure
-				// we'll unblock the Reader if required.
-				select {
-				case output <- nil:
-				default:
-				}
 			}
 		}
 	}()

@@ -29,6 +29,10 @@ type ReadResult struct {
 func Reader(conn *websocket.Conn) <-chan ReadResult {
 	output := make(chan ReadResult)
 	go func() {
+		conn.SetCloseHandler(func(int, string) error {
+			log.Debug("sink.Reader: got close message; deferring response")
+			return nil
+		})
 		log.Debug("sink.Reader: start")
 		defer log.Debug("sink.Reader: stop")
 		defer close(output)
