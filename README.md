@@ -1,3 +1,3 @@
-# ndt7-client-golang
+# ndt7 Go client
 
-Reference ndt7 golang client implementation.
+Reference ndt7 Go client implementation.
