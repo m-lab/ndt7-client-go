@@ -8,20 +8,13 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-	fqdn, err := ndt7.DiscoverServer(ctx)
-	if err != nil {
-		log.WithError(err).Fatal("ndt7.DiscoverServer failed")
-	}
-	log.Infof("discovered server: %s", fqdn)
-	client := ndt7.NewClient(ctx)
-	client.FQDN = fqdn
+	client := ndt7.NewClient(context.Background())
 	log.Info("starting download")
 	ch, err := client.StartDownload()
 	if err != nil {
 		log.WithError(err).Fatal("client.StartDownload failed")
 	}
-	log.Info("download in progress")
+	log.Infof("download in progress with %s", client.FQDN)
 	for ev := range ch {
 		log.Infof("%+v", ev)
 	}
@@ -30,7 +23,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("client.StartUpload failed")
 	}
-	log.Info("upload in progress")
+	log.Infof("upload in progress with %s", client.FQDN)
 	for ev := range ch {
 		log.Infof("%+v", ev)
 	}
