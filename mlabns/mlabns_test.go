@@ -80,7 +80,22 @@ func TestQueryJSONParseError(t *testing.T) {
 	config := NewConfig("ndt_ssl", "ndt7-client-go")
 	_, err := Query(context.Background(), config)
 	if err == nil {
-		t.Fatal("We were expecting an error here")
+		t.Fatal("We expected an error here")
+	}
+	doGET = savedFunc
+}
+
+// TestQueryNoServer ensures we deal with the case
+// where no servers are returned.
+func TestQueryNoServers(t *testing.T) {
+	savedFunc := doGET
+	doGET = func(ctx context.Context, URL, userAgent string) ([]byte, error) {
+		return []byte("{}"), nil
+	}
+	config := NewConfig("ndt_ssl", "ndt7-client-go")
+	_, err := Query(context.Background(), config)
+	if err != ErrNoAvailableServers {
+		t.Fatal("Not the error we were expecting")
 	}
 	doGET = savedFunc
 }

@@ -24,6 +24,9 @@ type Client struct {
 	// FQDN is the server FQDN.
 	FQDN string
 
+	// MlabNSBaseURL is the optional base URL for mlab-ns.
+	MlabNSBaseURL string
+
 	// ctx is the client context.
 	ctx context.Context
 }
@@ -40,9 +43,12 @@ func NewClient(ctx context.Context) *Client {
 const UserAgent = "ndt7-client-go/0.1.0"
 
 // DiscoverServer discovers and returns the closest mlab server.
-func DiscoverServer(ctx context.Context) (string, error) {
+func (c *Client) DiscoverServer() (string, error) {
 	config := mlabns.NewConfig("ndt_ssl", UserAgent)
-	return mlabns.Query(ctx, config)
+	if c.MlabNSBaseURL != "" {
+		config.BaseURL = c.MlabNSBaseURL
+	}
+	return mlabns.Query(c.ctx, config)
 }
 
 // connect establishes a websocket connection.
@@ -65,7 +71,7 @@ type startFunc = func(context.Context, *websocket.Conn, chan<- spec.Measurement)
 // start is the function for starting a subtest.
 func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
-		fqdn, err := DiscoverServer(c.ctx)
+		fqdn, err := c.DiscoverServer()
 		if err != nil {
 			return nil, err
 		}

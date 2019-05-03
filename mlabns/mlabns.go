@@ -80,8 +80,7 @@ var doGET = func(ctx context.Context, URL, userAgent string) ([]byte, error) {
 var ErrNoAvailableServers = errors.New("No available M-Lab servers")
 
 // Query returns the FQDN of a nearby mlab server. Returns an error on
-// failure and the FQDN on success. Note that the FQDN may be an empty string
-// when mlab is overloaded. So, make sure you handle this case.
+// failure and the server FQDN on success.
 func Query(ctx context.Context, config Config) (string, error) {
 	URL, err := url.Parse(config.BaseURL)
 	if err != nil {
