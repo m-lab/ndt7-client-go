@@ -9,7 +9,6 @@ package ndt7
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/url"
 
@@ -60,11 +59,6 @@ func connect(ctx context.Context, FQDN, URLPath string) (*websocket.Conn, error)
 	return conn, err
 }
 
-// ErrNoAvailableServers is returned when there are no available servers. A
-// background client should treat this error specially and schedule retrying
-// after an exponentially distributed number of seconds.
-var ErrNoAvailableServers = errors.New("No available M-Lab servers")
-
 // startFunc is the function that starts a nettest.
 type startFunc = func(context.Context, *websocket.Conn, chan<- spec.Measurement)
 
@@ -74,9 +68,6 @@ func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 		fqdn, err := DiscoverServer(c.ctx)
 		if err != nil {
 			return nil, err
-		}
-		if fqdn == "" {
-			return nil, ErrNoAvailableServers
 		}
 		c.FQDN = fqdn
 	}

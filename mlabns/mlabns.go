@@ -74,6 +74,11 @@ var doGET = func(ctx context.Context, URL, userAgent string) ([]byte, error) {
 	return ioutil.ReadAll(response.Body)
 }
 
+// ErrNoAvailableServers is returned when there are no available servers. A
+// background client should treat this error specially and schedule retrying
+// after an exponentially distributed number of seconds.
+var ErrNoAvailableServers = errors.New("No available M-Lab servers")
+
 // Query returns the FQDN of a nearby mlab server. Returns an error on
 // failure and the FQDN on success. Note that the FQDN may be an empty string
 // when mlab is overloaded. So, make sure you handle this case.
@@ -91,6 +96,9 @@ func Query(ctx context.Context, config Config) (string, error) {
 	err = json.Unmarshal(data, &server)
 	if err != nil {
 		return "", err
+	}
+	if server.FQDN == "" {
+		return "", ErrNoAvailableServers
 	}
 	return server.FQDN, nil
 }
