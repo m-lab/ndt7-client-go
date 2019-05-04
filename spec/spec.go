@@ -1,4 +1,4 @@
-// Package spec contains ndt7 constants. See also the ndt7 spec:
+// Package spec contains constants and structs. See also the spec:
 // https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md
 package spec
 

@@ -1,4 +1,4 @@
-// Package mlabns contains an mlabns implementation.
+// Package mlabns implements a simple mlab-ns client.
 package mlabns
 
 import (

@@ -3,8 +3,6 @@
 // The client will automatically discover a suitable server to use
 // by default. However, you can also manually discover a server and
 // configure the client accordingly.
-//
-// See cmdt/ndt7-client for a complete usage example.
 package ndt7
 
 import (
@@ -13,28 +11,30 @@ import (
 	"net/url"
 
 	"github.com/gorilla/websocket"
-	"github.com/m-lab/ndt7-client-go/download"
+	"github.com/m-lab/ndt7-client-go/internal/download"
+	"github.com/m-lab/ndt7-client-go/internal/upload"
 	"github.com/m-lab/ndt7-client-go/mlabns"
 	"github.com/m-lab/ndt7-client-go/spec"
-	"github.com/m-lab/ndt7-client-go/upload"
 )
 
 // Client is a ndt7 client.
 type Client struct {
-	// FQDN is the server FQDN.
+	// FQDN is the optional server FQDN. We will discover the FQDN of
+	// a nearby M-Lab server for you if this field is empty.
 	FQDN string
 
-	// MlabNSBaseURL is the optional base URL for mlab-ns.
+	// MlabNSBaseURL is the optional base URL for mlab-ns. We will use
+	// the default URL if this field is empty.
 	MlabNSBaseURL string
 
-	// ctx is the client context.
-	ctx context.Context
+	// Ctx is the client context.
+	Ctx context.Context
 }
 
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
-		ctx: ctx,
+		Ctx: ctx,
 	}
 }
 
@@ -42,13 +42,13 @@ func NewClient(ctx context.Context) *Client {
 // if you want to specify a different user agent.
 const UserAgent = "ndt7-client-go/0.1.0"
 
-// DiscoverServer discovers and returns the closest mlab server.
-func (c *Client) DiscoverServer() (string, error) {
+// discoverServer discovers and returns the closest mlab server.
+func (c *Client) discoverServer() (string, error) {
 	config := mlabns.NewConfig("ndt_ssl", UserAgent)
 	if c.MlabNSBaseURL != "" {
 		config.BaseURL = c.MlabNSBaseURL
 	}
-	return mlabns.Query(c.ctx, config)
+	return mlabns.Query(c.Ctx, config)
 }
 
 // connect establishes a websocket connection.
@@ -71,25 +71,27 @@ type startFunc = func(context.Context, *websocket.Conn, chan<- spec.Measurement)
 // start is the function for starting a subtest.
 func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
-		fqdn, err := c.DiscoverServer()
+		fqdn, err := c.discoverServer()
 		if err != nil {
 			return nil, err
 		}
 		c.FQDN = fqdn
 	}
-	conn, err := connect(c.ctx, c.FQDN, p)
+	conn, err := connect(c.Ctx, c.FQDN, p)
 	if err != nil {
 		return nil, err
 	}
 	ch := make(chan spec.Measurement)
-	go f(c.ctx, conn, ch)
+	go f(c.Ctx, conn, ch)
 	return ch, nil
 }
 
 // StartDownload discovers a ndt7 server (if needed) and starts a download. On
 // success it returns a channel where measurements are emitted. This channel is
 // closed when the download ends. On failure, the error is non nil and you
-// should not attempt using the channel.
+// should not attempt using the channel. A side effect of starting the download
+// is that, if you did not specify a server FQDN, we will discover a server
+// for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload() (<-chan spec.Measurement, error) {
 	return c.start(download.Run, spec.DownloadURLPath)
 }

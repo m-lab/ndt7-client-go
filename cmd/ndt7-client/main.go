@@ -1,3 +1,8 @@
+// ndt7-client is the ndt7 command line client.
+//
+// Usage:
+//
+//    ndt7-client
 package main
 
 import (
