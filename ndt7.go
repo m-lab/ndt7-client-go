@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/m-lab/ndt7-client-go/internal/download"
 	"github.com/m-lab/ndt7-client-go/internal/upload"
+	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/mlabns"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -66,7 +67,7 @@ func connect(ctx context.Context, FQDN, URLPath string) (*websocket.Conn, error)
 }
 
 // startFunc is the function that starts a nettest.
-type startFunc = func(context.Context, *websocket.Conn, chan<- spec.Measurement)
+type startFunc = func(context.Context, websocketx.Conn, chan<- spec.Measurement)
 
 // start is the function for starting a subtest.
 func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {

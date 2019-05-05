@@ -7,29 +7,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/mockable"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
-
-type mockedConn struct {
-	Message        []byte
-	ReadErr        error
-	SetDeadlineErr error
-	Type           int
-}
-
-func (*mockedConn) Close() error {
-	return nil
-}
-
-func (c *mockedConn) ReadMessage() (messageType int, p []byte, err error) {
-	return c.Type, c.Message, c.ReadErr
-}
-
-func (*mockedConn) SetReadLimit(limit int64) {}
-
-func (c *mockedConn) SetReadDeadline(t time.Time) error {
-	return c.SetDeadlineErr
-}
 
 // TestReadText is the case where we read text messages.
 func TestReadText(t *testing.T) {
@@ -37,12 +17,12 @@ func TestReadText(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockedConn{
-		Type:    websocket.TextMessage,
-		Message: []byte("{}"),
+	conn := mockable.Conn{
+		ReadMessageType:      websocket.TextMessage,
+		ReadMessageByteArray: []byte("{}"),
 	}
 	defer cancel()
-	go mockableRun(ctx, &conn, outch)
+	go Run(ctx, &conn, outch)
 	for range outch {
 		// ignore
 	}
@@ -54,12 +34,12 @@ func TestReadBinary(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockedConn{
-		Type:    websocket.BinaryMessage,
-		Message: []byte("{}"),
+	conn := mockable.Conn{
+		ReadMessageType:      websocket.BinaryMessage,
+		ReadMessageByteArray: []byte("{}"),
 	}
 	defer cancel()
-	go mockableRun(ctx, &conn, outch)
+	go Run(ctx, &conn, outch)
 	for range outch {
 		// ignore
 	}
@@ -72,13 +52,13 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockedConn{
-		Type:           websocket.TextMessage,
-		Message:        []byte("{}"),
-		SetDeadlineErr: errors.New("mocked error"),
+	conn := mockable.Conn{
+		ReadMessageType:       websocket.TextMessage,
+		ReadMessageByteArray:  []byte("{}"),
+		SetReadDeadlineResult: errors.New("mocked error"),
 	}
 	defer cancel()
-	go mockableRun(ctx, &conn, outch)
+	go Run(ctx, &conn, outch)
 	for range outch {
 		// ignore
 	}
@@ -91,13 +71,13 @@ func TestReadMessageError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockedConn{
-		Type:    websocket.TextMessage,
-		Message: []byte("{}"),
-		ReadErr: errors.New("mocked error"),
+	conn := mockable.Conn{
+		ReadMessageType:      websocket.TextMessage,
+		ReadMessageByteArray: []byte("{}"),
+		ReadMessageResult:    errors.New("mocked error"),
 	}
 	defer cancel()
-	go mockableRun(ctx, &conn, outch)
+	go Run(ctx, &conn, outch)
 	for range outch {
 		// ignore
 	}
@@ -110,12 +90,12 @@ func TestReadInvalidJSON(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockedConn{
-		Type:    websocket.TextMessage,
-		Message: []byte("{"),
+	conn := mockable.Conn{
+		ReadMessageType:      websocket.TextMessage,
+		ReadMessageByteArray: []byte("{"),
 	}
 	defer cancel()
-	go mockableRun(ctx, &conn, outch)
+	go Run(ctx, &conn, outch)
 	for range outch {
 		// ignore
 	}

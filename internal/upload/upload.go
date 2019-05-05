@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -31,7 +32,7 @@ func makePreparedMessage(size int) (*websocket.PreparedMessage, error) {
 }
 
 // ignoreIncoming ignores any incoming message.
-func ignoreIncoming(conn *websocket.Conn) {
+func ignoreIncoming(conn websocketx.Conn) {
 	conn.SetReadLimit(spec.MaxMessageSize)
 	for {
 		// Implementation note: this guarantees that the websocket engine
@@ -39,8 +40,11 @@ func ignoreIncoming(conn *websocket.Conn) {
 		// for the whole upload, so that we know that this goroutine is
 		// active for most of the time we care about, even in the case in
 		// which the server is not sending us any messages.
-		conn.SetReadDeadline(time.Now().Add(spec.UploadTimeout))
-		_, _, err := conn.ReadMessage()
+		err := conn.SetReadDeadline(time.Now().Add(spec.UploadTimeout))
+		if err != nil {
+			break
+		}
+		_, _, err = conn.ReadMessage()
 		if err != nil {
 			break
 		}
@@ -60,7 +64,7 @@ func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
 }
 
 // upload runs the upload and emits progress on ch.
-func upload(ctx context.Context, conn *websocket.Conn, out chan<- int64) {
+func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) {
 	defer close(out)
 	wholectx, cancel := context.WithTimeout(ctx, spec.UploadTimeout)
 	defer cancel()
@@ -76,7 +80,10 @@ func upload(ctx context.Context, conn *websocket.Conn, out chan<- int64) {
 		default:
 			// nothing
 		}
-		conn.SetWriteDeadline(time.Now().Add(spec.IOTimeout))
+		err := conn.SetWriteDeadline(time.Now().Add(spec.IOTimeout))
+		if err != nil {
+			return // just bail in case we cannot set deadline
+		}
 		if err := conn.WritePreparedMessage(preparedMessage); err != nil {
 			return // just bail if we cannot write
 		}
@@ -86,14 +93,14 @@ func upload(ctx context.Context, conn *websocket.Conn, out chan<- int64) {
 }
 
 // uploadAsync runs the upload and returns a channel where progress is emitted.
-func uploadAsync(ctx context.Context, conn *websocket.Conn) <-chan int64 {
+func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 	out := make(chan int64)
 	go upload(ctx, conn, out)
 	return out
 }
 
 // Run runs the upload subtest.
-func Run(ctx context.Context, conn *websocket.Conn, ch chan<- spec.Measurement) {
+func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) {
 	defer close(ch)
 	defer conn.Close()
 	go ignoreIncoming(conn)

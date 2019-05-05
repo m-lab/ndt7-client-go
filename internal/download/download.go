@@ -7,19 +7,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// websocketConn is the interface of a websocket.Conn
-type websocketConn interface {
-	Close() error
-	ReadMessage() (messageType int, p []byte, err error)
-	SetReadLimit(limit int64)
-	SetReadDeadline(t time.Time) error
-}
-
-// mockableRun is the internal implementation.
-func mockableRun(ctx context.Context, conn websocketConn, ch chan<- spec.Measurement) {
+// Run runs the download subtest.
+func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) {
 	defer close(ch)
 	defer conn.Close()
 	wholectx, cancel := context.WithTimeout(ctx, spec.DownloadTimeout)
@@ -52,9 +45,4 @@ func mockableRun(ctx context.Context, conn websocketConn, ch chan<- spec.Measure
 		measurement.Origin = spec.OriginServer
 		ch <- measurement
 	}
-}
-
-// Run runs the download subtest.
-func Run(ctx context.Context, conn *websocket.Conn, ch chan<- spec.Measurement) {
-	mockableRun(ctx, conn, ch)
 }
