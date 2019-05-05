@@ -13,7 +13,7 @@ import (
 
 // makePreparedMessage generates a prepared message that should be sent
 // over the network for generating network load.
-func makePreparedMessage(size int) (*websocket.PreparedMessage, error) {
+var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	data := make([]byte, size)
 	// This is not the fastest algorithm to generate a random string, yet it
