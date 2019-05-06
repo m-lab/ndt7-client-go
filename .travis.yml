@@ -8,5 +8,8 @@ before_script:
 - go get github.com/mattn/goveralls
 
 script:
+- go get -v ./...
+- sudo tc qdisc add dev eth0 root netem delay 200ms 10ms
 - go test -v -coverprofile=coverage.cov -coverpkg=./... ./...
+- sudo tc qdisc del dev eth0 root
 - $GOPATH/bin/goveralls -coverprofile=coverage.cov -service=travis-ci
