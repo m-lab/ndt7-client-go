@@ -63,19 +63,23 @@ func upload(client *ndt7.Client, emitter emitter) {
 	emitter.onComplete("upload")
 }
 
-func main() {
-	flag.Parse()
-	timeout := time.Duration(*flagTimeout) * time.Second
+func realmain(timeoutSec int64, hostname string, batchmode bool) {
+	timeout := time.Duration(timeoutSec) * time.Second
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(timeout),
 	)
 	defer cancel()
 	client := ndt7.NewClient(ctx)
-	client.FQDN = *flagHostname
+	client.FQDN = hostname
 	var emitter emitter = interactive{}
-	if *flagBatch {
+	if batchmode {
 		emitter = batch{}
 	}
 	download(client, emitter)
 	upload(client, emitter)
+}
+
+func main() {
+	flag.Parse()
+	realmain(*flagTimeout, *flagHostname, *flagBatch)
 }

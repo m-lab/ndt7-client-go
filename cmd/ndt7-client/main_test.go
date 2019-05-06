@@ -17,6 +17,14 @@ func TestNormalUsage(t *testing.T) {
 	main()
 }
 
+// TestBatchUsage tests the -batch use case.
+func TestBatchUsage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+	realmain(*flagTimeout, *flagHostname, true)
+}
+
 // TestDownloadError tests the case where download fails.
 func TestDownloadError(t *testing.T) {
 	client := ndt7.NewClient(context.Background())
