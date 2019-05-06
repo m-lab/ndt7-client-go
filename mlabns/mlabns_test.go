@@ -42,7 +42,7 @@ func TestQueryURLError(t *testing.T) {
 func TestQueryNewRequestError(t *testing.T) {
 	mockedError := errors.New("mocked error")
 	client := NewClient(context.Background(), "ndt_ssl", "ndt7-client-go")
-	client.RequestMaker = func(
+	client.requestMaker = func(
 		method, url string, body io.Reader) (*http.Request, error,
 	) {
 		return nil, mockedError

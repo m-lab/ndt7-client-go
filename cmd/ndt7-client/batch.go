@@ -53,6 +53,7 @@ func (b batch) onError(subtest string, err error) {
 		Key: "failure.measurement",
 		Value: batchValue{
 			Failure: err.Error(),
+			Subtest: subtest,
 		},
 	})
 }

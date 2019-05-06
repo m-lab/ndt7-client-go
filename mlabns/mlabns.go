@@ -11,17 +11,17 @@ import (
 	"net/url"
 )
 
-// HTTPRequestor is the interface of the implementation that
+// httpRequestor is the interface of the implementation that
 // performs a mlabns HTTP request for us.
-type HTTPRequestor interface {
+type httpRequestor interface {
 	// Do performs the request and returns either a response or
 	// a non-nil error to the caller.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// HTTPRequestMaker is the type of the function that
+// httpRequestMaker is the type of the function that
 // creates a new HTTP request for us.
-type HTTPRequestMaker = func(
+type httpRequestMaker = func(
 	method, url string, body io.Reader) (*http.Request, error,
 )
 
@@ -34,19 +34,20 @@ type Client struct {
 	// Ctx is the context to use.
 	Ctx context.Context
 
-	// RequestMaker is the function that creates a request. This is
-	// initialized in NewClient, but you may override it.
-	RequestMaker HTTPRequestMaker
-
-	// Requestor is the implementation that performs the request. This is
-	// initialized in NewClient, but you may override it.
-	Requestor HTTPRequestor
-
-	// Tool is the mandatory tool to use.
+	// Tool is the mandatory tool to use. This is initialize by NewClient.
 	Tool string
 
-	// UserAgent is the mandatory user agent to be used.
+	// UserAgent is the mandatory user agent to be used. Also this
+	// field is initialized by NewClient.
 	UserAgent string
+
+	// requestMaker is the function that creates a request. This is
+	// initialized in NewClient, but you may override it.
+	requestMaker httpRequestMaker
+
+	// requestor is the implementation that performs the request. This is
+	// initialized in NewClient, but you may override it.
+	requestor httpRequestor
 }
 
 // baseURL is the default base URL.
@@ -61,8 +62,8 @@ func NewClient(ctx context.Context, tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
 		Ctx:          ctx,
-		RequestMaker: http.NewRequest,
-		Requestor:    http.DefaultClient,
+		requestMaker: http.NewRequest,
+		requestor:    http.DefaultClient,
 		Tool:         tool,
 		UserAgent:    userAgent,
 	}
@@ -79,13 +80,13 @@ var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
 // doGET is an internal function used to perform the request.
 func (c *Client) doGET(URL string) ([]byte, error) {
-	request, err := c.RequestMaker("GET", URL, nil)
+	request, err := c.requestMaker("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("User-Agent", c.UserAgent)
 	request = request.WithContext(c.Ctx)
-	response, err := c.Requestor.Do(request)
+	response, err := c.requestor.Do(request)
 	if err != nil {
 		return nil, err
 	}

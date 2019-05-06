@@ -21,15 +21,16 @@ import (
 // LocateFn is the type of function used to locate a server.
 type LocateFn = func(client *mlabns.Client) (string, error)
 
-// ConnectFn is the type of the function used to create
+// connectFn is the type of the function used to create
 // a new *websocket.Conn connection.
-type ConnectFn = func(
-	dialer websocket.Dialer, ctx context.Context, urlStr string,
-	requestHeader http.Header) (*websocket.Conn, *http.Response, error,
-)
+type connectFn = func(
+	dialer websocket.Dialer,
+	ctx context.Context, urlStr string,
+	requestHeader http.Header,
+) (*websocket.Conn, *http.Response, error)
 
-// SubtestFn is the type of the function running a subtest.
-type SubtestFn = func(
+// subtestFn is the type of the function running a subtest.
+type subtestFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 )
 
@@ -38,21 +39,12 @@ const defaultUserAgent = "ndt7-client-go/0.1.0"
 
 // Client is a ndt7 client.
 type Client struct {
-	// ConnectFn is the function for connecting a specific
-	// websocket cnnection. It's set to its default value by
-	// NewClient, but you may override it.
-	ConnectFn ConnectFn
-
-	// Ctx is the client context.
+	// Ctx is the client context. It's set using NewClient.
 	Ctx context.Context
 
 	// Dialer is the optional websocket Dialer. It's set to its
 	// default value by NewClient; you may override it.
 	Dialer websocket.Dialer
-
-	// DownloadFn is the function running the download subtest. We
-	// set it in NewClient and you may override it.
-	DownloadFn SubtestFn
 
 	// FQDN is the optional server FQDN. We will discover the FQDN of
 	// a nearby M-Lab server for you if this field is empty.
@@ -67,29 +59,38 @@ type Client struct {
 	// the default URL if this field is empty.
 	MlabNSBaseURL string
 
-	// UploadFn is like DownloadFn but for the upload subtest.
-	UploadFn SubtestFn
-
 	// UserAgent is the user-agent that will be used. It's set by
 	// NewClient; you may want to change this value.
 	UserAgent string
+
+	// connectFn is the function for connecting a specific
+	// websocket cnnection. It's set to its default value by
+	// NewClient, but you may override it.
+	connectFn connectFn
+
+	// downloadFn is the function running the download subtest. We
+	// set it in NewClient and you may override it.
+	downloadFn subtestFn
+
+	// uploadFn is like DownloadFn but for the upload subtest.
+	uploadFn subtestFn
 }
 
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
-		ConnectFn: func(
+		connectFn: func(
 			dialer websocket.Dialer, ctx context.Context, urlStr string,
 			requestHeader http.Header) (*websocket.Conn, *http.Response, error,
 		) {
 			return dialer.DialContext(ctx, urlStr, requestHeader)
 		},
 		Ctx:        ctx,
-		DownloadFn: download.Run,
+		downloadFn: download.Run,
 		LocateFn: func(c *mlabns.Client) (string, error) {
 			return c.Query()
 		},
-		UploadFn:  upload.Run,
+		uploadFn:  upload.Run,
 		UserAgent: defaultUserAgent,
 	}
 }
@@ -112,7 +113,7 @@ func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
 	headers.Add("User-Agent", c.UserAgent)
-	conn, _, err := c.ConnectFn(c.Dialer, c.Ctx, URL.String(), headers)
+	conn, _, err := c.connectFn(c.Dialer, c.Ctx, URL.String(), headers)
 	return conn, err
 }
 
@@ -144,10 +145,10 @@ func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload() (<-chan spec.Measurement, error) {
-	return c.start(c.DownloadFn, spec.DownloadURLPath)
+	return c.start(c.downloadFn, spec.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload() (<-chan spec.Measurement, error) {
-	return c.start(c.UploadFn, spec.UploadURLPath)
+	return c.start(c.uploadFn, spec.UploadURLPath)
 }

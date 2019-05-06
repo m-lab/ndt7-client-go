@@ -20,21 +20,21 @@ func newMockedClient() *Client {
 		return "127.0.0.1", nil
 	}
 	// Override connect to return a fake websocket connection
-	client.ConnectFn = func(
+	client.connectFn = func(
 		dialer websocket.Dialer, ctx context.Context, urlStr string,
 		requestHeader http.Header) (*websocket.Conn, *http.Response, error,
 	) {
 		return &websocket.Conn{}, &http.Response{}, nil
 	}
 	// Override the download function to basically do nothing
-	client.DownloadFn = func(
+	client.downloadFn = func(
 		ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 	) {
 		close(ch)
 		// Note that we cannot close the websocket connection because
 		// it's just a zero initialized connection (see above)
 	}
-	client.UploadFn = client.DownloadFn
+	client.uploadFn = client.downloadFn
 	return client
 }
 

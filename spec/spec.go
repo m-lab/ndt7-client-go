@@ -27,7 +27,7 @@ const UploadURLPath = "/ndt/v7/upload"
 // UploadTimeout is the time after which the upload must stop.
 const UploadTimeout = 10 * time.Second
 
-// BulkMessageSize is the size of uploader messages
+// BulkMessageSize is the size of uploaded messages
 const BulkMessageSize = 1 << 13
 
 // UpdateInterval is the interval between client side upload measurements.
@@ -89,13 +89,15 @@ type Measurement struct {
 	// BBRInfo is the data measured using TCP BBR instrumentation.
 	BBRInfo BBRInfo `json:"bbr_info"`
 
-	// Direction indicates the measurement direction.
+	// Direction indicates the measurement direction. This field is
+	// an extension with respect to the spec.
 	Direction DirectionKind `json:"direction"`
 
 	// Elapsed is the number of seconds elapsed since the beginning.
 	Elapsed float64 `json:"elapsed"`
 
-	// Origin is either OriginClient or OriginServer.
+	// Origin is either OriginClient or OriginServer. This file is
+	// an extension with respect to the spec.
 	Origin OriginKind `json:"origin"`
 
 	// TCPInfo contains metrics measured using TCP_INFO instrumentation.
