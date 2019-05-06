@@ -21,6 +21,11 @@ import (
 // LocateFn is the type of function used to locate a server.
 type LocateFn = func(ctx context.Context, config mlabns.Config) (string, error)
 
+// SubtestFn is the type of the function running a subtest.
+type SubtestFn = func(
+	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
+)
+
 // defaultUserAgent is the default user agent used by this client.
 const defaultUserAgent = "ndt7-client-go/0.1.0"
 
@@ -32,6 +37,10 @@ type Client struct {
 	// Dialer is the optional websocket Dialer. It's set to its
 	// default value by NewClient; you may override it.
 	Dialer websocket.Dialer
+
+	// DownloadFn is the function running the download subtest. We
+	// set it in NewClient and you may override it.
+	DownloadFn SubtestFn
 
 	// FQDN is the optional server FQDN. We will discover the FQDN of
 	// a nearby M-Lab server for you if this field is empty.
@@ -46,6 +55,9 @@ type Client struct {
 	// the default URL if this field is empty.
 	MlabNSBaseURL string
 
+	// UploadFn is like DownloadFn but for the upload subtest.
+	UploadFn SubtestFn
+
 	// UserAgent is the user-agent that will be used. It's set by
 	// NewClient; you may want to change this value.
 	UserAgent string
@@ -54,9 +66,11 @@ type Client struct {
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
-		Ctx:       ctx,
-		Locate:    mlabns.Query,
-		UserAgent: defaultUserAgent,
+		Ctx:        ctx,
+		DownloadFn: download.Run,
+		Locate:     mlabns.Query,
+		UploadFn:   upload.Run,
+		UserAgent:  defaultUserAgent,
 	}
 }
 
@@ -110,10 +124,10 @@ func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload() (<-chan spec.Measurement, error) {
-	return c.start(download.Run, spec.DownloadURLPath)
+	return c.start(c.DownloadFn, spec.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload() (<-chan spec.Measurement, error) {
-	return c.start(upload.Run, spec.UploadURLPath)
+	return c.start(c.UploadFn, spec.UploadURLPath)
 }
