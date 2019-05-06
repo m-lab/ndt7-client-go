@@ -24,7 +24,7 @@ func TestDownloadError(t *testing.T) {
 	client.LocateFn = func(client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
-	download(client)
+	download(client, batch{})
 }
 
 // TestUploadError tests the case where upload fails.
@@ -34,5 +34,5 @@ func TestUploadError(t *testing.T) {
 	client.LocateFn = func(client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
-	upload(client)
+	upload(client, batch{})
 }

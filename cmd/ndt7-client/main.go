@@ -27,6 +27,8 @@ import (
 	"github.com/m-lab/ndt7-client-go"
 )
 
+var flagBatch = flag.Bool("batch", false, "emit JSON events on stdout")
+
 var flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 
 var flagTimeout = flag.Int64(
@@ -63,7 +65,6 @@ func upload(client *ndt7.Client, emitter emitter) {
 
 func main() {
 	flag.Parse()
-	// TODO(bassosimone): implement -batch
 	timeout := time.Duration(*flagTimeout) * time.Second
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(timeout),
@@ -71,7 +72,10 @@ func main() {
 	defer cancel()
 	client := ndt7.NewClient(ctx)
 	client.FQDN = *flagHostname
-	emitter := interactive{}
+	var emitter emitter = interactive{}
+	if *flagBatch {
+		emitter = batch{}
+	}
 	download(client, emitter)
 	upload(client, emitter)
 }
