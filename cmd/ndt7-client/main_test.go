@@ -42,5 +42,5 @@ func TestUploadError(t *testing.T) {
 	client.LocateFn = func(client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
-	upload(client, batch{})
+	upload(client, interactive{})
 }
