@@ -21,6 +21,13 @@ import (
 // LocateFn is the type of function used to locate a server.
 type LocateFn = func(ctx context.Context, config mlabns.Config) (string, error)
 
+// ConnectFn is the type of the function used to create
+// a new *websocket.Conn connection.
+type ConnectFn = func(
+	dialer websocket.Dialer, ctx context.Context, urlStr string,
+	requestHeader http.Header) (*websocket.Conn, *http.Response, error,
+)
+
 // SubtestFn is the type of the function running a subtest.
 type SubtestFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
@@ -31,6 +38,11 @@ const defaultUserAgent = "ndt7-client-go/0.1.0"
 
 // Client is a ndt7 client.
 type Client struct {
+	// ConnectFn is the function for connecting a specific
+	// websocket cnnection. It's set to its default value by
+	// NewClient, but you may override it.
+	ConnectFn ConnectFn
+
 	// Ctx is the client context.
 	Ctx context.Context
 
@@ -46,10 +58,10 @@ type Client struct {
 	// a nearby M-Lab server for you if this field is empty.
 	FQDN string
 
-	// Locate is the optional function to locate a ndt7 server using
+	// LocateFn is the optional function to locate a ndt7 server using
 	// the mlab-ns service. This function is set to its default value
 	// by NewClient, but you may want to override it.
-	Locate LocateFn
+	LocateFn LocateFn
 
 	// MlabNSBaseURL is the optional base URL for mlab-ns. We will use
 	// the default URL if this field is empty.
@@ -66,9 +78,15 @@ type Client struct {
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
+		ConnectFn: func(
+			dialer websocket.Dialer, ctx context.Context, urlStr string,
+			requestHeader http.Header) (*websocket.Conn, *http.Response, error,
+		) {
+			return dialer.DialContext(ctx, urlStr, requestHeader)
+		},
 		Ctx:        ctx,
 		DownloadFn: download.Run,
-		Locate:     mlabns.Query,
+		LocateFn:   mlabns.Query,
 		UploadFn:   upload.Run,
 		UserAgent:  defaultUserAgent,
 	}
@@ -80,7 +98,7 @@ func (c *Client) discoverServer() (string, error) {
 	if c.MlabNSBaseURL != "" {
 		config.BaseURL = c.MlabNSBaseURL
 	}
-	return c.Locate(c.Ctx, config)
+	return c.LocateFn(c.Ctx, config)
 }
 
 // connect establishes a websocket connection.
@@ -92,7 +110,7 @@ func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
 	headers.Add("User-Agent", c.UserAgent)
-	conn, _, err := c.Dialer.DialContext(c.Ctx, URL.String(), headers)
+	conn, _, err := c.ConnectFn(c.Dialer, c.Ctx, URL.String(), headers)
 	return conn, err
 }
 

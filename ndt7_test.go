@@ -2,29 +2,65 @@ package ndt7
 
 import (
 	"context"
-	"fmt"
+	"net/http"
 	"testing"
+
+	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/websocketx"
+	"github.com/m-lab/ndt7-client-go/mlabns"
+	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// TestIntegration runs a ndt7 test.
-func TestIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping test in short mode")
-	}
+// newMockedClient returns a mocked client that does nothing
+// except pretending it is doing something.
+func newMockedClient() *Client {
 	client := NewClient(context.Background())
+	// Override locate to return a fake IP address
+	client.LocateFn = func(
+		ctx context.Context, config mlabns.Config) (string, error,
+	) {
+		return "127.0.0.1", nil
+	}
+	// Override connect to return a fake websocket connection
+	client.ConnectFn = func(
+		dialer websocket.Dialer, ctx context.Context, urlStr string,
+		requestHeader http.Header) (*websocket.Conn, *http.Response, error,
+	) {
+		return &websocket.Conn{}, &http.Response{}, nil
+	}
+	// Override the download function to basically do nothing
+	client.DownloadFn = func(
+		ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
+	) {
+		close(ch)
+		// Note that we cannot close the websocket connection because
+		// it's just a zero initialized connection (see above)
+	}
+	client.UploadFn = client.DownloadFn
+	return client
+}
+
+// TestDownloadCase tests the download case.
+func TestDownloadCase(t *testing.T) {
+	client := newMockedClient()
 	ch, err := client.StartDownload()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for ev := range ch {
-		fmt.Printf("%+v\n", ev)
+	for range ch {
+		t.Fatal("did not expect to see an event here")
 	}
-	ch, err = client.StartUpload()
+}
+
+// TestUploadCase tests the download case.
+func TestUploadCase(t *testing.T) {
+	client := newMockedClient()
+	ch, err := client.StartUpload()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for ev := range ch {
-		fmt.Printf("%+v\n", ev)
+	for range ch {
+		t.Fatal("did not expect to see an event here")
 	}
 }
 
