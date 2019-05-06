@@ -21,44 +21,48 @@ import (
 // LocateFn is the type of function used to locate a server.
 type LocateFn = func(ctx context.Context, config mlabns.Config) (string, error)
 
+// defaultUserAgent is the default user agent used by this client.
+const defaultUserAgent = "ndt7-client-go/0.1.0"
+
 // Client is a ndt7 client.
 type Client struct {
+	// Ctx is the client context.
+	Ctx context.Context
+
+	// Dialer is the optional websocket Dialer. It's set to its
+	// default value by NewClient; you may override it.
+	Dialer websocket.Dialer
+
 	// FQDN is the optional server FQDN. We will discover the FQDN of
 	// a nearby M-Lab server for you if this field is empty.
 	FQDN string
-
-	// MlabNSBaseURL is the optional base URL for mlab-ns. We will use
-	// the default URL if this field is empty.
-	MlabNSBaseURL string
-
-	// Ctx is the client context.
-	Ctx context.Context
 
 	// Locate is the optional function to locate a ndt7 server using
 	// the mlab-ns service. This function is set to its default value
 	// by NewClient, but you may want to override it.
 	Locate LocateFn
 
-	// Dialer is the optional websocket Dialer. It's set to its
-	// default value by NewClient; you may override it.
-	Dialer websocket.Dialer
+	// MlabNSBaseURL is the optional base URL for mlab-ns. We will use
+	// the default URL if this field is empty.
+	MlabNSBaseURL string
+
+	// UserAgent is the user-agent that will be used. It's set by
+	// NewClient; you may want to change this value.
+	UserAgent string
 }
 
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
-		Ctx:    ctx,
-		Locate: mlabns.Query,
+		Ctx:       ctx,
+		Locate:    mlabns.Query,
+		UserAgent: defaultUserAgent,
 	}
 }
 
-// UserAgent is the user agent used by this client. You can change it
-// if you want to specify a different user agent.
-const UserAgent = "ndt7-client-go/0.1.0"
-
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer() (string, error) {
-	config := mlabns.NewConfig("ndt_ssl", UserAgent)
+	config := mlabns.NewConfig("ndt_ssl", c.UserAgent)
 	if c.MlabNSBaseURL != "" {
 		config.BaseURL = c.MlabNSBaseURL
 	}
@@ -73,7 +77,7 @@ func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	URL.Path = URLPath
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
-	headers.Add("User-Agent", UserAgent)
+	headers.Add("User-Agent", c.UserAgent)
 	conn, _, err := c.Dialer.DialContext(c.Ctx, URL.String(), headers)
 	return conn, err
 }
