@@ -16,9 +16,7 @@ import (
 func newMockedClient() *Client {
 	client := NewClient(context.Background())
 	// Override locate to return a fake IP address
-	client.LocateFn = func(
-		ctx context.Context, config mlabns.Config) (string, error,
-	) {
+	client.LocateFn = func(c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
 	}
 	// Override connect to return a fake websocket connection

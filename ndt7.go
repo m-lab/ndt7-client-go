@@ -19,7 +19,7 @@ import (
 )
 
 // LocateFn is the type of function used to locate a server.
-type LocateFn = func(ctx context.Context, config mlabns.Config) (string, error)
+type LocateFn = func(client *mlabns.Client) (string, error)
 
 // ConnectFn is the type of the function used to create
 // a new *websocket.Conn connection.
@@ -86,19 +86,21 @@ func NewClient(ctx context.Context) *Client {
 		},
 		Ctx:        ctx,
 		DownloadFn: download.Run,
-		LocateFn:   mlabns.Query,
-		UploadFn:   upload.Run,
-		UserAgent:  defaultUserAgent,
+		LocateFn: func(c *mlabns.Client) (string, error) {
+			return c.Query()
+		},
+		UploadFn:  upload.Run,
+		UserAgent: defaultUserAgent,
 	}
 }
 
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer() (string, error) {
-	config := mlabns.NewConfig("ndt_ssl", c.UserAgent)
+	client := mlabns.NewClient(c.Ctx, "ndt_ssl", c.UserAgent)
 	if c.MlabNSBaseURL != "" {
-		config.BaseURL = c.MlabNSBaseURL
+		client.BaseURL = c.MlabNSBaseURL
 	}
-	return c.LocateFn(c.Ctx, config)
+	return c.LocateFn(client)
 }
 
 // connect establishes a websocket connection.

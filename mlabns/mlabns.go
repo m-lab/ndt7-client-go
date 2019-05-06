@@ -5,15 +5,42 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
-// Config contains mlabns settings.
-type Config struct {
-	// BaseURL is the optional base URL for contacting mlabns.
+// HTTPRequestor is the interface of the implementation that
+// performs a mlabns HTTP request for us.
+type HTTPRequestor interface {
+	// Do performs the request and returns either a response or
+	// a non-nil error to the caller.
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// HTTPRequestMaker is the type of the function that
+// creates a new HTTP request for us.
+type HTTPRequestMaker = func(
+	method, url string, body io.Reader) (*http.Request, error,
+)
+
+// Client is an mlabns client.
+type Client struct {
+	// BaseURL is the optional base URL for contacting mlabns. This is
+	// initialized in NewClient, but you may override it.
 	BaseURL string
+
+	// Ctx is the context to use.
+	Ctx context.Context
+
+	// RequestMaker is the function that creates a request. This is
+	// initialized in NewClient, but you may override it.
+	RequestMaker HTTPRequestMaker
+
+	// Requestor is the implementation that performs the request. This is
+	// initialized in NewClient, but you may override it.
+	Requestor HTTPRequestor
 
 	// Tool is the mandatory tool to use.
 	Tool string
@@ -28,13 +55,16 @@ type Config struct {
 // stop using the staging mlabns service and use the production one.
 const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 
-// NewConfig creates a new Config instance with mandatory userAgent.
+// NewClient creates a new Client instance with mandatory userAgent, and tool
 // name. For running ndt7, use "ndt7" as the tool name.
-func NewConfig(tool, userAgent string) Config {
-	return Config{
-		BaseURL:   baseURL,
-		Tool:      tool,
-		UserAgent: userAgent,
+func NewClient(ctx context.Context, tool, userAgent string) *Client {
+	return &Client{
+		BaseURL:      baseURL,
+		Ctx:          ctx,
+		RequestMaker: http.NewRequest,
+		Requestor:    http.DefaultClient,
+		Tool:         tool,
+		UserAgent:    userAgent,
 	}
 }
 
@@ -47,23 +77,15 @@ type serverEntry struct {
 // ErrQueryFailed indicates a non-200 status code.
 var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
-// httpNewRequest allows to mock http.NewRequest
-var httpNewRequest = http.NewRequest
-
-// httpClientDo allows to mock httpClient.Do
-var httpClientDo = func(client *http.Client, req *http.Request) (*http.Response, error) {
-	return client.Do(req)
-}
-
 // doGET is an internal function used to perform the request.
-var doGET = func(ctx context.Context, URL, userAgent string) ([]byte, error) {
-	request, err := httpNewRequest("GET", URL, nil)
+func (c *Client) doGET(URL string) ([]byte, error) {
+	request, err := c.RequestMaker("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("User-Agent", userAgent)
-	request = request.WithContext(ctx)
-	response, err := httpClientDo(http.DefaultClient, request)
+	request.Header.Set("User-Agent", c.UserAgent)
+	request = request.WithContext(c.Ctx)
+	response, err := c.Requestor.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +103,13 @@ var ErrNoAvailableServers = errors.New("No available M-Lab servers")
 
 // Query returns the FQDN of a nearby mlab server. Returns an error on
 // failure and the server FQDN on success.
-func Query(ctx context.Context, config Config) (string, error) {
-	URL, err := url.Parse(config.BaseURL)
+func (c *Client) Query() (string, error) {
+	URL, err := url.Parse(c.BaseURL)
 	if err != nil {
 		return "", err
 	}
-	URL.Path = config.Tool
-	data, err := doGET(ctx, URL.String(), config.UserAgent)
+	URL.Path = c.Tool
+	data, err := c.doGET(URL.String())
 	if err != nil {
 		return "", err
 	}
