@@ -22,9 +22,11 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
 	"time"
 
 	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/spec"
 )
 
 var flagBatch = flag.Bool("batch", false, "emit JSON events on stdout")
@@ -35,35 +37,47 @@ var flagTimeout = flag.Int64(
 	"timeout", 45, "seconds after which the ndt7 test is aborted",
 )
 
-func download(client *ndt7.Client, emitter emitter) {
-	emitter.onStarting("download")
-	ch, err := client.StartDownload()
+func downloadUpload(
+	client *ndt7.Client, emitter emitter, subtest string,
+	start func() (<-chan spec.Measurement, error),
+	emitEvent func(m *spec.Measurement),
+) (code int) {
+	code = 0
+	defer func() {
+		if err := recover(); err != nil {
+			code = 1
+		}
+	}()
+	emitter.onStarting(subtest)
+	ch, err := start()
 	if err != nil {
-		emitter.onError("download", err)
+		emitter.onError(subtest, err)
+		code = 2
 		return
 	}
-	emitter.onConnected("download", client.FQDN)
+	emitter.onConnected(subtest, client.FQDN)
 	for ev := range ch {
-		emitter.onDownloadEvent(&ev)
+		emitEvent(&ev)
 	}
-	emitter.onComplete("download")
+	emitter.onComplete(subtest)
+	return
 }
 
-func upload(client *ndt7.Client, emitter emitter) {
-	emitter.onStarting("upload")
-	ch, err := client.StartUpload()
-	if err != nil {
-		emitter.onError("upload", err)
-		return
-	}
-	emitter.onConnected("upload", client.FQDN)
-	for ev := range ch {
-		emitter.onUploadEvent(&ev)
-	}
-	emitter.onComplete("upload")
+func download(client *ndt7.Client, emitter emitter) int {
+	return downloadUpload(
+		client, emitter, "download", client.StartDownload,
+		emitter.onDownloadEvent,
+	)
 }
 
-func realmain(timeoutSec int64, hostname string, batchmode bool) {
+func upload(client *ndt7.Client, emitter emitter) int {
+	return downloadUpload(
+		client, emitter, "upload", client.StartUpload,
+		emitter.onUploadEvent,
+	)
+}
+
+func realmain(timeoutSec int64, hostname string, batchmode bool) int {
 	timeout := time.Duration(timeoutSec) * time.Second
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(timeout),
@@ -75,11 +89,13 @@ func realmain(timeoutSec int64, hostname string, batchmode bool) {
 	if batchmode {
 		emitter = batch{}
 	}
-	download(client, emitter)
-	upload(client, emitter)
+	return download(client, emitter) + upload(client, emitter)
 }
+
+var osExit = os.Exit
 
 func main() {
 	flag.Parse()
-	realmain(*flagTimeout, *flagHostname, *flagBatch)
+	rv := realmain(*flagTimeout, *flagHostname, *flagBatch)
+	osExit(rv)
 }

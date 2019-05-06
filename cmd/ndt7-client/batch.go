@@ -9,15 +9,19 @@ import (
 
 type batch struct{}
 
+var osStdoutWrite = os.Stdout.Write
+
 func (batch) emitData(data []byte) {
-	_, err := os.Stdout.Write(append(data, byte('\n')))
+	_, err := osStdoutWrite(append(data, byte('\n')))
 	if err != nil {
 		panic(err)
 	}
 }
 
+var jsonMarshal = json.Marshal
+
 func (b batch) emitInterface(any interface{}) {
-	data, err := json.Marshal(any)
+	data, err := jsonMarshal(any)
 	if err != nil {
 		panic(err)
 	}
