@@ -38,6 +38,10 @@ type Client struct {
 	// the mlab-ns service. This function is set to its default value
 	// by NewClient, but you may want to override it.
 	Locate LocateFn
+
+	// Dialer is the optional websocket Dialer. It's set to its
+	// default value by NewClient; you may override it.
+	Dialer websocket.Dialer
 }
 
 // NewClient creates a new client with the specified context.
@@ -62,16 +66,15 @@ func (c *Client) discoverServer() (string, error) {
 }
 
 // connect establishes a websocket connection.
-func connect(ctx context.Context, FQDN, URLPath string) (*websocket.Conn, error) {
+func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	URL := url.URL{}
 	URL.Scheme = "wss"
-	URL.Host = FQDN
+	URL.Host = c.FQDN
 	URL.Path = URLPath
-	dialer := websocket.Dialer{}
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
 	headers.Add("User-Agent", UserAgent)
-	conn, _, err := dialer.DialContext(ctx, URL.String(), headers)
+	conn, _, err := c.Dialer.DialContext(c.Ctx, URL.String(), headers)
 	return conn, err
 }
 
@@ -87,7 +90,7 @@ func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
 		}
 		c.FQDN = fqdn
 	}
-	conn, err := connect(c.Ctx, c.FQDN, p)
+	conn, err := c.connect(p)
 	if err != nil {
 		return nil, err
 	}
