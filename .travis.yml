@@ -8,7 +8,7 @@ before_script:
 - go get github.com/mattn/goveralls
 
 script:
-- go get -v ./...
+- /sbin/ifconfig
 - sudo tc qdisc add root netem delay 200ms 10ms
 - go test -v -coverprofile=coverage.cov -coverpkg=./... ./...
 - sudo tc qdisc del root
