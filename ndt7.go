@@ -117,11 +117,8 @@ func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	return conn, err
 }
 
-// startFunc is the function that starts a nettest.
-type startFunc = func(context.Context, websocketx.Conn, chan<- spec.Measurement)
-
 // start is the function for starting a subtest.
-func (c *Client) start(f startFunc, p string) (<-chan spec.Measurement, error) {
+func (c *Client) start(f subtestFn, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
 		fqdn, err := c.discoverServer()
 		if err != nil {
