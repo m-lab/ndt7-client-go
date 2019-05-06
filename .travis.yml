@@ -8,9 +8,5 @@ before_script:
 - go get github.com/mattn/goveralls
 
 script:
-- /sbin/ifconfig
-- /sbin/route
-- sudo tc qdisc add root netem delay 200ms 10ms
 - go test -v -coverprofile=coverage.cov -coverpkg=./... ./...
-- sudo tc qdisc del root
 - $GOPATH/bin/goveralls -coverprofile=coverage.cov -service=travis-ci
