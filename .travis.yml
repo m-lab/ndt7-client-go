@@ -9,6 +9,7 @@ before_script:
 
 script:
 - /sbin/ifconfig
+- /sbin/route
 - sudo tc qdisc add root netem delay 200ms 10ms
 - go test -v -coverprofile=coverage.cov -coverpkg=./... ./...
 - sudo tc qdisc del root
