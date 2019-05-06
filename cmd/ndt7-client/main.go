@@ -22,11 +22,9 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"time"
 
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/spec"
 )
 
 var flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
@@ -35,65 +33,32 @@ var flagTimeout = flag.Int64(
 	"timeout", 45, "seconds after which the ndt7 test is aborted",
 )
 
-func onStarting(subtest string) {
-	fmt.Printf("\rstarting %s", subtest)
-}
-
-func onError(subtest string, err error) {
-	fmt.Printf("\r%s failed: %s\n", subtest, err.Error())
-}
-
-func onConnected(subtest, fqdn string) {
-	fmt.Printf("\r%s in progress with %s\n", subtest, fqdn)
-}
-
-func onDownloadEvent(m *spec.Measurement) {
-	fmt.Printf(
-		"\rMaxBandwidth: %7.1f Mbit/s - RTT: %4.0f/%4.0f/%4.0f (min/smoothed/var) ms",
-		float64(m.BBRInfo.MaxBandwidth)/(1000.0*1000.0),
-		m.BBRInfo.MinRTT,
-		m.TCPInfo.SmoothedRTT,
-		m.TCPInfo.RTTVar,
-	)
-}
-
-func onUploadEvent(m *spec.Measurement) {
-	if m.Elapsed > 0.0 {
-		v := (8.0 * float64(m.AppInfo.NumBytes)) / m.Elapsed / (1000.0 * 1000.0)
-		fmt.Printf("\rAvg. speed  : %7.1f Mbit/s", v)
-	}
-}
-
-func onComplete(subtest string) {
-	fmt.Printf("\n%s: complete\n", subtest)
-}
-
-func download(client *ndt7.Client) {
-	onStarting("download")
+func download(client *ndt7.Client, emitter emitter) {
+	emitter.onStarting("download")
 	ch, err := client.StartDownload()
 	if err != nil {
-		onError("download", err)
+		emitter.onError("download", err)
 		return
 	}
-	onConnected("download", client.FQDN)
+	emitter.onConnected("download", client.FQDN)
 	for ev := range ch {
-		onDownloadEvent(&ev)
+		emitter.onDownloadEvent(&ev)
 	}
-	onComplete("download")
+	emitter.onComplete("download")
 }
 
-func upload(client *ndt7.Client) {
-	onStarting("upload")
+func upload(client *ndt7.Client, emitter emitter) {
+	emitter.onStarting("upload")
 	ch, err := client.StartUpload()
 	if err != nil {
-		onError("upload", err)
+		emitter.onError("upload", err)
 		return
 	}
-	onConnected("upload", client.FQDN)
+	emitter.onConnected("upload", client.FQDN)
 	for ev := range ch {
-		onUploadEvent(&ev)
+		emitter.onUploadEvent(&ev)
 	}
-	onComplete("upload")
+	emitter.onComplete("upload")
 }
 
 func main() {
@@ -106,6 +71,7 @@ func main() {
 	defer cancel()
 	client := ndt7.NewClient(ctx)
 	client.FQDN = *flagHostname
-	download(client)
-	upload(client)
+	emitter := interactive{}
+	download(client, emitter)
+	upload(client, emitter)
 }
