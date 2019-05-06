@@ -18,6 +18,9 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
+// LocateFn is the type of function used to locate a server.
+type LocateFn = func(ctx context.Context, config mlabns.Config) (string, error)
+
 // Client is a ndt7 client.
 type Client struct {
 	// FQDN is the optional server FQDN. We will discover the FQDN of
@@ -30,12 +33,18 @@ type Client struct {
 
 	// Ctx is the client context.
 	Ctx context.Context
+
+	// Locate is the optional function to locate a ndt7 server using
+	// the mlab-ns service. This function is set to its default value
+	// by NewClient, but you may want to override it.
+	Locate LocateFn
 }
 
 // NewClient creates a new client with the specified context.
 func NewClient(ctx context.Context) *Client {
 	return &Client{
-		Ctx: ctx,
+		Ctx:    ctx,
+		Locate: mlabns.Query,
 	}
 }
 
@@ -49,7 +58,7 @@ func (c *Client) discoverServer() (string, error) {
 	if c.MlabNSBaseURL != "" {
 		config.BaseURL = c.MlabNSBaseURL
 	}
-	return mlabns.Query(c.Ctx, config)
+	return c.Locate(c.Ctx, config)
 }
 
 // connect establishes a websocket connection.
