@@ -22,17 +22,17 @@ type Config struct {
 	UserAgent string
 }
 
-// BaseURL is the default base URL.
+// baseURL is the default base URL.
 //
 // TODO(bassosimone): when ndt7 is deployed on the whole platform, we can
 // stop using the staging mlabns service and use the production one.
-const BaseURL = "https://locate-dot-mlab-staging.appspot.com/"
+const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 
 // NewConfig creates a new Config instance with mandatory userAgent.
 // name. For running ndt7, use "ndt7" as the tool name.
 func NewConfig(tool, userAgent string) Config {
 	return Config{
-		BaseURL:   BaseURL,
+		BaseURL:   baseURL,
 		Tool:      tool,
 		UserAgent: userAgent,
 	}
