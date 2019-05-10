@@ -34,8 +34,8 @@ type subtestFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 )
 
-// defaultUserAgent is the default user agent used by this client.
-const defaultUserAgent = "ndt7-client-go/0.1.0"
+// DefaultUserAgent is the default user agent used by this client.
+const DefaultUserAgent = "ndt7-client-go/0.1.0"
 
 // Client is a ndt7 client.
 type Client struct {
@@ -87,7 +87,7 @@ func NewClient() *Client {
 			return c.Query(ctx)
 		},
 		uploadFn:  upload.Run,
-		UserAgent: defaultUserAgent,
+		UserAgent: DefaultUserAgent,
 	}
 }
 
