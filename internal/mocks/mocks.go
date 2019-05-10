@@ -1,5 +1,5 @@
-// Package mockable implements mocks.
-package mockable
+// Package mocks implements mocks.
+package mocks
 
 import (
 	"bytes"

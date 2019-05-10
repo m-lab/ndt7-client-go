@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/m-lab/ndt7-client-go/internal/mockable"
+	"github.com/m-lab/ndt7-client-go/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -17,7 +17,7 @@ func TestReadText(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{}"),
 	}
@@ -34,7 +34,7 @@ func TestReadBinary(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageType:      websocket.BinaryMessage,
 		ReadMessageByteArray: []byte("{}"),
 	}
@@ -52,7 +52,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageType:       websocket.TextMessage,
 		ReadMessageByteArray:  []byte("{}"),
 		SetReadDeadlineResult: errors.New("mocked error"),
@@ -71,7 +71,7 @@ func TestReadMessageError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{}"),
 		ReadMessageResult:    errors.New("mocked error"),
@@ -90,7 +90,7 @@ func TestReadInvalidJSON(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{"),
 	}

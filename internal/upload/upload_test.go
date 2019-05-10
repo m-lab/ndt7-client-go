@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/m-lab/ndt7-client-go/internal/mockable"
+	"github.com/m-lab/ndt7-client-go/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -17,7 +17,7 @@ func TestNormal(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{}
+	conn := mocks.Conn{}
 	defer cancel()
 	go Run(ctx, &conn, outch)
 	for range outch {
@@ -32,7 +32,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		SetReadDeadlineResult: errors.New("mocked error"),
 	}
 	defer cancel()
@@ -49,7 +49,7 @@ func TestReadMessageError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		ReadMessageResult: errors.New("mocked error"),
 	}
 	defer cancel()
@@ -70,7 +70,7 @@ func TestMakePreparedMessageError(t *testing.T) {
 	makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 		return nil, errors.New("mocked error")
 	}
-	conn := mockable.Conn{}
+	conn := mocks.Conn{}
 	defer cancel()
 	go Run(ctx, &conn, outch)
 	for range outch {
@@ -86,7 +86,7 @@ func TestSetWriteDeadlineError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		SetWriteDeadlineResult: errors.New("mocked error"),
 	}
 	defer cancel()
@@ -103,7 +103,7 @@ func TestWritePreparedMessageError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
-	conn := mockable.Conn{
+	conn := mocks.Conn{
 		WritePreparedMessageResult: errors.New("mocked error"),
 	}
 	defer cancel()
