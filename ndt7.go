@@ -42,6 +42,9 @@ const DefaultUserAgent = "ndt7-client-go/0.1.0"
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
+// DefaultMLabNSTimeout is the default timeout for mlabns operations.
+const DefaultMLabNSTimeout = mlabns.DefaultTimeout
+
 // Client is a ndt7 client.
 type Client struct {
 	// Dialer is the optional websocket Dialer. It's set to its
@@ -57,9 +60,13 @@ type Client struct {
 	// by NewClient, but you may want to override it.
 	LocateFn LocateFn
 
-	// MlabNSBaseURL is the optional base URL for mlab-ns. We will use
+	// MLabNSBaseURL is the optional base URL for mlab-ns. We will use
 	// the default URL if this field is empty.
-	MlabNSBaseURL string
+	MLabNSBaseURL string
+
+	// MLabNSTimeout is the optional max. time we're willing to wait for mlab-ns
+	// to return a response. We initialize it in NewClient, you can override it.
+	MLabNSTimeout time.Duration
 
 	// UserAgent is the user-agent that will be used. It's set by
 	// NewClient; you may want to change this value.
@@ -94,17 +101,19 @@ func NewClient() *Client {
 		LocateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
-		uploadFn:  upload.Run,
-		UserAgent: DefaultUserAgent,
+		MLabNSTimeout: DefaultMLabNSTimeout,
+		uploadFn:      upload.Run,
+		UserAgent:     DefaultUserAgent,
 	}
 }
 
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer(ctx context.Context) (string, error) {
 	client := mlabns.NewClient("ndt_ssl", c.UserAgent)
-	if c.MlabNSBaseURL != "" {
-		client.BaseURL = c.MlabNSBaseURL
+	if c.MLabNSBaseURL != "" {
+		client.BaseURL = c.MLabNSBaseURL
 	}
+	client.Timeout = c.MLabNSTimeout
 	return c.LocateFn(ctx, client)
 }
 

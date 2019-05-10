@@ -69,7 +69,7 @@ func TestUploadCase(t *testing.T) {
 func TestStartDiscoverServerError(t *testing.T) {
 	ctx := context.Background()
 	client := NewClient()
-	client.MlabNSBaseURL = "\t" // cause URL parse to fail
+	client.MLabNSBaseURL = "\t" // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
 	if err == nil {
 		t.Fatal("We expected an error here")

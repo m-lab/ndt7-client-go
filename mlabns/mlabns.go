@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // httpRequestor is the interface of the implementation that
@@ -25,11 +26,19 @@ type httpRequestMaker = func(
 	method, url string, body io.Reader) (*http.Request, error,
 )
 
+// DefaultTimeout is the default value for Client.Timeout
+const DefaultTimeout = 14 * time.Second
+
 // Client is an mlabns client.
 type Client struct {
 	// BaseURL is the optional base URL for contacting mlabns. This is
 	// initialized in NewClient, but you may override it.
 	BaseURL string
+
+	// Timeout is the optional maximum amount of time we're willing to wait
+	// for mlabns to respond. This setting is initialized by NewClient to its
+	// default value, but you may override it.
+	Timeout time.Duration
 
 	// Tool is the mandatory tool to use. This is initialize by NewClient.
 	Tool string
@@ -58,6 +67,7 @@ const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 func NewClient(tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
+		Timeout:      DefaultTimeout,
 		requestMaker: http.NewRequest,
 		requestor:    http.DefaultClient,
 		Tool:         tool,
@@ -81,7 +91,9 @@ func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 		return nil, err
 	}
 	request.Header.Set("User-Agent", c.UserAgent)
-	request = request.WithContext(ctx)
+	requestctx, cancel := context.WithTimeout(ctx, c.Timeout)
+	defer cancel()
+	request = request.WithContext(requestctx)
 	response, err := c.requestor.Do(request)
 	if err != nil {
 		return nil, err
