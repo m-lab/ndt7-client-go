@@ -39,9 +39,6 @@ type subtestFn = func(
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
-// DefaultMLabNSTimeout is the default timeout for mlabns operations.
-const DefaultMLabNSTimeout = mlabns.DefaultTimeout
-
 // Client is a ndt7 client.
 type Client struct {
 	// Dialer is the optional websocket Dialer. It's set to its
@@ -57,13 +54,9 @@ type Client struct {
 	// by NewClient, but you may want to override it.
 	LocateFn LocateFn
 
-	// MLabNSBaseURL is the optional base URL for mlab-ns. We will use
-	// the default URL if this field is empty.
-	MLabNSBaseURL string
-
-	// MLabNSTimeout is the optional max. time we're willing to wait for mlab-ns
-	// to return a response. We initialize it in NewClient, you can override it.
-	MLabNSTimeout time.Duration
+	// MLabNSClient is the mlabns client. We'll configure it with
+	// defaults in NewClient and you may override it.
+	MLabNSClient *mlabns.Client
 
 	// UserAgent is the user-agent that will be used. It's set by
 	// NewClient; you may want to change this value.
@@ -82,7 +75,9 @@ type Client struct {
 	uploadFn subtestFn
 }
 
-// NewClient creates a new client instance.
+// NewClient creates a new client instance identified by the
+// specified user agent. M-Lab services may reject requests coming
+// from clients with empty user agents in the future.
 func NewClient(userAgent string) *Client {
 	return &Client{
 		connectFn: func(
@@ -98,20 +93,15 @@ func NewClient(userAgent string) *Client {
 		LocateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
-		MLabNSTimeout: DefaultMLabNSTimeout,
-		uploadFn:      upload.Run,
-		UserAgent:     userAgent,
+		MLabNSClient: mlabns.NewClient("ndt_ssl", userAgent),
+		uploadFn:     upload.Run,
+		UserAgent:    userAgent,
 	}
 }
 
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer(ctx context.Context) (string, error) {
-	client := mlabns.NewClient("ndt_ssl", c.UserAgent)
-	if c.MLabNSBaseURL != "" {
-		client.BaseURL = c.MLabNSBaseURL
-	}
-	client.Timeout = c.MLabNSTimeout
-	return c.LocateFn(ctx, client)
+	return c.LocateFn(ctx, c.MLabNSClient)
 }
 
 // connect establishes a websocket connection.
