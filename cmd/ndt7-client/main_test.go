@@ -65,9 +65,9 @@ func TestDownloadError(t *testing.T) {
 }
 
 type mockedEmitter struct {
-	StartingError error
+	StartingError  error
 	ConnectedError error
-	CompleteError error
+	CompleteError  error
 }
 
 func (me mockedEmitter) OnStarting(subtest string) error {
@@ -176,7 +176,7 @@ func TestRunSubtestOnCompleteError(t *testing.T) {
 // the emitEvent function fails.
 func TestRunSubtestEmitEventError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(userAgent),
+		client:  ndt7.NewClient(userAgent),
 		emitter: mockedEmitter{},
 	}
 	code := runner.runSubtest(

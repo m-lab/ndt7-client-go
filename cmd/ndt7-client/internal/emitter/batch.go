@@ -7,8 +7,8 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-type Batch struct{
-	osStdoutWrite func([]byte)(int, error)
+type Batch struct {
+	osStdoutWrite func([]byte) (int, error)
 }
 
 func NewBatch() Batch {

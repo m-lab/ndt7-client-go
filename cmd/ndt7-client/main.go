@@ -94,7 +94,7 @@ var flagTimeout = flag.Int64(
 const userAgent = "ndt7-client-go/0.1.0"
 
 type runner struct {
-	client *ndt7.Client
+	client  *ndt7.Client
 	emitter emitter.Emitter
 }
 
