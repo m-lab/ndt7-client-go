@@ -9,6 +9,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/m-lab/ndt7-client-go/internal/download"
@@ -36,6 +37,10 @@ type subtestFn = func(
 
 // DefaultUserAgent is the default user agent used by this client.
 const DefaultUserAgent = "ndt7-client-go/0.1.0"
+
+// DefaultWebSocketHandshakeTimeout is the default timeout configured
+// by NewClient in the Client.Dialer.HandshakeTimeout field.
+const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
 // Client is a ndt7 client.
 type Client struct {
@@ -81,6 +86,9 @@ func NewClient() *Client {
 			requestHeader http.Header) (*websocket.Conn, *http.Response, error,
 		) {
 			return dialer.DialContext(ctx, urlStr, requestHeader)
+		},
+		Dialer: websocket.Dialer{
+			HandshakeTimeout: DefaultWebSocketHandshakeTimeout,
 		},
 		downloadFn: download.Run,
 		LocateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
