@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/mlabns"
 )
 
 // TestNormalUsage tests ndt7-client w/o any command line arguments.
@@ -42,10 +41,7 @@ func TestBatchUsage(t *testing.T) {
 func TestDownloadError(t *testing.T) {
 	ctx := context.Background()
 	client := ndt7.NewClient(userAgent)
-	mockedError := errors.New("mocked error")
-	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
-		return "", mockedError
-	}
+	client.MLabNSClient.BaseURL = "\t" // fails the parsing
 	exitval := download(ctx, client, batch{})
 	if exitval == 0 {
 		log.Fatal("expected to see a nonzero code here")
@@ -56,10 +52,7 @@ func TestDownloadError(t *testing.T) {
 func TestUploadError(t *testing.T) {
 	ctx := context.Background()
 	client := ndt7.NewClient(userAgent)
-	mockedError := errors.New("mocked error")
-	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
-		return "", mockedError
-	}
+	client.MLabNSClient.BaseURL = "\t" // fails the parsing
 	exitval := upload(ctx, client, interactive{})
 	if exitval == 0 {
 		log.Fatal("expected to see a nonzero code here")
