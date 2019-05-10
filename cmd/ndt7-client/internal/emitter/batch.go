@@ -7,19 +7,23 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-type batch struct{}
+type Batch struct{
+	osStdoutWrite func([]byte)(int, error)
+}
 
-var osStdoutWrite = os.Stdout.Write
+func NewBatch() Batch {
+	return Batch{
+		osStdoutWrite: os.Stdout.Write,
+	}
+}
 
-func (batch) emitData(data []byte) error {
-	_, err := osStdoutWrite(append(data, byte('\n')))
+func (b Batch) emitData(data []byte) error {
+	_, err := b.osStdoutWrite(append(data, byte('\n')))
 	return err
 }
 
-var jsonMarshal = json.Marshal
-
-func (b batch) emitInterface(any interface{}) error {
-	data, err := jsonMarshal(any)
+func (b Batch) emitInterface(any interface{}) error {
+	data, err := json.Marshal(any)
 	if err != nil {
 		return err
 	}
@@ -37,7 +41,7 @@ type batchValue struct {
 	Subtest string `json:"subtest"`
 }
 
-func (b batch) OnStarting(subtest string) error {
+func (b Batch) OnStarting(subtest string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_start",
 		Value: batchValue{
@@ -46,7 +50,7 @@ func (b batch) OnStarting(subtest string) error {
 	})
 }
 
-func (b batch) OnError(subtest string, err error) error {
+func (b Batch) OnError(subtest string, err error) error {
 	return b.emitInterface(batchEvent{
 		Key: "failure.measurement",
 		Value: batchValue{
@@ -56,7 +60,7 @@ func (b batch) OnError(subtest string, err error) error {
 	})
 }
 
-func (b batch) OnConnected(subtest, fqdn string) error {
+func (b Batch) OnConnected(subtest, fqdn string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_begin",
 		Value: batchValue{
@@ -66,21 +70,21 @@ func (b batch) OnConnected(subtest, fqdn string) error {
 	})
 }
 
-func (b batch) OnDownloadEvent(m *spec.Measurement) error {
+func (b Batch) OnDownloadEvent(m *spec.Measurement) error {
 	return b.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
 	})
 }
 
-func (b batch) OnUploadEvent(m *spec.Measurement) error {
+func (b Batch) OnUploadEvent(m *spec.Measurement) error {
 	return b.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
 	})
 }
 
-func (b batch) OnComplete(subtest string) error {
+func (b Batch) OnComplete(subtest string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_done",
 		Value: batchValue{

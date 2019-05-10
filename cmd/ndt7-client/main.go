@@ -79,6 +79,7 @@ import (
 	"time"
 
 	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -91,41 +92,41 @@ var flagTimeout = flag.Int64(
 )
 
 func runSubtest(
-	ctx context.Context, client *ndt7.Client, emitter emitter, subtest string,
+	ctx context.Context, client *ndt7.Client, emitter emitter.Emitter, subtest string,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) error {
-	err := emitter.onStarting(subtest)
+	err := emitter.OnStarting(subtest)
 	if err != nil {
 		return err
 	}
 	ch, err := start(ctx)
 	if err != nil {
 		// Give precedence to the ndt7 error.
-		emitter.onError(subtest, err)
+		emitter.OnError(subtest, err)
 		return err
 	}
-	err = emitter.onConnected(subtest, client.FQDN)
+	err = emitter.OnConnected(subtest, client.FQDN)
 	if err != nil {
 		return err
 	}
 	for ev := range ch {
 		emitEvent(&ev)
 	}
-	return emitter.onComplete(subtest)
+	return emitter.OnComplete(subtest)
 }
 
-func download(ctx context.Context, client *ndt7.Client, emitter emitter) error {
+func download(ctx context.Context, client *ndt7.Client, emitter emitter.Emitter) error {
 	return runSubtest(
 		ctx, client, emitter, "download", client.StartDownload,
-		emitter.onDownloadEvent,
+		emitter.OnDownloadEvent,
 	)
 }
 
-func upload(ctx context.Context, client *ndt7.Client, emitter emitter) error {
+func upload(ctx context.Context, client *ndt7.Client, emitter emitter.Emitter) error {
 	return runSubtest(
 		ctx, client, emitter, "upload", client.StartUpload,
-		emitter.onUploadEvent,
+		emitter.OnUploadEvent,
 	)
 }
 
@@ -139,12 +140,12 @@ func realmain(timeoutSec int64, hostname string, batchmode bool) int {
 	defer cancel()
 	client := ndt7.NewClient(userAgent)
 	client.FQDN = hostname
-	var emitter emitter = interactive{}
+	var emit emitter.Emitter = emitter.Interactive{}
 	if batchmode {
-		emitter = batch{}
+		emit = emitter.NewBatch()
 	}
-	downloadErr := download(ctx, client, emitter)
-	uploadErr := upload(ctx, client, emitter)
+	downloadErr := download(ctx, client, emit)
+	uploadErr := upload(ctx, client, emit)
 	if uploadErr != nil || downloadErr != nil {
 		return 1
 	}
