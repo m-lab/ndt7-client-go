@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -15,9 +16,9 @@ import (
 func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) {
 	defer close(ch)
 	defer conn.Close()
-	wholectx, cancel := context.WithTimeout(ctx, spec.DownloadTimeout)
+	wholectx, cancel := context.WithTimeout(ctx, params.DownloadTimeout)
 	defer cancel()
-	conn.SetReadLimit(spec.MaxMessageSize)
+	conn.SetReadLimit(params.MaxMessageSize)
 	for {
 		select {
 		case <-wholectx.Done():
@@ -25,7 +26,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		default:
 			// nothing
 		}
-		err := conn.SetReadDeadline(time.Now().Add(spec.IOTimeout))
+		err := conn.SetReadDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
 			return // don't fail the test because of an internal error
 		}

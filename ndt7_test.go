@@ -18,7 +18,7 @@ const userAgent = "mocked/0.1.0"
 func newMockedClient(ctx context.Context) *Client {
 	client := NewClient(userAgent)
 	// Override locate to return a fake IP address
-	client.LocateFn = func(ctx context.Context, c *mlabns.Client) (string, error) {
+	client.locateFn = func(ctx context.Context, c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
 	}
 	// Override connect to return a fake websocket connection

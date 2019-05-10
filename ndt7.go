@@ -13,14 +13,15 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/m-lab/ndt7-client-go/internal/download"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/internal/upload"
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/mlabns"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// LocateFn is the type of function used to locate a server.
-type LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error)
+// locateFn is the type of function used to locate a server.
+type locateFn = func(ctx context.Context, client *mlabns.Client) (string, error)
 
 // connectFn is the type of the function used to create
 // a new *websocket.Conn connection.
@@ -49,11 +50,6 @@ type Client struct {
 	// a nearby M-Lab server for you if this field is empty.
 	FQDN string
 
-	// LocateFn is the optional function to locate a ndt7 server using
-	// the mlab-ns service. This function is set to its default value
-	// by NewClient, but you may want to override it.
-	LocateFn LocateFn
-
 	// MLabNSClient is the mlabns client. We'll configure it with
 	// defaults in NewClient and you may override it.
 	MLabNSClient *mlabns.Client
@@ -70,6 +66,11 @@ type Client struct {
 	// downloadFn is the function running the download subtest. We
 	// set it in NewClient and you may override it.
 	downloadFn subtestFn
+
+	// locateFn is the optional function to locate a ndt7 server using
+	// the mlab-ns service. This function is set to its default value
+	// by NewClient, but you may want to override it.
+	locateFn locateFn
 
 	// uploadFn is like DownloadFn but for the upload subtest.
 	uploadFn subtestFn
@@ -90,7 +91,7 @@ func NewClient(userAgent string) *Client {
 			HandshakeTimeout: DefaultWebSocketHandshakeTimeout,
 		},
 		downloadFn: download.Run,
-		LocateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
+		locateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
 		MLabNSClient: mlabns.NewClient("ndt_ssl", userAgent),
@@ -101,7 +102,7 @@ func NewClient(userAgent string) *Client {
 
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer(ctx context.Context) (string, error) {
-	return c.LocateFn(ctx, c.MLabNSClient)
+	return c.locateFn(ctx, c.MLabNSClient)
 }
 
 // connect establishes a websocket connection.
@@ -111,7 +112,7 @@ func (c *Client) connect(ctx context.Context, URLPath string) (*websocket.Conn, 
 	URL.Host = c.FQDN
 	URL.Path = URLPath
 	headers := http.Header{}
-	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
+	headers.Add("Sec-WebSocket-Protocol", params.SecWebSocketProtocol)
 	headers.Add("User-Agent", c.UserAgent)
 	conn, _, err := c.connectFn(c.Dialer, ctx, URL.String(), headers)
 	return conn, err
@@ -142,10 +143,10 @@ func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload(ctx context.Context) (<-chan spec.Measurement, error) {
-	return c.start(ctx, c.downloadFn, spec.DownloadURLPath)
+	return c.start(ctx, c.downloadFn, params.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, error) {
-	return c.start(ctx, c.uploadFn, spec.UploadURLPath)
+	return c.start(ctx, c.uploadFn, params.UploadURLPath)
 }

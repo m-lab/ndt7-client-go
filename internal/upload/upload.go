@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -33,14 +34,14 @@ var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 
 // ignoreIncoming ignores any incoming message.
 func ignoreIncoming(conn websocketx.Conn) {
-	conn.SetReadLimit(spec.MaxMessageSize)
+	conn.SetReadLimit(params.MaxMessageSize)
 	for {
 		// Implementation note: this guarantees that the websocket engine
 		// is processing messages. Here we're using as timeout the timeout
 		// for the whole upload, so that we know that this goroutine is
 		// active for most of the time we care about, even in the case in
 		// which the server is not sending us any messages.
-		err := conn.SetReadDeadline(time.Now().Add(spec.UploadTimeout))
+		err := conn.SetReadDeadline(time.Now().Add(params.UploadTimeout))
 		if err != nil {
 			break
 		}
@@ -66,9 +67,9 @@ func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
 // upload runs the upload and emits progress on ch.
 func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) {
 	defer close(out)
-	wholectx, cancel := context.WithTimeout(ctx, spec.UploadTimeout)
+	wholectx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
 	defer cancel()
-	preparedMessage, err := makePreparedMessage(spec.BulkMessageSize)
+	preparedMessage, err := makePreparedMessage(params.BulkMessageSize)
 	if err != nil {
 		return // I believe this should not happen in practice
 	}
@@ -80,14 +81,14 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) {
 		default:
 			// nothing
 		}
-		err := conn.SetWriteDeadline(time.Now().Add(spec.IOTimeout))
+		err := conn.SetWriteDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
 			return // just bail in case we cannot set deadline
 		}
 		if err := conn.WritePreparedMessage(preparedMessage); err != nil {
 			return // just bail if we cannot write
 		}
-		total += spec.BulkMessageSize
+		total += params.BulkMessageSize
 		out <- total
 	}
 }
@@ -108,7 +109,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	prev := start
 	for tot := range uploadAsync(ctx, conn) {
 		now := time.Now()
-		if now.Sub(prev) > spec.UpdateInterval {
+		if now.Sub(prev) > params.UpdateInterval {
 			emit(ch, now.Sub(start).Seconds(), tot)
 			prev = now
 		}
