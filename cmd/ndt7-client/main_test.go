@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"testing"
 
 	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/spec"
 )
 
 // TestNormalUsage tests ndt7-client w/o any command line arguments.
@@ -31,58 +31,170 @@ func TestBatchUsage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
 	}
-	exitval := realmain(*flagTimeout, *flagHostname, true)
+	exitval := 0
+	savedFunc := osExit
+	osExit = func(code int) {
+		exitval = code
+	}
+	*flagBatch = true
+	main()
+	*flagBatch = false
+	osExit = savedFunc
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
 	}
 }
 
-// TestDownloadError tests the case where download fails.
+// TestDownloadError tests the case where a subtest fails.
 func TestDownloadError(t *testing.T) {
-	ctx := context.Background()
-	client := ndt7.NewClient(userAgent)
-	client.MLabNSClient.BaseURL = "\t" // fails the parsing
-	exitval := download(ctx, client, batch{})
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+	exitval := 0
+	savedFunc := osExit
+	osExit = func(code int) {
+		exitval = code
+	}
+	*flagHostname = "\t" // fail parsing
+	main()
+	*flagHostname = ""
+	osExit = savedFunc
 	if exitval == 0 {
-		log.Fatal("expected to see a nonzero code here")
+		t.Fatal("expected nonzero return code here")
 	}
 }
 
-// TestUploadError tests the case where upload fails.
-func TestUploadError(t *testing.T) {
-	ctx := context.Background()
-	client := ndt7.NewClient(userAgent)
-	client.MLabNSClient.BaseURL = "\t" // fails the parsing
-	exitval := upload(ctx, client, interactive{})
-	if exitval == 0 {
-		log.Fatal("expected to see a nonzero code here")
+type mockedEmitter struct {
+	StartingError error
+	ConnectedError error
+	CompleteError error
+}
+
+func (me mockedEmitter) OnStarting(subtest string) error {
+	return me.StartingError
+}
+
+func (mockedEmitter) OnError(subtest string, err error) error {
+	return nil
+}
+
+func (me mockedEmitter) OnConnected(subtest, fqdn string) error {
+	return me.ConnectedError
+}
+
+func (mockedEmitter) OnDownloadEvent(m *spec.Measurement) error {
+	return nil
+}
+
+func (mockedEmitter) OnUploadEvent(m *spec.Measurement) error {
+	return nil
+}
+
+func (me mockedEmitter) OnComplete(subtest string) error {
+	return me.CompleteError
+}
+
+// TestRunSubtestOnStartingError deals with the case where
+// the emitter.OnStarting function fails.
+func TestRunSubtestOnStartingError(t *testing.T) {
+	runner := runner{
+		client: ndt7.NewClient(userAgent),
+		emitter: mockedEmitter{
+			StartingError: errors.New("mocked error"),
+		},
+	}
+	code := runner.runSubtest(
+		context.Background(),
+		"subtest",
+		func(context.Context) (<-chan spec.Measurement, error) {
+			out := make(chan spec.Measurement)
+			close(out)
+			return out, nil
+		},
+		func(m *spec.Measurement) error {
+			return nil
+		},
+	)
+	if code == 0 {
+		t.Fatal("expected nonzero return code here")
 	}
 }
 
-// TestBatchJSONMarshalPanic ensures that the code panics
-// if we cannot marshal a JSON.
-func TestBatchJSONMarshalPanic(t *testing.T) {
-	savedFunc := jsonMarshal
-	jsonMarshal = func(v interface{}) ([]byte, error) {
-		return nil, errors.New("mocked error")
+// TestRunSubtestOnConnectedError deals with the case where
+// the emitter.OnConnected function fails.
+func TestRunSubtestOnConnectedError(t *testing.T) {
+	runner := runner{
+		client: ndt7.NewClient(userAgent),
+		emitter: mockedEmitter{
+			ConnectedError: errors.New("mocked error"),
+		},
 	}
-	exitval := realmain(*flagTimeout, *flagHostname, true)
-	if exitval == 0 {
-		log.Fatal("expected to see a nonzero code here")
+	code := runner.runSubtest(
+		context.Background(),
+		"subtest",
+		func(context.Context) (<-chan spec.Measurement, error) {
+			out := make(chan spec.Measurement)
+			close(out)
+			return out, nil
+		},
+		func(m *spec.Measurement) error {
+			return nil
+		},
+	)
+	if code == 0 {
+		t.Fatal("expected nonzero return code here")
 	}
-	jsonMarshal = savedFunc
 }
 
-// TestBatchOSStdoutWritePanic ensures that the code panics
-// if we cannot write on the standard output.
-func TestBatchOSStdoutWritePanic(t *testing.T) {
-	savedFunc := osStdoutWrite
-	osStdoutWrite = func(b []byte) (n int, err error) {
-		return 0, errors.New("mocked error")
+// TestRunSubtestOnCompleteError deals with the case where
+// the emitter.OnComplete function fails.
+func TestRunSubtestOnCompleteError(t *testing.T) {
+	runner := runner{
+		client: ndt7.NewClient(userAgent),
+		emitter: mockedEmitter{
+			CompleteError: errors.New("mocked error"),
+		},
 	}
-	exitval := realmain(*flagTimeout, *flagHostname, true)
-	if exitval == 0 {
-		log.Fatal("expected to see a nonzero code here")
+	code := runner.runSubtest(
+		context.Background(),
+		"subtest",
+		func(context.Context) (<-chan spec.Measurement, error) {
+			out := make(chan spec.Measurement)
+			close(out)
+			return out, nil
+		},
+		func(m *spec.Measurement) error {
+			return nil
+		},
+	)
+	if code == 0 {
+		t.Fatal("expected nonzero return code here")
 	}
-	osStdoutWrite = savedFunc
+}
+
+// TestRunSubtestEmitEventError deals with the case where
+// the emitEvent function fails.
+func TestRunSubtestEmitEventError(t *testing.T) {
+	runner := runner{
+		client: ndt7.NewClient(userAgent),
+		emitter: mockedEmitter{},
+	}
+	code := runner.runSubtest(
+		context.Background(),
+		"subtest",
+		func(context.Context) (<-chan spec.Measurement, error) {
+			out := make(chan spec.Measurement)
+			go func() {
+				defer close(out)
+				out <- spec.Measurement{}
+			}()
+			return out, nil
+		},
+		func(m *spec.Measurement) error {
+			return errors.New("mocked error")
+		},
+	)
+	if code == 0 {
+		t.Fatal("expected nonzero return code here")
+	}
 }

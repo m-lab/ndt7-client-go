@@ -91,71 +91,69 @@ var flagTimeout = flag.Int64(
 	"timeout", 60, "seconds after which the ndt7 test is aborted",
 )
 
-func runSubtest(
-	ctx context.Context, client *ndt7.Client, emitter emitter.Emitter, subtest string,
+const userAgent = "ndt7-client-go/0.1.0"
+
+type runner struct {
+	client *ndt7.Client
+	emitter emitter.Emitter
+}
+
+func (r runner) runSubtest(
+	ctx context.Context, subtest string,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
-) error {
-	err := emitter.OnStarting(subtest)
+) int {
+	err := r.emitter.OnStarting(subtest)
 	if err != nil {
-		return err
+		return 1
 	}
 	ch, err := start(ctx)
 	if err != nil {
-		// Give precedence to the ndt7 error.
-		emitter.OnError(subtest, err)
-		return err
+		r.emitter.OnError(subtest, err)
+		return 1
 	}
-	err = emitter.OnConnected(subtest, client.FQDN)
+	err = r.emitter.OnConnected(subtest, r.client.FQDN)
 	if err != nil {
-		return err
+		return 1
 	}
 	for ev := range ch {
-		emitEvent(&ev)
+		err = emitEvent(&ev)
+		if err != nil {
+			return 1
+		}
 	}
-	return emitter.OnComplete(subtest)
-}
-
-func download(ctx context.Context, client *ndt7.Client, emitter emitter.Emitter) error {
-	return runSubtest(
-		ctx, client, emitter, "download", client.StartDownload,
-		emitter.OnDownloadEvent,
-	)
-}
-
-func upload(ctx context.Context, client *ndt7.Client, emitter emitter.Emitter) error {
-	return runSubtest(
-		ctx, client, emitter, "upload", client.StartUpload,
-		emitter.OnUploadEvent,
-	)
-}
-
-const userAgent = "ndt7-client-go/0.1.0"
-
-func realmain(timeoutSec int64, hostname string, batchmode bool) int {
-	timeout := time.Duration(timeoutSec) * time.Second
-	ctx, cancel := context.WithTimeout(
-		context.Background(), time.Duration(timeout),
-	)
-	defer cancel()
-	client := ndt7.NewClient(userAgent)
-	client.FQDN = hostname
-	var emit emitter.Emitter = emitter.Interactive{}
-	if batchmode {
-		emit = emitter.NewBatch()
-	}
-	downloadErr := download(ctx, client, emit)
-	uploadErr := upload(ctx, client, emit)
-	if uploadErr != nil || downloadErr != nil {
+	err = r.emitter.OnComplete(subtest)
+	if err != nil {
 		return 1
 	}
 	return 0
+}
+
+func (r runner) runDownload(ctx context.Context) int {
+	return r.runSubtest(ctx, "download", r.client.StartDownload,
+		r.emitter.OnDownloadEvent)
+}
+
+func (r runner) runUpload(ctx context.Context) int {
+	return r.runSubtest(ctx, "upload", r.client.StartUpload,
+		r.emitter.OnUploadEvent)
 }
 
 var osExit = os.Exit
 
 func main() {
 	flag.Parse()
-	rv := realmain(*flagTimeout, *flagHostname, *flagBatch)
-	osExit(rv)
+	timeout := time.Duration(*flagTimeout) * time.Second
+	ctx, cancel := context.WithTimeout(
+		context.Background(), time.Duration(timeout),
+	)
+	defer cancel()
+	var r runner
+	r.client = ndt7.NewClient(userAgent)
+	r.client.FQDN = *flagHostname
+	r.emitter = emitter.Interactive{}
+	if *flagBatch {
+		r.emitter = emitter.NewBatch()
+	}
+	osExit(r.runDownload(ctx) + r.runUpload(ctx))
 }
