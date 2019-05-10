@@ -130,13 +130,15 @@ func upload(ctx context.Context, client *ndt7.Client, emitter emitter) int {
 	)
 }
 
+const userAgent = "ndt7-client-go/0.1.0"
+
 func realmain(timeoutSec int64, hostname string, batchmode bool) int {
 	timeout := time.Duration(timeoutSec) * time.Second
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(timeout),
 	)
 	defer cancel()
-	client := ndt7.NewClient()
+	client := ndt7.NewClient(userAgent)
 	client.FQDN = hostname
 	var emitter emitter = interactive{}
 	if batchmode {

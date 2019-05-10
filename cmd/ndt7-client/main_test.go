@@ -41,7 +41,7 @@ func TestBatchUsage(t *testing.T) {
 // TestDownloadError tests the case where download fails.
 func TestDownloadError(t *testing.T) {
 	ctx := context.Background()
-	client := ndt7.NewClient()
+	client := ndt7.NewClient(userAgent)
 	mockedError := errors.New("mocked error")
 	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
 		return "", mockedError
@@ -55,7 +55,7 @@ func TestDownloadError(t *testing.T) {
 // TestUploadError tests the case where upload fails.
 func TestUploadError(t *testing.T) {
 	ctx := context.Background()
-	client := ndt7.NewClient()
+	client := ndt7.NewClient(userAgent)
 	mockedError := errors.New("mocked error")
 	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
 		return "", mockedError

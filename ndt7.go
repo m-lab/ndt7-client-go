@@ -35,9 +35,6 @@ type subtestFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 )
 
-// DefaultUserAgent is the default user agent used by this client.
-const DefaultUserAgent = "ndt7-client-go/0.1.0"
-
 // DefaultWebSocketHandshakeTimeout is the default timeout configured
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
@@ -86,7 +83,7 @@ type Client struct {
 }
 
 // NewClient creates a new client instance.
-func NewClient() *Client {
+func NewClient(userAgent string) *Client {
 	return &Client{
 		connectFn: func(
 			dialer websocket.Dialer, ctx context.Context, urlStr string,
@@ -103,7 +100,7 @@ func NewClient() *Client {
 		},
 		MLabNSTimeout: DefaultMLabNSTimeout,
 		uploadFn:      upload.Run,
-		UserAgent:     DefaultUserAgent,
+		UserAgent:     userAgent,
 	}
 }
 

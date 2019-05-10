@@ -11,10 +11,12 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
+const userAgent = "mocked/0.1.0"
+
 // newMockedClient returns a mocked client that does nothing
 // except pretending it is doing something.
 func newMockedClient(ctx context.Context) *Client {
-	client := NewClient()
+	client := NewClient(userAgent)
 	// Override locate to return a fake IP address
 	client.LocateFn = func(ctx context.Context, c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
@@ -68,7 +70,7 @@ func TestUploadCase(t *testing.T) {
 // with an error when discovering a server.
 func TestStartDiscoverServerError(t *testing.T) {
 	ctx := context.Background()
-	client := NewClient()
+	client := NewClient(userAgent)
 	client.MLabNSBaseURL = "\t" // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
 	if err == nil {
@@ -80,7 +82,7 @@ func TestStartDiscoverServerError(t *testing.T) {
 // with an error when connecting.
 func TestStartConnectError(t *testing.T) {
 	ctx := context.Background()
-	client := NewClient()
+	client := NewClient(userAgent)
 	client.FQDN = "\t" // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
 	if err == nil {
