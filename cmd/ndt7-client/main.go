@@ -93,37 +93,36 @@ var flagTimeout = flag.Int64(
 func runSubtest(
 	ctx context.Context, client *ndt7.Client, emitter emitter, subtest string,
 	start func(context.Context) (<-chan spec.Measurement, error),
-	emitEvent func(m *spec.Measurement),
-) (code int) {
-	code = 0
-	defer func() {
-		if err := recover(); err != nil {
-			code = 1
-		}
-	}()
-	emitter.onStarting(subtest)
+	emitEvent func(m *spec.Measurement) error,
+) error {
+	err := emitter.onStarting(subtest)
+	if err != nil {
+		return err
+	}
 	ch, err := start(ctx)
 	if err != nil {
+		// Give precedence to the ndt7 error.
 		emitter.onError(subtest, err)
-		code = 2
-		return
+		return err
 	}
-	emitter.onConnected(subtest, client.FQDN)
+	err = emitter.onConnected(subtest, client.FQDN)
+	if err != nil {
+		return err
+	}
 	for ev := range ch {
 		emitEvent(&ev)
 	}
-	emitter.onComplete(subtest)
-	return
+	return emitter.onComplete(subtest)
 }
 
-func download(ctx context.Context, client *ndt7.Client, emitter emitter) int {
+func download(ctx context.Context, client *ndt7.Client, emitter emitter) error {
 	return runSubtest(
 		ctx, client, emitter, "download", client.StartDownload,
 		emitter.onDownloadEvent,
 	)
 }
 
-func upload(ctx context.Context, client *ndt7.Client, emitter emitter) int {
+func upload(ctx context.Context, client *ndt7.Client, emitter emitter) error {
 	return runSubtest(
 		ctx, client, emitter, "upload", client.StartUpload,
 		emitter.onUploadEvent,
@@ -144,7 +143,12 @@ func realmain(timeoutSec int64, hostname string, batchmode bool) int {
 	if batchmode {
 		emitter = batch{}
 	}
-	return download(ctx, client, emitter) + upload(ctx, client, emitter)
+	downloadErr := download(ctx, client, emitter)
+	uploadErr := upload(ctx, client, emitter)
+	if uploadErr != nil || downloadErr != nil {
+		return 1
+	}
+	return 0
 }
 
 var osExit = os.Exit

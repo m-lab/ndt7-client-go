@@ -1,4 +1,4 @@
-package main
+package emitter
 
 import (
 	"encoding/json"
@@ -11,21 +11,19 @@ type batch struct{}
 
 var osStdoutWrite = os.Stdout.Write
 
-func (batch) emitData(data []byte) {
+func (batch) emitData(data []byte) error {
 	_, err := osStdoutWrite(append(data, byte('\n')))
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 var jsonMarshal = json.Marshal
 
-func (b batch) emitInterface(any interface{}) {
+func (b batch) emitInterface(any interface{}) error {
 	data, err := jsonMarshal(any)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	b.emitData(data)
+	return b.emitData(data)
 }
 
 type batchEvent struct {
@@ -39,8 +37,8 @@ type batchValue struct {
 	Subtest string `json:"subtest"`
 }
 
-func (b batch) onStarting(subtest string) {
-	b.emitInterface(batchEvent{
+func (b batch) OnStarting(subtest string) error {
+	return b.emitInterface(batchEvent{
 		Key: "status.measurement_start",
 		Value: batchValue{
 			Subtest: subtest,
@@ -48,8 +46,8 @@ func (b batch) onStarting(subtest string) {
 	})
 }
 
-func (b batch) onError(subtest string, err error) {
-	b.emitInterface(batchEvent{
+func (b batch) OnError(subtest string, err error) error {
+	return b.emitInterface(batchEvent{
 		Key: "failure.measurement",
 		Value: batchValue{
 			Failure: err.Error(),
@@ -58,8 +56,8 @@ func (b batch) onError(subtest string, err error) {
 	})
 }
 
-func (b batch) onConnected(subtest, fqdn string) {
-	b.emitInterface(batchEvent{
+func (b batch) OnConnected(subtest, fqdn string) error {
+	return b.emitInterface(batchEvent{
 		Key: "status.measurement_begin",
 		Value: batchValue{
 			Server:  fqdn,
@@ -68,22 +66,22 @@ func (b batch) onConnected(subtest, fqdn string) {
 	})
 }
 
-func (b batch) onDownloadEvent(m *spec.Measurement) {
-	b.emitInterface(batchEvent{
+func (b batch) OnDownloadEvent(m *spec.Measurement) error {
+	return b.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
 	})
 }
 
-func (b batch) onUploadEvent(m *spec.Measurement) {
-	b.emitInterface(batchEvent{
+func (b batch) OnUploadEvent(m *spec.Measurement) error {
+	return b.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
 	})
 }
 
-func (b batch) onComplete(subtest string) {
-	b.emitInterface(batchEvent{
+func (b batch) OnComplete(subtest string) error {
+	return b.emitInterface(batchEvent{
 		Key: "status.measurement_done",
 		Value: batchValue{
 			Subtest: subtest,
