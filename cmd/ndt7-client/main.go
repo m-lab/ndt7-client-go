@@ -90,7 +90,7 @@ var flagTimeout = flag.Int64(
 	"timeout", 45, "seconds after which the ndt7 test is aborted",
 )
 
-func downloadUpload(
+func runSubtest(
 	client *ndt7.Client, emitter emitter, subtest string,
 	start func() (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement),
@@ -117,14 +117,14 @@ func downloadUpload(
 }
 
 func download(client *ndt7.Client, emitter emitter) int {
-	return downloadUpload(
+	return runSubtest(
 		client, emitter, "download", client.StartDownload,
 		emitter.onDownloadEvent,
 	)
 }
 
 func upload(client *ndt7.Client, emitter emitter) int {
-	return downloadUpload(
+	return runSubtest(
 		client, emitter, "upload", client.StartUpload,
 		emitter.onUploadEvent,
 	)
