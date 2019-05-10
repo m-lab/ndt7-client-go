@@ -104,12 +104,12 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	defer close(ch)
 	defer conn.Close()
 	go ignoreIncoming(conn)
-	t0 := time.Now()
-	prev := t0
+	start := time.Now()
+	prev := start
 	for tot := range uploadAsync(ctx, conn) {
 		now := time.Now()
 		if now.Sub(prev) > spec.UpdateInterval {
-			emit(ch, now.Sub(t0).Seconds(), tot)
+			emit(ch, now.Sub(start).Seconds(), tot)
 			prev = now
 		}
 	}
