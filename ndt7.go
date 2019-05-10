@@ -39,9 +39,6 @@ const defaultUserAgent = "ndt7-client-go/0.1.0"
 
 // Client is a ndt7 client.
 type Client struct {
-	// Ctx is the client context. It's set using NewClient.
-	Ctx context.Context
-
 	// Dialer is the optional websocket Dialer. It's set to its
 	// default value by NewClient; you may override it.
 	Dialer websocket.Dialer
@@ -76,8 +73,8 @@ type Client struct {
 	uploadFn subtestFn
 }
 
-// NewClient creates a new client with the specified context.
-func NewClient(ctx context.Context) *Client {
+// NewClient creates a new client instance.
+func NewClient() *Client {
 	return &Client{
 		connectFn: func(
 			dialer websocket.Dialer, ctx context.Context, urlStr string,
@@ -85,7 +82,6 @@ func NewClient(ctx context.Context) *Client {
 		) {
 			return dialer.DialContext(ctx, urlStr, requestHeader)
 		},
-		Ctx:        ctx,
 		downloadFn: download.Run,
 		LocateFn: func(c *mlabns.Client) (string, error) {
 			return c.Query()
@@ -96,8 +92,8 @@ func NewClient(ctx context.Context) *Client {
 }
 
 // discoverServer discovers and returns the closest mlab server.
-func (c *Client) discoverServer() (string, error) {
-	client := mlabns.NewClient(c.Ctx, "ndt_ssl", c.UserAgent)
+func (c *Client) discoverServer(ctx context.Context) (string, error) {
+	client := mlabns.NewClient(ctx, "ndt_ssl", c.UserAgent)
 	if c.MlabNSBaseURL != "" {
 		client.BaseURL = c.MlabNSBaseURL
 	}
@@ -105,7 +101,7 @@ func (c *Client) discoverServer() (string, error) {
 }
 
 // connect establishes a websocket connection.
-func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
+func (c *Client) connect(ctx context.Context, URLPath string) (*websocket.Conn, error) {
 	URL := url.URL{}
 	URL.Scheme = "wss"
 	URL.Host = c.FQDN
@@ -113,25 +109,25 @@ func (c *Client) connect(URLPath string) (*websocket.Conn, error) {
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", spec.SecWebSocketProtocol)
 	headers.Add("User-Agent", c.UserAgent)
-	conn, _, err := c.connectFn(c.Dialer, c.Ctx, URL.String(), headers)
+	conn, _, err := c.connectFn(c.Dialer, ctx, URL.String(), headers)
 	return conn, err
 }
 
 // start is the function for starting a subtest.
-func (c *Client) start(f subtestFn, p string) (<-chan spec.Measurement, error) {
+func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
-		fqdn, err := c.discoverServer()
+		fqdn, err := c.discoverServer(ctx)
 		if err != nil {
 			return nil, err
 		}
 		c.FQDN = fqdn
 	}
-	conn, err := c.connect(p)
+	conn, err := c.connect(ctx, p)
 	if err != nil {
 		return nil, err
 	}
 	ch := make(chan spec.Measurement)
-	go f(c.Ctx, conn, ch)
+	go f(ctx, conn, ch)
 	return ch, nil
 }
 
@@ -141,11 +137,11 @@ func (c *Client) start(f subtestFn, p string) (<-chan spec.Measurement, error) {
 // should not attempt using the channel. A side effect of starting the download
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
-func (c *Client) StartDownload() (<-chan spec.Measurement, error) {
-	return c.start(c.downloadFn, spec.DownloadURLPath)
+func (c *Client) StartDownload(ctx context.Context) (<-chan spec.Measurement, error) {
+	return c.start(ctx, c.downloadFn, spec.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
-func (c *Client) StartUpload() (<-chan spec.Measurement, error) {
-	return c.start(c.uploadFn, spec.UploadURLPath)
+func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, error) {
+	return c.start(ctx, c.uploadFn, spec.UploadURLPath)
 }

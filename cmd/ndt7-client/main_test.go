@@ -40,12 +40,13 @@ func TestBatchUsage(t *testing.T) {
 
 // TestDownloadError tests the case where download fails.
 func TestDownloadError(t *testing.T) {
-	client := ndt7.NewClient(context.Background())
+	ctx := context.Background()
+	client := ndt7.NewClient()
 	mockedError := errors.New("mocked error")
 	client.LocateFn = func(client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
-	exitval := download(client, batch{})
+	exitval := download(ctx, client, batch{})
 	if exitval == 0 {
 		log.Fatal("expected to see a nonzero code here")
 	}
@@ -53,12 +54,13 @@ func TestDownloadError(t *testing.T) {
 
 // TestUploadError tests the case where upload fails.
 func TestUploadError(t *testing.T) {
-	client := ndt7.NewClient(context.Background())
+	ctx := context.Background()
+	client := ndt7.NewClient()
 	mockedError := errors.New("mocked error")
 	client.LocateFn = func(client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
-	exitval := upload(client, interactive{})
+	exitval := upload(ctx, client, interactive{})
 	if exitval == 0 {
 		log.Fatal("expected to see a nonzero code here")
 	}

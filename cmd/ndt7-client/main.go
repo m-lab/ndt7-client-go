@@ -87,12 +87,12 @@ var flagBatch = flag.Bool("batch", false, "emit JSON events on stdout")
 var flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 
 var flagTimeout = flag.Int64(
-	"timeout", 45, "seconds after which the ndt7 test is aborted",
+	"timeout", 60, "seconds after which the ndt7 test is aborted",
 )
 
 func runSubtest(
-	client *ndt7.Client, emitter emitter, subtest string,
-	start func() (<-chan spec.Measurement, error),
+	ctx context.Context, client *ndt7.Client, emitter emitter, subtest string,
+	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement),
 ) (code int) {
 	code = 0
@@ -102,7 +102,7 @@ func runSubtest(
 		}
 	}()
 	emitter.onStarting(subtest)
-	ch, err := start()
+	ch, err := start(ctx)
 	if err != nil {
 		emitter.onError(subtest, err)
 		code = 2
@@ -116,16 +116,16 @@ func runSubtest(
 	return
 }
 
-func download(client *ndt7.Client, emitter emitter) int {
+func download(ctx context.Context, client *ndt7.Client, emitter emitter) int {
 	return runSubtest(
-		client, emitter, "download", client.StartDownload,
+		ctx, client, emitter, "download", client.StartDownload,
 		emitter.onDownloadEvent,
 	)
 }
 
-func upload(client *ndt7.Client, emitter emitter) int {
+func upload(ctx context.Context, client *ndt7.Client, emitter emitter) int {
 	return runSubtest(
-		client, emitter, "upload", client.StartUpload,
+		ctx, client, emitter, "upload", client.StartUpload,
 		emitter.onUploadEvent,
 	)
 }
@@ -136,13 +136,13 @@ func realmain(timeoutSec int64, hostname string, batchmode bool) int {
 		context.Background(), time.Duration(timeout),
 	)
 	defer cancel()
-	client := ndt7.NewClient(ctx)
+	client := ndt7.NewClient()
 	client.FQDN = hostname
 	var emitter emitter = interactive{}
 	if batchmode {
 		emitter = batch{}
 	}
-	return download(client, emitter) + upload(client, emitter)
+	return download(ctx, client, emitter) + upload(ctx, client, emitter)
 }
 
 var osExit = os.Exit

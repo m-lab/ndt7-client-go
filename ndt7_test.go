@@ -13,8 +13,8 @@ import (
 
 // newMockedClient returns a mocked client that does nothing
 // except pretending it is doing something.
-func newMockedClient() *Client {
-	client := NewClient(context.Background())
+func newMockedClient(ctx context.Context) *Client {
+	client := NewClient()
 	// Override locate to return a fake IP address
 	client.LocateFn = func(c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
@@ -40,8 +40,9 @@ func newMockedClient() *Client {
 
 // TestDownloadCase tests the download case.
 func TestDownloadCase(t *testing.T) {
-	client := newMockedClient()
-	ch, err := client.StartDownload()
+	ctx := context.Background()
+	client := newMockedClient(ctx)
+	ch, err := client.StartDownload(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,8 +53,9 @@ func TestDownloadCase(t *testing.T) {
 
 // TestUploadCase tests the download case.
 func TestUploadCase(t *testing.T) {
-	client := newMockedClient()
-	ch, err := client.StartUpload()
+	ctx := context.Background()
+	client := newMockedClient(ctx)
+	ch, err := client.StartUpload(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,9 +67,10 @@ func TestUploadCase(t *testing.T) {
 // TestStartDiscoverServerError ensures that we deal
 // with an error when discovering a server.
 func TestStartDiscoverServerError(t *testing.T) {
-	client := NewClient(context.Background())
+	ctx := context.Background()
+	client := NewClient()
 	client.MlabNSBaseURL = "\t" // cause URL parse to fail
-	_, err := client.start(nil, "")
+	_, err := client.start(ctx, nil, "")
 	if err == nil {
 		t.Fatal("We expected an error here")
 	}
@@ -76,9 +79,10 @@ func TestStartDiscoverServerError(t *testing.T) {
 // TestStartConnectError ensures that we deal
 // with an error when connecting.
 func TestStartConnectError(t *testing.T) {
-	client := NewClient(context.Background())
+	ctx := context.Background()
+	client := NewClient()
 	client.FQDN = "\t" // cause URL parse to fail
-	_, err := client.start(nil, "")
+	_, err := client.start(ctx, nil, "")
 	if err == nil {
 		t.Fatal("We expected an error here")
 	}
