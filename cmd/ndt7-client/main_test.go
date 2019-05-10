@@ -43,7 +43,7 @@ func TestDownloadError(t *testing.T) {
 	ctx := context.Background()
 	client := ndt7.NewClient()
 	mockedError := errors.New("mocked error")
-	client.LocateFn = func(client *mlabns.Client) (string, error) {
+	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
 	exitval := download(ctx, client, batch{})
@@ -57,7 +57,7 @@ func TestUploadError(t *testing.T) {
 	ctx := context.Background()
 	client := ndt7.NewClient()
 	mockedError := errors.New("mocked error")
-	client.LocateFn = func(client *mlabns.Client) (string, error) {
+	client.LocateFn = func(ctx context.Context, client *mlabns.Client) (string, error) {
 		return "", mockedError
 	}
 	exitval := upload(ctx, client, interactive{})

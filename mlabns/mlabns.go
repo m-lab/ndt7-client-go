@@ -31,9 +31,6 @@ type Client struct {
 	// initialized in NewClient, but you may override it.
 	BaseURL string
 
-	// Ctx is the context to use.
-	Ctx context.Context
-
 	// Tool is the mandatory tool to use. This is initialize by NewClient.
 	Tool string
 
@@ -58,10 +55,9 @@ const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 
 // NewClient creates a new Client instance with mandatory userAgent, and tool
 // name. For running ndt7, use "ndt7" as the tool name.
-func NewClient(ctx context.Context, tool, userAgent string) *Client {
+func NewClient(tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
-		Ctx:          ctx,
 		requestMaker: http.NewRequest,
 		requestor:    http.DefaultClient,
 		Tool:         tool,
@@ -79,13 +75,13 @@ type serverEntry struct {
 var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
 // doGET is an internal function used to perform the request.
-func (c *Client) doGET(URL string) ([]byte, error) {
+func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 	request, err := c.requestMaker("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("User-Agent", c.UserAgent)
-	request = request.WithContext(c.Ctx)
+	request = request.WithContext(ctx)
 	response, err := c.requestor.Do(request)
 	if err != nil {
 		return nil, err
@@ -104,13 +100,13 @@ var ErrNoAvailableServers = errors.New("No available M-Lab servers")
 
 // Query returns the FQDN of a nearby mlab server. Returns an error on
 // failure and the server FQDN on success.
-func (c *Client) Query() (string, error) {
+func (c *Client) Query(ctx context.Context) (string, error) {
 	URL, err := url.Parse(c.BaseURL)
 	if err != nil {
 		return "", err
 	}
 	URL.Path = c.Tool
-	data, err := c.doGET(URL.String())
+	data, err := c.doGET(ctx, URL.String())
 	if err != nil {
 		return "", err
 	}
