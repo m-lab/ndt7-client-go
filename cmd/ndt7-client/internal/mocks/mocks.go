@@ -13,3 +13,14 @@ type FailingWriter struct{}
 func (FailingWriter) Write([]byte) (int, error) {
 	return 0, ErrMocked
 }
+
+// SavingWriter is a writer that saves what it's passed
+type SavingWriter struct {
+	Data [][]byte
+}
+
+// Write appends data to sw.Data. It never fails.
+func (sw *SavingWriter) Write(data []byte) (int, error) {
+	sw.Data = append(sw.Data, data)
+	return len(data), nil
+}
