@@ -9,7 +9,8 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// Interactive is an interactive emitter
+// Interactive is an interactive emitter. It emits the events generated
+// by running a ndt7 test as pleasant stdout messages.
 type Interactive struct {
 	out io.Writer
 }

@@ -8,7 +8,8 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// Batch is a batch emitter
+// Batch is a batch emitter. It emits messages consistent with
+// the cmd/ndt7-client/main.go documentation for `-batch`.
 type Batch struct {
 	io.Writer
 }
