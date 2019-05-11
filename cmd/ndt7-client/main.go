@@ -83,12 +83,11 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-var flagBatch = flag.Bool("batch", false, "emit JSON events on stdout")
-
-var flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
-
-var flagTimeout = flag.Int64(
-	"timeout", 60, "seconds after which the ndt7 test is aborted",
+var (
+	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
+	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
+	flagTimeout  = flag.Int64(
+		"timeout", 60, "seconds after which the test is aborted")
 )
 
 const userAgent = "ndt7-client-go/0.1.0"
