@@ -2,23 +2,26 @@ package emitter
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
+// Batch is a batch emitter
 type Batch struct {
-	osStdoutWrite func([]byte) (int, error)
+	io.Writer
 }
 
+// NewBatch creates a new batch emitter
 func NewBatch() Batch {
 	return Batch{
-		osStdoutWrite: os.Stdout.Write,
+		Writer: os.Stdout,
 	}
 }
 
 func (b Batch) emitData(data []byte) error {
-	_, err := b.osStdoutWrite(append(data, byte('\n')))
+	_, err := b.Write(append(data, byte('\n')))
 	return err
 }
 
@@ -41,6 +44,7 @@ type batchValue struct {
 	Subtest string `json:"subtest"`
 }
 
+// OnStarting emits the starting event
 func (b Batch) OnStarting(subtest string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_start",
@@ -50,6 +54,7 @@ func (b Batch) OnStarting(subtest string) error {
 	})
 }
 
+// OnError emits the error event
 func (b Batch) OnError(subtest string, err error) error {
 	return b.emitInterface(batchEvent{
 		Key: "failure.measurement",
@@ -60,6 +65,7 @@ func (b Batch) OnError(subtest string, err error) error {
 	})
 }
 
+// OnConnected emits the connected event
 func (b Batch) OnConnected(subtest, fqdn string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_begin",
@@ -70,6 +76,7 @@ func (b Batch) OnConnected(subtest, fqdn string) error {
 	})
 }
 
+// OnDownloadEvent handles an event emitted during the download
 func (b Batch) OnDownloadEvent(m *spec.Measurement) error {
 	return b.emitInterface(batchEvent{
 		Key:   "measurement",
@@ -77,6 +84,7 @@ func (b Batch) OnDownloadEvent(m *spec.Measurement) error {
 	})
 }
 
+// OnUploadEvent handles an event emitted during the upload
 func (b Batch) OnUploadEvent(m *spec.Measurement) error {
 	return b.emitInterface(batchEvent{
 		Key:   "measurement",
@@ -84,6 +92,7 @@ func (b Batch) OnUploadEvent(m *spec.Measurement) error {
 	})
 }
 
+// OnComplete is the event signalling the end of the subtest
 func (b Batch) OnComplete(subtest string) error {
 	return b.emitInterface(batchEvent{
 		Key: "status.measurement_done",
