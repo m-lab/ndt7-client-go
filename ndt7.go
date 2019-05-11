@@ -58,22 +58,22 @@ type Client struct {
 	// NewClient; you may want to change this value.
 	UserAgent string
 
-	// connectFn is the function for connecting a specific
+	// connect is the function for connecting a specific
 	// websocket cnnection. It's set to its default value by
 	// NewClient, but you may override it.
-	connectFn connectFn
+	connect connectFn
 
-	// downloadFn is the function running the download subtest. We
+	// download is the function running the download subtest. We
 	// set it in NewClient and you may override it.
-	downloadFn subtestFn
+	download subtestFn
 
-	// locateFn is the optional function to locate a ndt7 server using
+	// locate is the optional function to locate a ndt7 server using
 	// the mlab-ns service. This function is set to its default value
 	// by NewClient, but you may want to override it.
-	locateFn locateFn
+	locate locateFn
 
-	// uploadFn is like DownloadFn but for the upload subtest.
-	uploadFn subtestFn
+	// upload is like download but for the upload subtest.
+	upload subtestFn
 }
 
 // NewClient creates a new client instance identified by the
@@ -81,7 +81,7 @@ type Client struct {
 // from clients with empty user agents in the future.
 func NewClient(userAgent string) *Client {
 	return &Client{
-		connectFn: func(
+		connect: func(
 			dialer websocket.Dialer, ctx context.Context, urlStr string,
 			requestHeader http.Header) (*websocket.Conn, *http.Response, error,
 		) {
@@ -90,23 +90,23 @@ func NewClient(userAgent string) *Client {
 		Dialer: websocket.Dialer{
 			HandshakeTimeout: DefaultWebSocketHandshakeTimeout,
 		},
-		downloadFn: download.Run,
-		locateFn: func(ctx context.Context, c *mlabns.Client) (string, error) {
+		download: download.Run,
+		locate: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
 		MLabNSClient: mlabns.NewClient("ndt_ssl", userAgent),
-		uploadFn:     upload.Run,
+		upload:       upload.Run,
 		UserAgent:    userAgent,
 	}
 }
 
 // discoverServer discovers and returns the closest mlab server.
 func (c *Client) discoverServer(ctx context.Context) (string, error) {
-	return c.locateFn(ctx, c.MLabNSClient)
+	return c.locate(ctx, c.MLabNSClient)
 }
 
-// connect establishes a websocket connection.
-func (c *Client) connect(ctx context.Context, URLPath string) (*websocket.Conn, error) {
+// doConnect establishes a websocket connection.
+func (c *Client) doConnect(ctx context.Context, URLPath string) (*websocket.Conn, error) {
 	URL := url.URL{}
 	URL.Scheme = "wss"
 	URL.Host = c.FQDN
@@ -114,7 +114,7 @@ func (c *Client) connect(ctx context.Context, URLPath string) (*websocket.Conn, 
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", params.SecWebSocketProtocol)
 	headers.Add("User-Agent", c.UserAgent)
-	conn, _, err := c.connectFn(c.Dialer, ctx, URL.String(), headers)
+	conn, _, err := c.connect(c.Dialer, ctx, URL.String(), headers)
 	return conn, err
 }
 
@@ -127,7 +127,7 @@ func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.
 		}
 		c.FQDN = fqdn
 	}
-	conn, err := c.connect(ctx, p)
+	conn, err := c.doConnect(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +143,10 @@ func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload(ctx context.Context) (<-chan spec.Measurement, error) {
-	return c.start(ctx, c.downloadFn, params.DownloadURLPath)
+	return c.start(ctx, c.download, params.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, error) {
-	return c.start(ctx, c.uploadFn, params.UploadURLPath)
+	return c.start(ctx, c.upload, params.UploadURLPath)
 }

@@ -18,25 +18,25 @@ const userAgent = "mocked/0.1.0"
 func newMockedClient(ctx context.Context) *Client {
 	client := NewClient(userAgent)
 	// Override locate to return a fake IP address
-	client.locateFn = func(ctx context.Context, c *mlabns.Client) (string, error) {
+	client.locate = func(ctx context.Context, c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
 	}
 	// Override connect to return a fake websocket connection
-	client.connectFn = func(
+	client.connect = func(
 		dialer websocket.Dialer, ctx context.Context, urlStr string,
 		requestHeader http.Header) (*websocket.Conn, *http.Response, error,
 	) {
 		return &websocket.Conn{}, &http.Response{}, nil
 	}
 	// Override the download function to basically do nothing
-	client.downloadFn = func(
+	client.download = func(
 		ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 	) {
 		close(ch)
 		// Note that we cannot close the websocket connection because
 		// it's just a zero initialized connection (see above)
 	}
-	client.uploadFn = client.downloadFn
+	client.upload = client.download
 	return client
 }
 
