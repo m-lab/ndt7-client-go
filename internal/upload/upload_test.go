@@ -38,8 +38,10 @@ func TestNormal(t *testing.T) {
 		if m.Elapsed <= prev.Elapsed {
 			t.Fatal("Time is not increasing")
 		}
-		if m.AppInfo.NumBytes <= prev.AppInfo.NumBytes {
-			t.Fatal("Number of bytes is not increasing")
+		// Note: it can stay constant when we're servicing
+		// a TCP timeout longer than the update interval
+		if m.AppInfo.NumBytes < prev.AppInfo.NumBytes {
+			t.Fatal("Number of bytes is decreasing")
 		}
 		prev = m
 	}
