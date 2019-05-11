@@ -74,13 +74,7 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) {
 		return // I believe this should not happen in practice
 	}
 	var total int64
-	for {
-		select {
-		case <-wholectx.Done():
-			return // time to stop uploading
-		default:
-			// nothing
-		}
+	for wholectx.Err() == nil {
 		err := conn.SetWriteDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
 			return // just bail in case we cannot set deadline
