@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
@@ -98,9 +97,7 @@ func TestIntegrationDownload(t *testing.T) {
 		t.Skip("Skipping test in short mode")
 	}
 	client := NewClient(userAgent)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	ch, err := client.StartDownload(ctx)
+	ch, err := client.StartDownload(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,9 +139,7 @@ func TestIntegrationUpload(t *testing.T) {
 		t.Skip("Skipping test in short mode")
 	}
 	client := NewClient(userAgent)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	ch, err := client.StartUpload(ctx)
+	ch, err := client.StartUpload(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
