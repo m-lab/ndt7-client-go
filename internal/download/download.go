@@ -19,13 +19,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	wholectx, cancel := context.WithTimeout(ctx, params.DownloadTimeout)
 	defer cancel()
 	conn.SetReadLimit(params.MaxMessageSize)
-	for {
-		select {
-		case <-wholectx.Done():
-			return // don't fail the test if we're running for too much time
-		default:
-			// nothing
-		}
+	for wholectx.Err() == nil {
 		err := conn.SetReadDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
 			return // don't fail the test because of an internal error
