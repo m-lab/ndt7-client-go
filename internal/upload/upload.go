@@ -3,6 +3,7 @@ package upload
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
 
@@ -32,6 +33,9 @@ var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 	return websocket.NewPreparedMessage(websocket.BinaryMessage, data)
 }
 
+// errNonTextMessage indicates we've got a non textual message
+var errNonTextMessage = errors.New("Received non textual message")
+
 // ignoreIncoming ignores any incoming message. The error is typically ignored
 // as this code runs in its own goroutine, yet it's useful for testing.
 func ignoreIncoming(conn websocketx.Conn) error {
@@ -46,9 +50,12 @@ func ignoreIncoming(conn websocketx.Conn) error {
 		if err != nil {
 			return err
 		}
-		_, _, err = conn.ReadMessage()
+		mtype, _, err := conn.ReadMessage()
 		if err != nil {
 			return err
+		}
+		if mtype != websocket.TextMessage {
+			return errNonTextMessage
 		}
 	}
 }

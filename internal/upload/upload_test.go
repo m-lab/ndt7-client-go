@@ -76,6 +76,19 @@ func TestReadMessageError(t *testing.T) {
 	}
 }
 
+// TestReadNonTextMessageError ensures that we deal with the
+// case where ReadMessage returns a non text message.
+func TestReadNonTextMessageError(t *testing.T) {
+	conn := mocks.Conn{
+		ReadMessageType:      websocket.BinaryMessage,
+		ReadMessageByteArray: []byte("abcdef"),
+	}
+	err := ignoreIncoming(&conn)
+	if err != errNonTextMessage {
+		t.Fatal("Not the error we expected")
+	}
+}
+
 // TestMakePreparedMessageError ensures that we deal with
 // the case where makePreparedMessage fails.
 func TestMakePreparedMessageError(t *testing.T) {
