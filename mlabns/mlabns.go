@@ -81,6 +81,11 @@ type serverEntry struct {
 	FQDN string `json:"fqdn"`
 }
 
+// ErrNoAvailableServers is returned when there are no available servers. A
+// background client should treat this error specially and schedule retrying
+// after an exponentially distributed number of seconds.
+var ErrNoAvailableServers = errors.New("No available M-Lab servers")
+
 // ErrQueryFailed indicates a non-200 status code.
 var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
@@ -99,16 +104,14 @@ func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 		return nil, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode == 204 {
+		return nil, ErrNoAvailableServers
+	}
 	if response.StatusCode != 200 {
 		return nil, ErrQueryFailed
 	}
 	return ioutil.ReadAll(response.Body)
 }
-
-// ErrNoAvailableServers is returned when there are no available servers. A
-// background client should treat this error specially and schedule retrying
-// after an exponentially distributed number of seconds.
-var ErrNoAvailableServers = errors.New("No available M-Lab servers")
 
 // Query returns the FQDN of a nearby mlab server. Returns an error on
 // failure and the server FQDN on success.
@@ -126,9 +129,6 @@ func (c *Client) Query(ctx context.Context) (string, error) {
 	err = json.Unmarshal(data, &server)
 	if err != nil {
 		return "", err
-	}
-	if server.FQDN == "" {
-		return "", ErrNoAvailableServers
 	}
 	return server.FQDN, nil
 }

@@ -97,7 +97,7 @@ func TestQueryJSONParseError(t *testing.T) {
 func TestQueryNoServers(t *testing.T) {
 	client := NewClient("ndt_ssl", "ndt7-client-go")
 	client.requestor = mocks.NewHTTPRequestor(
-		200, []byte("{}"), nil,
+		204, []byte(""), nil,
 	)
 	_, err := client.Query(context.Background())
 	if err != ErrNoAvailableServers {
