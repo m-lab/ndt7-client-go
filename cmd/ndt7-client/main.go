@@ -99,16 +99,11 @@ type runner struct {
 	emitter emitter.Emitter
 }
 
-func (r runner) runSubtest(
+func (r runner) doRunSubtest(
 	ctx context.Context, subtest string,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
-	defer r.emitter.OnComplete(subtest) // must be deferred
-	err := r.emitter.OnStarting(subtest)
-	if err != nil {
-		return 1
-	}
 	ch, err := start(ctx)
 	if err != nil {
 		r.emitter.OnError(subtest, err)
@@ -125,6 +120,26 @@ func (r runner) runSubtest(
 		}
 	}
 	return 0
+}
+
+func (r runner) runSubtest(
+	ctx context.Context, subtest string,
+	start func(context.Context) (<-chan spec.Measurement, error),
+	emitEvent func(m *spec.Measurement) error,
+) int {
+	// Implementation note: we want to always emit the initial and the
+	// final events regardless of how the actual subtest goes. What's more,
+	// we want the exit code to be nonzero in case of any error.
+	err := r.emitter.OnStarting(subtest)
+	if err != nil {
+		return 1
+	}
+	code := r.doRunSubtest(ctx, subtest, start, emitEvent)
+	err = r.emitter.OnComplete(subtest)
+	if err != nil {
+		return 1
+	}
+	return code
 }
 
 func (r runner) runDownload(ctx context.Context) int {
