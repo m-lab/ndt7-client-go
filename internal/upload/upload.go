@@ -32,8 +32,9 @@ var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 	return websocket.NewPreparedMessage(websocket.BinaryMessage, data)
 }
 
-// ignoreIncoming ignores any incoming message.
-func ignoreIncoming(conn websocketx.Conn) {
+// ignoreIncoming ignores any incoming message. The error is typically ignored
+// as this code runs in its own goroutine, yet it's useful for testing.
+func ignoreIncoming(conn websocketx.Conn) error {
 	conn.SetReadLimit(params.MaxMessageSize)
 	for {
 		// Implementation note: this guarantees that the websocket engine
@@ -43,11 +44,11 @@ func ignoreIncoming(conn websocketx.Conn) {
 		// which the server is not sending us any messages.
 		err := conn.SetReadDeadline(time.Now().Add(params.UploadTimeout))
 		if err != nil {
-			break
+			return err
 		}
 		_, _, err = conn.ReadMessage()
 		if err != nil {
-			break
+			return err
 		}
 	}
 }
@@ -64,27 +65,32 @@ func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
 	}
 }
 
-// upload runs the upload and emits progress on ch.
-func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) {
+// upload runs the upload until the context is done or the upload
+// timeout expires. It uses the provided websocket conn. It wil emit
+// the amount of bytes written on the provided chan. The returned
+// error is mainly useful for testing, as this code is meant to run
+// in its own goroutine setup by the caller.
+func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 	defer close(out)
 	wholectx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
 	defer cancel()
 	preparedMessage, err := makePreparedMessage(params.BulkMessageSize)
 	if err != nil {
-		return // I believe this should not happen in practice
+		return err
 	}
 	var total int64
 	for wholectx.Err() == nil {
 		err := conn.SetWriteDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
-			return // just bail in case we cannot set deadline
+			return err
 		}
 		if err := conn.WritePreparedMessage(preparedMessage); err != nil {
-			return // just bail if we cannot write
+			return err
 		}
 		total += params.BulkMessageSize
 		out <- total
 	}
+	return nil
 }
 
 // uploadAsync runs the upload and returns a channel where progress is emitted.
@@ -94,8 +100,12 @@ func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 	return out
 }
 
-// Run runs the upload subtest.
-func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) {
+// Run runs the upload subtest. It runs until the ctx is expired or the
+// upload timeout is expired. It uses the provided conn. It emits on the
+// provided channel upload measurements. The returned error is mainly
+// useful for making this function have the same API of download.Run, for
+// which it makes more sense to return an error.
+func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
 	defer close(ch)
 	defer conn.Close()
 	go ignoreIncoming(conn)
@@ -108,4 +118,5 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 			prev = now
 		}
 	}
+	return nil
 }

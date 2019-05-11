@@ -12,8 +12,12 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// Run runs the download subtest.
-func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) {
+// Run runs the download subtest. It runs until the ctx expires or the maximum
+// download time expires. Uses the provided websocket connection. Emits zero
+// or more measurements to the provided channel. Returns the error that caused
+// the download loop to stop, which is mainly useful when testing, since the
+// normal usage of this function is to be run in a separate goroutine.
+func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
 	defer close(ch)
 	defer conn.Close()
 	wholectx, cancel := context.WithTimeout(ctx, params.DownloadTimeout)
@@ -22,11 +26,11 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	for wholectx.Err() == nil {
 		err := conn.SetReadDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
-			return // don't fail the test because of an internal error
+			return err
 		}
 		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
-			return // don't fail the test because of an I/O error
+			return err
 		}
 		if mtype != websocket.TextMessage {
 			continue
@@ -34,10 +38,11 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		var measurement spec.Measurement
 		err = json.Unmarshal(mdata, &measurement)
 		if err != nil {
-			return // fail the test if we got an invalid JSON
+			return err
 		}
 		measurement.Direction = spec.DirectionDownload
 		measurement.Origin = spec.OriginServer
 		ch <- measurement
 	}
+	return nil // this is how success looks like
 }

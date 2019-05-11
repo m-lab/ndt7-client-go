@@ -34,7 +34,7 @@ type connectFn = func(
 // subtestFn is the type of the function running a subtest.
 type subtestFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
-)
+) error
 
 // DefaultWebSocketHandshakeTimeout is the default timeout configured
 // by NewClient in the Client.Dialer.HandshakeTimeout field.

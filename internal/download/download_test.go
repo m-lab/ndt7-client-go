@@ -2,7 +2,10 @@ package download
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
+	"reflect"
 	"testing"
 	"time"
 
@@ -13,18 +16,57 @@ import (
 
 // TestReadText is the case where we read text messages.
 func TestReadText(t *testing.T) {
+	orig := spec.Measurement{
+		AppInfo: spec.AppInfo{
+			NumBytes: 1234,
+		},
+		BBRInfo: spec.BBRInfo{
+			MaxBandwidth: 12345,
+			MinRTT:       1.2345,
+		},
+		Elapsed: 1.234,
+		TCPInfo: spec.TCPInfo{
+			SmoothedRTT: 1.2345,
+			RTTVar:      1.2345,
+		},
+	}
+	data, err := json.Marshal(orig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	outch := make(chan spec.Measurement)
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
+	defer cancel()
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: []byte("{}"),
+		ReadMessageByteArray: data,
 	}
-	defer cancel()
-	go Run(ctx, &conn, outch)
-	for range outch {
-		// ignore
+	go func() {
+		err := Run(ctx, &conn, outch)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	tot := 0
+	for m := range outch {
+		tot++
+		if m.Origin != spec.OriginServer {
+			t.Fatal("The origin is invalid")
+		}
+		if m.Direction != spec.DirectionDownload {
+			t.Fatal("The direction is invalid")
+		}
+		// clear origin and direction for DeepEqual to work
+		m.Origin = ""
+		m.Direction = ""
+		if !reflect.DeepEqual(orig, m) {
+			t.Fatal("The two structs differ")
+		}
+	}
+	if tot <= 0 {
+		t.Fatal("Expected at least one measurement")
 	}
 }
 
@@ -34,14 +76,19 @@ func TestReadBinary(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
+	defer cancel()
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.BinaryMessage,
-		ReadMessageByteArray: []byte("{}"),
+		ReadMessageByteArray: []byte("12345678"),
 	}
-	defer cancel()
-	go Run(ctx, &conn, outch)
+	go func() {
+		err := Run(ctx, &conn, outch)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 	for range outch {
-		// ignore
+		t.Fatal("We didn't expect a measurement here")
 	}
 }
 
@@ -52,15 +99,20 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
+	defer cancel()
 	conn := mocks.Conn{
 		ReadMessageType:       websocket.TextMessage,
 		ReadMessageByteArray:  []byte("{}"),
 		SetReadDeadlineResult: errors.New("mocked error"),
 	}
-	defer cancel()
-	go Run(ctx, &conn, outch)
-	for range outch {
-		// ignore
+	go func() {
+		for range outch {
+			t.Fatal("We didn't expect measurements here")
+		}
+	}()
+	err := Run(ctx, &conn, outch)
+	if err == nil {
+		t.Fatal("We expected to have an error here")
 	}
 }
 
@@ -71,15 +123,20 @@ func TestReadMessageError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
+	defer cancel()
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{}"),
 		ReadMessageResult:    errors.New("mocked error"),
 	}
-	defer cancel()
-	go Run(ctx, &conn, outch)
-	for range outch {
-		// ignore
+	go func() {
+		for range outch {
+			t.Fatal("We didn't expect measurements here")
+		}
+	}()
+	err := Run(ctx, &conn, outch)
+	if err == nil {
+		t.Fatal("We expected to have an error here")
 	}
 }
 
@@ -90,13 +147,18 @@ func TestReadInvalidJSON(t *testing.T) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
+	defer cancel()
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{"),
 	}
-	defer cancel()
-	go Run(ctx, &conn, outch)
-	for range outch {
-		// ignore
+	go func() {
+		for range outch {
+			t.Fatal("We didn't expect measurements here")
+		}
+	}()
+	err := Run(ctx, &conn, outch)
+	if err == nil {
+		t.Fatal("We expected to have an error here")
 	}
 }
