@@ -2,7 +2,7 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <hostname>] [-timeout <seconds>]
+//    ndt7-client [-batch] [-hostname <hostname>] [-timeout <string>]
 //
 // ndt7-client performs a ndt7 nettest.
 //
@@ -14,14 +14,15 @@
 // performing the ndt7 test. The default is to auto-discover a suitable
 // server by using Measurement Lab's locate service.
 //
-// The `-timeout <timeout>` flag specifies after how many seconds a
-// running ndt7 test should timeout. The default is a large enough
-// value that should be suitable for common conditions.
+// The `-timeout <string>` flag specifies the time after which the
+// whole test is interrupted. The `<string>` is a string suitable to
+// be passed to time.ParseDuration, e.g., "15s". The default is a large
+// enough value that should be suitable for common conditions.
 //
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
 //
-// Event emitted in batch mode
+// Events emitted in batch mode
 //
 // This section describes the events emitted in batch mode. The code
 // will always emit a single event per line. In some cases we have
@@ -83,14 +84,17 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
+const (
+	userAgent      = "ndt7-client-go/0.1.0"
+	defaultTimeout = 55 * time.Second
+)
+
 var (
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
-	flagTimeout  = flag.Int64(
-		"timeout", 60, "seconds after which the test is aborted")
+	flagTimeout  = flag.Duration(
+		"timeout", defaultTimeout, "time after which the test is aborted")
 )
-
-const userAgent = "ndt7-client-go/0.1.0"
 
 type runner struct {
 	client  *ndt7.Client
@@ -142,10 +146,7 @@ var osExit = os.Exit
 
 func main() {
 	flag.Parse()
-	timeout := time.Duration(*flagTimeout) * time.Second
-	ctx, cancel := context.WithTimeout(
-		context.Background(), time.Duration(timeout),
-	)
+	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(userAgent)
