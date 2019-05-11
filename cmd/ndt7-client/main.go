@@ -150,7 +150,7 @@ func main() {
 	var r runner
 	r.client = ndt7.NewClient(userAgent)
 	r.client.FQDN = *flagHostname
-	r.emitter = emitter.Interactive{}
+	r.emitter = emitter.NewInteractive()
 	if *flagBatch {
 		r.emitter = emitter.NewBatch()
 	}
