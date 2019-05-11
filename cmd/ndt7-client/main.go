@@ -104,6 +104,7 @@ func (r runner) runSubtest(
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
+	defer r.emitter.OnComplete(subtest) // must be deferred
 	err := r.emitter.OnStarting(subtest)
 	if err != nil {
 		return 1
@@ -122,10 +123,6 @@ func (r runner) runSubtest(
 		if err != nil {
 			return 1
 		}
-	}
-	err = r.emitter.OnComplete(subtest)
-	if err != nil {
-		return 1
 	}
 	return 0
 }
