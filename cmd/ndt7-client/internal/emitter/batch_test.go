@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -87,51 +88,40 @@ func TestEmitInterfaceFailure(t *testing.T) {
 	}
 }
 
-// errMocked is a mocked error
-var errMocked = errors.New("mocked error")
-
-// mockedWriter is a mocked writer
-type mockedWriter struct{}
-
-// Write always returns a mocked error
-func (mockedWriter) Write([]byte) (int, error) {
-	return 0, errMocked
-}
-
 // TestEmitDataFailure ensures that any function in the batch
 // API properly deals with a writing error.
 func TestEmitDataFailure(t *testing.T) {
-	batch := Batch{mockedWriter{}}
+	batch := Batch{mocks.FailingWriter{}}
 	err := batch.emitData([]byte("abc"))
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.emitInterface(1234)
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnStarting("download")
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnError("download", errors.New("an error"))
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnConnected("download", "server-fqdn")
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnDownloadEvent(&spec.Measurement{})
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnUploadEvent(&spec.Measurement{})
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 	err = batch.OnComplete("download")
-	if err != errMocked {
+	if err != mocks.ErrMocked {
 		t.Fatal("Not the result we expected")
 	}
 }
