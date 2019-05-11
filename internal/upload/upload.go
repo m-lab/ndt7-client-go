@@ -70,6 +70,8 @@ func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
 // the amount of bytes written on the provided chan. The returned
 // error is mainly useful for testing, as this code is meant to run
 // in its own goroutine setup by the caller.
+//
+// Note that upload closes the out channel.
 func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 	defer close(out)
 	wholectx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
@@ -87,13 +89,16 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 		if err := conn.WritePreparedMessage(preparedMessage); err != nil {
 			return err
 		}
+		// Note that the following is slighly inaccurate because we
+		// are ignoring the WebSocket overhead et al.
 		total += params.BulkMessageSize
 		out <- total
 	}
 	return nil
 }
 
-// uploadAsync runs the upload and returns a channel where progress is emitted.
+// uploadAsync runs the upload and returns a channel where progress is
+// emitted. The channel will be close when done.
 func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 	out := make(chan int64)
 	go upload(ctx, conn, out)
@@ -105,6 +110,8 @@ func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 // provided channel upload measurements. The returned error is mainly
 // useful for making this function have the same API of download.Run, for
 // which it makes more sense to return an error.
+//
+// Note that run closes both ch and conn.
 func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
 	defer close(ch)
 	defer conn.Close()

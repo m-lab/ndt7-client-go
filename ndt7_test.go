@@ -11,7 +11,8 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-const userAgent = "mocked/0.1.0"
+// userAgent is the user agent used throughout this file
+const userAgent = "ndt7-client-go/0.1.0"
 
 // newMockedClient returns a mocked client that does nothing
 // except pretending it is doing something.

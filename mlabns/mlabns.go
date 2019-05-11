@@ -23,8 +23,7 @@ type httpRequestor interface {
 // httpRequestMaker is the type of the function that
 // creates a new HTTP request for us.
 type httpRequestMaker = func(
-	method, url string, body io.Reader) (*http.Request, error,
-)
+	method, url string, body io.Reader) (*http.Request, error)
 
 // DefaultTimeout is the default value for Client.Timeout
 const DefaultTimeout = 14 * time.Second
@@ -40,7 +39,7 @@ type Client struct {
 	// default value, but you may override it.
 	Timeout time.Duration
 
-	// Tool is the mandatory tool to use. This is initialize by NewClient.
+	// Tool is the mandatory tool to use. This is initialized by NewClient.
 	Tool string
 
 	// UserAgent is the mandatory user agent to be used. Also this
@@ -82,8 +81,8 @@ type serverEntry struct {
 }
 
 // ErrNoAvailableServers is returned when there are no available servers. A
-// background client should treat this error specially and schedule retrying
-// after an exponentially distributed number of seconds.
+// background client should treat this error specially as described in the
+// specification of the ndt7 protocol.
 var ErrNoAvailableServers = errors.New("No available M-Lab servers")
 
 // ErrQueryFailed indicates a non-200 status code.

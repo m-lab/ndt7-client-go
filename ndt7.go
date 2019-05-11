@@ -3,6 +3,10 @@
 // The client will automatically discover a suitable server to use
 // by default. However, you can also manually discover a server and
 // configure the client accordingly.
+//
+// The code configures reasonable I/O timeouts. We recommend to also
+// provide contexts with whole-operation timeouts attached, as we
+// do in the code example provided as part of this package.
 package ndt7
 
 import (

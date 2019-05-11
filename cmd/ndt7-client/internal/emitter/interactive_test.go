@@ -29,8 +29,7 @@ func TestInteractiveOnStarting(t *testing.T) {
 // TestInteractiveOnStartingFailure verifies that OnStarting
 // fails if we cannot write.
 func TestInteractiveOnStartingFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnStarting("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -56,8 +55,7 @@ func TestInteractiveOnError(t *testing.T) {
 // TestInteractiveOnErrorFailure verifies that OnError
 // fails if we cannot write.
 func TestInteractiveOnErrorFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -83,8 +81,7 @@ func TestInteractiveOnConnected(t *testing.T) {
 // TestInteractiveOnConnectedFailure verifies that OnConnected
 // fails if we cannot write.
 func TestInteractiveOnConnectedFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnConnected("download", "FQDN")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -123,8 +120,7 @@ func TestInteractiveOnDownloadEvent(t *testing.T) {
 // TestInteractiveOnDownloadEventFailure verifies that OnDownloadEvent
 // fails if we cannot write.
 func TestInteractiveOnDownloadEventFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnDownloadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -173,8 +169,7 @@ func TestInteractiveOnUploadEventDivideByZero(t *testing.T) {
 // TestInteractiveOnUploadEventFailure verifies that OnUploadEvent
 // fails if we cannot write.
 func TestInteractiveOnUploadEventFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnUploadEvent(&spec.Measurement{
 		Elapsed: 1.0,
 	})
@@ -202,8 +197,7 @@ func TestInteractiveOnComplete(t *testing.T) {
 // TestInteractiveOnCompleteFailure verifies that OnComplete
 // fails if we cannot write.
 func TestInteractiveOnCompleteFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	interactive := Interactive{sw}
+	interactive := Interactive{&mocks.FailingWriter{}}
 	err := interactive.OnComplete("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")

@@ -17,6 +17,8 @@ import (
 // or more measurements to the provided channel. Returns the error that caused
 // the download loop to stop, which is mainly useful when testing, since the
 // normal usage of this function is to be run in a separate goroutine.
+//
+// Note that this function closes conn and ch when exiting.
 func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
 	defer close(ch)
 	defer conn.Close()

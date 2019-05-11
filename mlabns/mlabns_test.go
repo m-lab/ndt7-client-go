@@ -7,15 +7,22 @@ import (
 	"io"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/m-lab/ndt7-client-go/internal/mocks"
+)
+
+const (
+	// toolName is the tool name that we use in this file.
+	toolName = "ndt_ssl"
+
+	// userAgent is the user agent that we use in this file.
+	userAgent = "ndt7-client-go/0.1.0"
 )
 
 // TestQueryCommonCase tests the common case.
 func TestQueryCommonCase(t *testing.T) {
 	const expectedFQDN = "ndt7-mlab1-nai01.measurementlab.org"
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestor = mocks.NewHTTPRequestor(
 		200, []byte(fmt.Sprintf(`{"fqdn":"%s"}`, expectedFQDN)), nil,
 	)
@@ -30,7 +37,7 @@ func TestQueryCommonCase(t *testing.T) {
 
 // TestQueryURLError ensures we deal with an invalid URL.
 func TestQueryURLError(t *testing.T) {
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.BaseURL = "\t" // breaks the parser
 	_, err := client.Query(context.Background())
 	if err == nil {
@@ -42,7 +49,7 @@ func TestQueryURLError(t *testing.T) {
 // with an http.NewRequest errors.
 func TestQueryNewRequestError(t *testing.T) {
 	mockedError := errors.New("mocked error")
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestMaker = func(
 		method, url string, body io.Reader) (*http.Request, error,
 	) {
@@ -57,7 +64,7 @@ func TestQueryNewRequestError(t *testing.T) {
 // TestQueryNetworkError ensures we deal with network errors.
 func TestQueryNetworkError(t *testing.T) {
 	mockedError := errors.New("mocked error")
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestor = mocks.NewHTTPRequestor(
 		0, []byte{}, mockedError,
 	)
@@ -70,7 +77,7 @@ func TestQueryNetworkError(t *testing.T) {
 // TestQueryInvalidStatusCode ensures we deal with
 // a non 200 HTTP status code.
 func TestQueryInvalidStatusCode(t *testing.T) {
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestor = mocks.NewHTTPRequestor(
 		500, []byte{}, nil,
 	)
@@ -83,7 +90,7 @@ func TestQueryInvalidStatusCode(t *testing.T) {
 // TestQueryJSONParseError ensures we deal with
 // a JSON parse error.
 func TestQueryJSONParseError(t *testing.T) {
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestor = mocks.NewHTTPRequestor(
 		200, []byte("{"), nil,
 	)
@@ -96,7 +103,7 @@ func TestQueryJSONParseError(t *testing.T) {
 // TestQueryNoServer ensures we deal with the case
 // where no servers are returned.
 func TestQueryNoServers(t *testing.T) {
-	client := NewClient("ndt_ssl", "ndt7-client-go")
+	client := NewClient(toolName, userAgent)
 	client.requestor = mocks.NewHTTPRequestor(
 		204, []byte(""), nil,
 	)
@@ -111,10 +118,8 @@ func TestIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	client := NewClient("ndt_ssl", "ndt7-client-go/0.1.0")
-	fqdn, err := client.Query(ctx)
+	client := NewClient(toolName, userAgent)
+	fqdn, err := client.Query(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

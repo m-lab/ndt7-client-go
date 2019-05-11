@@ -100,10 +100,11 @@ func TestSetReadDeadlineError(t *testing.T) {
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
+	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
 		ReadMessageType:       websocket.TextMessage,
 		ReadMessageByteArray:  []byte("{}"),
-		SetReadDeadlineResult: errors.New("mocked error"),
+		SetReadDeadlineResult: mockedErr,
 	}
 	go func() {
 		for range outch {
@@ -111,8 +112,8 @@ func TestSetReadDeadlineError(t *testing.T) {
 		}
 	}()
 	err := Run(ctx, &conn, outch)
-	if err == nil {
-		t.Fatal("We expected to have an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error that we were expecting")
 	}
 }
 
@@ -124,10 +125,11 @@ func TestReadMessageError(t *testing.T) {
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
+	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.TextMessage,
 		ReadMessageByteArray: []byte("{}"),
-		ReadMessageResult:    errors.New("mocked error"),
+		ReadMessageResult:    mockedErr,
 	}
 	go func() {
 		for range outch {
@@ -135,8 +137,8 @@ func TestReadMessageError(t *testing.T) {
 		}
 	}()
 	err := Run(ctx, &conn, outch)
-	if err == nil {
-		t.Fatal("We expected to have an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error that we were expecting")
 	}
 }
 

@@ -50,33 +50,36 @@ func TestNormal(t *testing.T) {
 	}
 }
 
-// TestSetReadDealindError ensures that we deal with
+// TestSetReadDealineError ensures that we deal with
 // the case where SetReadDeadline fails.
 func TestSetReadDeadlineError(t *testing.T) {
+	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
-		SetReadDeadlineResult: errors.New("mocked error"),
+		SetReadDeadlineResult: mockedErr,
 	}
 	err := ignoreIncoming(&conn)
-	if err == nil {
-		t.Fatal("Expected an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error we expected")
 	}
 }
 
 // TestReadMessageError ensures that we deal with
 // the case where ReadMessage fails.
 func TestReadMessageError(t *testing.T) {
+	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
-		ReadMessageResult: errors.New("mocked error"),
+		ReadMessageResult: mockedErr,
 	}
 	err := ignoreIncoming(&conn)
-	if err == nil {
-		t.Fatal("Expected an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error we expected")
 	}
 }
 
 // TestMakePreparedMessageError ensures that we deal with
 // the case where makePreparedMessage fails.
 func TestMakePreparedMessageError(t *testing.T) {
+	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
@@ -84,7 +87,7 @@ func TestMakePreparedMessageError(t *testing.T) {
 	defer cancel()
 	savedFunc := makePreparedMessage
 	makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
-		return nil, errors.New("mocked error")
+		return nil, mockedErr
 	}
 	conn := mocks.Conn{}
 	go func() {
@@ -93,22 +96,23 @@ func TestMakePreparedMessageError(t *testing.T) {
 		}
 	}()
 	err := upload(ctx, &conn, outch)
-	if err == nil {
-		t.Fatal("Expected an error here")
-	}
 	makePreparedMessage = savedFunc
+	if err != mockedErr {
+		t.Fatal("Not the error we expected")
+	}
 }
 
 // TestSetWriteDeadlineError ensures that we deal with
 // the case where SetWriteDeadline fails.
 func TestSetWriteDeadlineError(t *testing.T) {
+	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
 	conn := mocks.Conn{
-		SetWriteDeadlineResult: errors.New("mocked error"),
+		SetWriteDeadlineResult: mockedErr,
 	}
 	go func() {
 		for range outch {
@@ -116,21 +120,22 @@ func TestSetWriteDeadlineError(t *testing.T) {
 		}
 	}()
 	err := upload(ctx, &conn, outch)
-	if err == nil {
-		t.Fatal("Expected an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error we expected")
 	}
 }
 
 // TestWritePreparedMessageError ensures that we deal with
 // the case where WritePreparedMessage fails.
 func TestWritePreparedMessageError(t *testing.T) {
+	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)
 	ctx, cancel := context.WithTimeout(
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
 	conn := mocks.Conn{
-		WritePreparedMessageResult: errors.New("mocked error"),
+		WritePreparedMessageResult: mockedErr,
 	}
 	go func() {
 		for range outch {
@@ -138,7 +143,7 @@ func TestWritePreparedMessageError(t *testing.T) {
 		}
 	}()
 	err := upload(ctx, &conn, outch)
-	if err == nil {
-		t.Fatal("Expected an error here")
+	if err != mockedErr {
+		t.Fatal("Not the error we expected")
 	}
 }

@@ -42,8 +42,7 @@ func TestBatchOnStarting(t *testing.T) {
 // TestBatchOnStartingFailure verifies that OnStarting
 // fails if we cannot write.
 func TestBatchOnStartingFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnStarting("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -86,8 +85,7 @@ func TestBatchOnError(t *testing.T) {
 // TestBatchOnErrorFailure verifies that OnError
 // fails if we cannot write.
 func TestBatchOnErrorFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -130,8 +128,7 @@ func TestBatchOnConnected(t *testing.T) {
 // TestBatchOnConnectedFailure verifies that OnConnected
 // fails if we cannot write.
 func TestBatchOnConnectedFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnConnected("download", "FQDN")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -211,8 +208,7 @@ func TestBatchOnDownloadEvent(t *testing.T) {
 // TestBatchOnDownloadEventFailure verifies that OnDownloadEvent
 // fails if we cannot write.
 func TestBatchOnDownloadEventFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnDownloadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -273,8 +269,7 @@ func TestBatchOnUploadEvent(t *testing.T) {
 // TestBatchOnUploadEventFailure verifies that OnUploadEvent
 // fails if we cannot write.
 func TestBatchOnUploadEventFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnUploadEvent(&spec.Measurement{
 		Elapsed: 1.0,
 	})
@@ -315,8 +310,7 @@ func TestBatchOnComplete(t *testing.T) {
 // TestBatchOnCompleteFailure verifies that OnComplete
 // fails if we cannot write.
 func TestBatchOnCompleteFailure(t *testing.T) {
-	sw := &mocks.FailingWriter{}
-	batch := Batch{sw}
+	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnComplete("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -324,7 +318,7 @@ func TestBatchOnCompleteFailure(t *testing.T) {
 }
 
 // TestNewBatchConstructor verifies that we are
-// constructing an batch bound to stdout.
+// constructing a batch bound to stdout.
 func TestNewBatchConstructor(t *testing.T) {
 	batch := NewBatch()
 	if batch.Writer != os.Stdout {

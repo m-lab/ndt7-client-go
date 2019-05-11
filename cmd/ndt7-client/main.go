@@ -4,8 +4,6 @@
 //
 //    ndt7-client [-batch] [-hostname <hostname>] [-timeout <string>]
 //
-// ndt7-client performs a ndt7 nettest.
-//
 // The `-batch` flag causes the command to emit JSON messages on the
 // standard output, thus allowing for easy machine parsing. The default
 // is to emit user friendly pretty output.
@@ -54,7 +52,7 @@
 //   {"key": "measurement", "value": <value>}
 //
 // where `<value>` is a serialized spec.Measurement struct. Note that
-// the minimal `<value>` MUST contain a field name `"subtest"` with
+// the minimal `<value>` MUST contain a field named `"subtest"` with
 // value equal either to `"download"` or `"upload"`.
 //
 // Finally, this event is always emitted at the end of the subtest:
@@ -67,10 +65,10 @@
 // Exit code
 //
 // This tool exits with zero on success, nonzero on failure. Under
-// some severe internal error conditions, this tool with exit using
+// some severe internal error conditions, this tool will exit using
 // a nonzero exit code without being able to print a diagnostic
 // message explaining the error that occurred. In all other cases,
-// checking the logs should help to understand the error.
+// checking the ouput should help to understand the error cause.
 package main
 
 import (
@@ -151,9 +149,10 @@ func main() {
 	var r runner
 	r.client = ndt7.NewClient(userAgent)
 	r.client.FQDN = *flagHostname
-	r.emitter = emitter.NewInteractive()
 	if *flagBatch {
 		r.emitter = emitter.NewBatch()
+	} else {
+		r.emitter = emitter.NewInteractive()
 	}
 	osExit(r.runDownload(ctx) + r.runUpload(ctx))
 }
