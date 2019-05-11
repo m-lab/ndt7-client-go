@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/m-lab/ndt7-client-go/internal/mocks"
 )
@@ -102,5 +103,22 @@ func TestQueryNoServers(t *testing.T) {
 	_, err := client.Query(context.Background())
 	if err != ErrNoAvailableServers {
 		t.Fatal("Not the error we were expecting")
+	}
+}
+
+// TestIntegration is an integration test for mlabns
+func TestIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client := NewClient("ndt_ssl", "ndt7-client-go/0.1.0")
+	fqdn, err := client.Query(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fqdn == "" {
+		t.Fatal("unexpected empty fqdn")
 	}
 }
