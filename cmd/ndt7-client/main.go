@@ -68,7 +68,7 @@
 // some severe internal error conditions, this tool will exit using
 // a nonzero exit code without being able to print a diagnostic
 // message explaining the error that occurred. In all other cases,
-// checking the ouput should help to understand the error cause.
+// checking the output should help to understand the error cause.
 package main
 
 import (

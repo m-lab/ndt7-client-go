@@ -96,7 +96,7 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 		if err := conn.WritePreparedMessage(preparedMessage); err != nil {
 			return err
 		}
-		// Note that the following is slighly inaccurate because we
+		// Note that the following is slightly inaccurate because we
 		// are ignoring the WebSocket overhead et al.
 		total += params.BulkMessageSize
 		out <- total
