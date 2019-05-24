@@ -22,7 +22,7 @@ func TestInteractiveOnStarting(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	if !reflect.DeepEqual(sw.Data[0], []byte("\rstarting download")) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
@@ -48,7 +48,7 @@ func TestInteractiveOnError(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	if !reflect.DeepEqual(sw.Data[0], []byte("\rdownload failed: mocked error\n")) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
@@ -74,7 +74,7 @@ func TestInteractiveOnConnected(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	if !reflect.DeepEqual(sw.Data[0], []byte("\rdownload in progress with FQDN\n")) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
@@ -113,7 +113,7 @@ func TestInteractiveOnDownloadEvent(t *testing.T) {
 		sw.Data[0],
 		[]byte("\rMaxBandwidth:     6.4 Mbit/s - RTT:   71/ 150/  11 (min/smoothed/var) ms"),
 	) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
@@ -148,7 +148,7 @@ func TestInteractiveOnUploadEvent(t *testing.T) {
 		sw.Data[0],
 		[]byte("\rAvg. speed  :   266.7 Mbit/s"),
 	) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
@@ -190,7 +190,7 @@ func TestInteractiveOnComplete(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	if !reflect.DeepEqual(sw.Data[0], []byte("\ndownload: complete\n")) {
-		t.Fatal("unexpected ouput")
+		t.Fatal("unexpected output")
 	}
 }
 
