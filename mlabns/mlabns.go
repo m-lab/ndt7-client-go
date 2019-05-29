@@ -12,17 +12,9 @@ import (
 	"time"
 )
 
-// httpRequestor is the interface of the implementation that
-// performs a mlabns HTTP request for us.
-type httpRequestor interface {
-	// Do performs the request and returns either a response or
-	// a non-nil error to the caller.
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// httpRequestMaker is the type of the function that
+// HttpRequestMaker is the type of the function that
 // creates a new HTTP request for us.
-type httpRequestMaker = func(
+type HttpRequestMaker = func(
 	method, url string, body io.Reader) (*http.Request, error)
 
 // DefaultTimeout is the default value for Client.Timeout
@@ -33,6 +25,12 @@ type Client struct {
 	// BaseURL is the optional base URL for contacting mlabns. This is
 	// initialized in NewClient, but you may override it.
 	BaseURL string
+
+	// HTTPClient is the client that will perform the request. By default
+	// it is initialized to http.DefaultClient. You may override it for
+	// testing purpses and more generally whenever you are not satisfied
+	// with the behaviour of the default HTTP client.
+	HTTPClient *http.Client
 
 	// Timeout is the optional maximum amount of time we're willing to wait
 	// for mlabns to respond. This setting is initialized by NewClient to its
@@ -46,13 +44,9 @@ type Client struct {
 	// field is initialized by NewClient.
 	UserAgent string
 
-	// requestMaker is the function that creates a request. This is
+	// RequestMaker is the function that creates a request. This is
 	// initialized in NewClient, but you may override it.
-	requestMaker httpRequestMaker
-
-	// requestor is the implementation that performs the request. This is
-	// initialized in NewClient, but you may override it.
-	requestor httpRequestor
+	RequestMaker HttpRequestMaker
 }
 
 // baseURL is the default base URL.
@@ -66,9 +60,9 @@ const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 func NewClient(tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
+		HTTPClient:   http.DefaultClient,
 		Timeout:      DefaultTimeout,
-		requestMaker: http.NewRequest,
-		requestor:    http.DefaultClient,
+		RequestMaker: http.NewRequest,
 		Tool:         tool,
 		UserAgent:    userAgent,
 	}
@@ -90,7 +84,7 @@ var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
 // doGET is an internal function used to perform the request.
 func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
-	request, err := c.requestMaker("GET", URL, nil)
+	request, err := c.RequestMaker("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +92,7 @@ func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 	requestctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	request = request.WithContext(requestctx)
-	response, err := c.requestor.Do(request)
+	response, err := c.HTTPClient.Do(request)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/m-lab/ndt7-client-go/internal/mocks"
@@ -23,7 +24,7 @@ const (
 func TestQueryCommonCase(t *testing.T) {
 	const expectedFQDN = "ndt7-mlab1-nai01.measurementlab.org"
 	client := NewClient(toolName, userAgent)
-	client.requestor = mocks.NewHTTPRequestor(
+	client.HTTPClient = mocks.NewHTTPClient(
 		200, []byte(fmt.Sprintf(`{"fqdn":"%s"}`, expectedFQDN)), nil,
 	)
 	fqdn, err := client.Query(context.Background())
@@ -50,7 +51,7 @@ func TestQueryURLError(t *testing.T) {
 func TestQueryNewRequestError(t *testing.T) {
 	mockedError := errors.New("mocked error")
 	client := NewClient(toolName, userAgent)
-	client.requestMaker = func(
+	client.RequestMaker = func(
 		method, url string, body io.Reader) (*http.Request, error,
 	) {
 		return nil, mockedError
@@ -65,11 +66,13 @@ func TestQueryNewRequestError(t *testing.T) {
 func TestQueryNetworkError(t *testing.T) {
 	mockedError := errors.New("mocked error")
 	client := NewClient(toolName, userAgent)
-	client.requestor = mocks.NewHTTPRequestor(
+	client.HTTPClient = mocks.NewHTTPClient(
 		0, []byte{}, mockedError,
 	)
 	_, err := client.Query(context.Background())
-	if err != mockedError {
+	// According to Go docs, the return value of http.Client.Do is always
+	// of type `*url.Error` and wraps the original error.
+	if err.(*url.Error).Err != mockedError {
 		t.Fatal("Not the error we were expecting")
 	}
 }
@@ -78,7 +81,7 @@ func TestQueryNetworkError(t *testing.T) {
 // a non 200 HTTP status code.
 func TestQueryInvalidStatusCode(t *testing.T) {
 	client := NewClient(toolName, userAgent)
-	client.requestor = mocks.NewHTTPRequestor(
+	client.HTTPClient = mocks.NewHTTPClient(
 		500, []byte{}, nil,
 	)
 	_, err := client.Query(context.Background())
@@ -91,7 +94,7 @@ func TestQueryInvalidStatusCode(t *testing.T) {
 // a JSON parse error.
 func TestQueryJSONParseError(t *testing.T) {
 	client := NewClient(toolName, userAgent)
-	client.requestor = mocks.NewHTTPRequestor(
+	client.HTTPClient = mocks.NewHTTPClient(
 		200, []byte("{"), nil,
 	)
 	_, err := client.Query(context.Background())
@@ -104,7 +107,7 @@ func TestQueryJSONParseError(t *testing.T) {
 // where no servers are returned.
 func TestQueryNoServers(t *testing.T) {
 	client := NewClient(toolName, userAgent)
-	client.requestor = mocks.NewHTTPRequestor(
+	client.HTTPClient = mocks.NewHTTPClient(
 		204, []byte(""), nil,
 	)
 	_, err := client.Query(context.Background())
