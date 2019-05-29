@@ -16,5 +16,5 @@ Reference ndt7 Go client implementation. Useful resources:
     https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md
 ).
 
-The master branch contains stable code. We strive not to break the API,
-however we do not make strong API compatibility promises.
+The master branch contains stable code. We don't promise we won't break
+the API, but we'll try not to.
