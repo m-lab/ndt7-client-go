@@ -12,14 +12,6 @@ import (
 	"time"
 )
 
-// HttpRequestor is the interface of the implementation that
-// performs a mlabns HTTP request for us.
-type HttpRequestor interface {
-	// Do performs the request and returns either a response or
-	// a non-nil error to the caller.
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // HttpRequestMaker is the type of the function that
 // creates a new HTTP request for us.
 type HttpRequestMaker = func(
@@ -33,6 +25,12 @@ type Client struct {
 	// BaseURL is the optional base URL for contacting mlabns. This is
 	// initialized in NewClient, but you may override it.
 	BaseURL string
+
+	// HTTPClient is the client that will perform the request. By default
+	// it is initialized to http.DefaultClient. You may override it for
+	// testing purpses and more generally whenever you are not satisfied
+	// with the behaviour of the default HTTP client.
+	HTTPClient *http.Client
 
 	// Timeout is the optional maximum amount of time we're willing to wait
 	// for mlabns to respond. This setting is initialized by NewClient to its
@@ -49,10 +47,6 @@ type Client struct {
 	// RequestMaker is the function that creates a request. This is
 	// initialized in NewClient, but you may override it.
 	RequestMaker HttpRequestMaker
-
-	// Requestor is the implementation that performs the request. This is
-	// initialized in NewClient, but you may override it.
-	Requestor HttpRequestor
 }
 
 // baseURL is the default base URL.
@@ -68,7 +62,7 @@ func NewClient(tool, userAgent string) *Client {
 		BaseURL:      baseURL,
 		Timeout:      DefaultTimeout,
 		RequestMaker: http.NewRequest,
-		Requestor:    http.DefaultClient,
+		HTTPClient:   http.DefaultClient,
 		Tool:         tool,
 		UserAgent:    userAgent,
 	}
@@ -98,7 +92,7 @@ func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 	requestctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	request = request.WithContext(requestctx)
-	response, err := c.Requestor.Do(request)
+	response, err := c.HTTPClient.Do(request)
 	if err != nil {
 		return nil, err
 	}

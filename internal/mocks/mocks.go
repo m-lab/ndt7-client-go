@@ -84,27 +84,29 @@ func (r *reponseBody) Close() error {
 	return nil
 }
 
-// HTTPRequestor is a mockable HTTP requestor
-type HTTPRequestor struct {
-	// Response is the response bound to this requestor.
+type httpTransport struct {
 	Response *http.Response
-
-	// Error is the error to return.
-	Error error
+	Error    error
 }
 
-// NewHTTPRequestor returns a mockable HTTP requestor.
-func NewHTTPRequestor(code int, body []byte, err error) *HTTPRequestor {
-	return &HTTPRequestor{
-		Error: err,
-		Response: &http.Response{
-			Body:       newResponseBody(body),
-			StatusCode: code,
+// NewHTTPClient returns a mocked *http.Client.
+func NewHTTPClient(code int, body []byte, err error) *http.Client {
+	return &http.Client{
+		Transport: &httpTransport{
+			Error: err,
+			Response: &http.Response{
+				Body:       newResponseBody(body),
+				StatusCode: code,
+			},
 		},
 	}
 }
 
-// Do executes the request to return a response or an error.
-func (r *HTTPRequestor) Do(req *http.Request) (*http.Response, error) {
-	return r.Response, r.Error
+func (r *httpTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Cannot be more concise than this (i.e. `return r.Error, r.Response`) because
+	// http.Client.Do warns if both Error and Response are non nil
+	if r.Error != nil {
+		return nil, r.Error
+	}
+	return r.Response, nil
 }
