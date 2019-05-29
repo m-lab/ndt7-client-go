@@ -60,9 +60,9 @@ const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
 func NewClient(tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
+		HTTPClient:   http.DefaultClient,
 		Timeout:      DefaultTimeout,
 		RequestMaker: http.NewRequest,
-		HTTPClient:   http.DefaultClient,
 		Tool:         tool,
 		UserAgent:    userAgent,
 	}
