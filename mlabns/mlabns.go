@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-// httpRequestor is the interface of the implementation that
+// HttpRequestor is the interface of the implementation that
 // performs a mlabns HTTP request for us.
-type httpRequestor interface {
+type HttpRequestor interface {
 	// Do performs the request and returns either a response or
 	// a non-nil error to the caller.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// httpRequestMaker is the type of the function that
+// HttpRequestMaker is the type of the function that
 // creates a new HTTP request for us.
-type httpRequestMaker = func(
+type HttpRequestMaker = func(
 	method, url string, body io.Reader) (*http.Request, error)
 
 // DefaultTimeout is the default value for Client.Timeout
@@ -46,13 +46,13 @@ type Client struct {
 	// field is initialized by NewClient.
 	UserAgent string
 
-	// requestMaker is the function that creates a request. This is
+	// RequestMaker is the function that creates a request. This is
 	// initialized in NewClient, but you may override it.
-	requestMaker httpRequestMaker
+	RequestMaker HttpRequestMaker
 
-	// requestor is the implementation that performs the request. This is
+	// Requestor is the implementation that performs the request. This is
 	// initialized in NewClient, but you may override it.
-	requestor httpRequestor
+	Requestor HttpRequestor
 }
 
 // baseURL is the default base URL.
@@ -67,8 +67,8 @@ func NewClient(tool, userAgent string) *Client {
 	return &Client{
 		BaseURL:      baseURL,
 		Timeout:      DefaultTimeout,
-		requestMaker: http.NewRequest,
-		requestor:    http.DefaultClient,
+		RequestMaker: http.NewRequest,
+		Requestor:    http.DefaultClient,
 		Tool:         tool,
 		UserAgent:    userAgent,
 	}
@@ -90,7 +90,7 @@ var ErrQueryFailed = errors.New("mlabns returned non-200 status code")
 
 // doGET is an internal function used to perform the request.
 func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
-	request, err := c.requestMaker("GET", URL, nil)
+	request, err := c.RequestMaker("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (c *Client) doGET(ctx context.Context, URL string) ([]byte, error) {
 	requestctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 	request = request.WithContext(requestctx)
-	response, err := c.requestor.Do(request)
+	response, err := c.Requestor.Do(request)
 	if err != nil {
 		return nil, err
 	}
