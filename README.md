@@ -21,35 +21,27 @@ the API, but we'll try not to.
 
 ## Installing
 
-You need Go >= 1.11. We use modules. Make sure that (1) there is
-no `GOPATH` and (2) Go < 1.13 uses modules by default. To do
-that, do the following in your shell:
+You need Go >= 1.11. We use modules. Make sure Go knows that:
 
 ```bash
-unset GOPATH           # 1.
-export GO111MODULE=on  # 2.
+export GO111MODULE=on
 ```
 
-### Cloning the sources and developing
-
-Make sure you environment is correctly set as explained above. To clone
-the sources in the current working directory, run:
+Clone the repository wherever you want with
 
 ```bash
 git clone https://github.com/m-lab/ndt7-client-go
 ```
 
-Then you can enter the directory and do usual Go development.
+From inside the repository, use `go get ./cmd/ndt7-client` to
+build the client. Binaries will be placed in `$GOPATH/bin`, if
+`GOPATH` is set, and in `$HOME/go/bin` otherwise.
 
-### Compiling the ndt7-client command on the fly
-
-Make sure you environment is correctly set as explained above. Then
-compile on the fly the ndt7-client command with:
-
+If you're into a one-off install, this
 
 ```bash
 go get -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
 ```
 
-This will compile the `ndt7-client` binary and install it into
-the `$HOME/go/bin` directory.
+is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
+and then cancelling the repository directory.
