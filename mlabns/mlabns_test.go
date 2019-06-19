@@ -14,7 +14,7 @@ import (
 
 const (
 	// toolName is the tool name that we use in this file.
-	toolName = "ndt_ssl"
+	toolName = "ndt7"
 
 	// userAgent is the user agent that we use in this file.
 	userAgent = "ndt7-client-go/0.1.0"

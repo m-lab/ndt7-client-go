@@ -98,7 +98,7 @@ func NewClient(userAgent string) *Client {
 		locate: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
-		MLabNSClient: mlabns.NewClient("ndt_ssl", userAgent),
+		MLabNSClient: mlabns.NewClient("ndt7", userAgent),
 		upload:       upload.Run,
 		UserAgent:    userAgent,
 	}

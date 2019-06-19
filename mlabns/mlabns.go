@@ -50,10 +50,7 @@ type Client struct {
 }
 
 // baseURL is the default base URL.
-//
-// TODO(bassosimone): when ndt7 is deployed on the whole platform, we can
-// stop using the staging mlabns service and use the production one.
-const baseURL = "https://locate-dot-mlab-staging.appspot.com/"
+const baseURL = "https://locate.measurementlab.net/"
 
 // NewClient creates a new Client instance with mandatory userAgent, and tool
 // name. For running ndt7, use "ndt7" as the tool name.
