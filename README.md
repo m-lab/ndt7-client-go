@@ -18,3 +18,38 @@ Reference ndt7 Go client implementation. Useful resources:
 
 The master branch contains stable code. We don't promise we won't break
 the API, but we'll try not to.
+
+## Installing
+
+You need Go >= 1.11. We use modules. Make sure that (1) there is
+no `GOPATH` and (2) Go < 1.13 uses modules by default. To do
+that, do the following in your shell:
+
+```bash
+unset GOPATH           # 1.
+export GO111MODULE=on  # 2.
+```
+
+### Cloning the sources and developing
+
+Make sure you environment is correctly set as explained above. To clone
+the sources in the current working directory, run:
+
+```bash
+git clone https://github.com/m-lab/ndt7-client-go
+```
+
+Then you can enter the directory and do usual Go development.
+
+### Compiling the ndt7-client command on the fly
+
+Make sure you environment is correctly set as explained above. Then
+compile on the fly the ndt7-client command with:
+
+
+```bash
+go get -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
+```
+
+This will compile the `ndt7-client` binary and install it into
+the `$HOME/go/bin` directory.
