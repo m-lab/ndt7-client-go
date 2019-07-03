@@ -103,7 +103,7 @@ func (me mockedEmitter) OnComplete(subtest string) error {
 // the emitter.OnStarting function fails.
 func TestRunSubtestOnStartingError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(userAgent),
+		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			StartingError: errors.New("mocked error"),
 		},
@@ -129,7 +129,7 @@ func TestRunSubtestOnStartingError(t *testing.T) {
 // the emitter.OnConnected function fails.
 func TestRunSubtestOnConnectedError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(userAgent),
+		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			ConnectedError: errors.New("mocked error"),
 		},
@@ -155,7 +155,7 @@ func TestRunSubtestOnConnectedError(t *testing.T) {
 // the emitter.OnComplete function fails.
 func TestRunSubtestOnCompleteError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(userAgent),
+		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			CompleteError: errors.New("mocked error"),
 		},
@@ -181,7 +181,7 @@ func TestRunSubtestOnCompleteError(t *testing.T) {
 // the emitEvent function fails.
 func TestRunSubtestEmitEventError(t *testing.T) {
 	runner := runner{
-		client:  ndt7.NewClient(userAgent),
+		client:  ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{},
 	}
 	code := runner.runSubtest(
@@ -213,7 +213,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	}
 	writer := &mocks.SavingWriter{}
 	runner := runner{
-		client:  ndt7.NewClient(userAgent),
+		client:  ndt7.NewClient(clientName, clientVersion),
 		emitter: emitter.Batch{Writer: writer},
 	}
 	code := runner.runSubtest(
@@ -269,7 +269,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	}
 	writer := &mocks.SavingWriter{}
 	runner := runner{
-		client:  ndt7.NewClient(userAgent),
+		client:  ndt7.NewClient(clientName, clientVersion),
 		emitter: emitter.Batch{Writer: writer},
 	}
 	runner.client.MLabNSClient.BaseURL = "\t" // URL parser error
