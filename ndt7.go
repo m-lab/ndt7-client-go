@@ -26,11 +26,11 @@ import (
 )
 
 const (
-	// ClientLibraryName is the name of this library
-	ClientLibraryName = "ndt7-client-go"
+	// libraryName is the name of this library
+	libraryName = "ndt7-client-go"
 
-	// ClientLibraryVersion is the version of this library
-	ClientLibraryVersion = "0.1.0"
+	// libraryVersion is the version of this library
+	libraryVersion = "0.1.0"
 )
 
 // locateFn is the type of function used to locate a server.
@@ -95,7 +95,7 @@ type Client struct {
 
 // makeUserAgent creates the user agent string
 func makeUserAgent(clientName, clientVersion string) string {
-	return clientName + "/" + clientVersion + " " + ClientLibraryName + "/" + ClientLibraryVersion
+	return clientName + "/" + clientVersion + " " + libraryName + "/" + libraryVersion
 }
 
 // NewClient creates a new client instance identified by the specified
@@ -140,8 +140,8 @@ func (c *Client) doConnect(
 	URL.Path = URLPath
 	q := URL.Query()
 	q.Set("client_arch", runtime.GOARCH)
-	q.Set("client_library_name", ClientLibraryName)
-	q.Set("client_library_version", ClientLibraryVersion)
+	q.Set("client_library_name", libraryName)
+	q.Set("client_library_version", libraryVersion)
 	q.Set("client_name", c.ClientName)
 	q.Set("client_os", runtime.GOOS)
 	q.Set("client_version", c.ClientVersion)
