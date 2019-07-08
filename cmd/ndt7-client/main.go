@@ -2,7 +2,7 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <name>] [-insecure] [-timeout <string>]
+//    ndt7-client [-batch] [-hostname <name>] [-no-verify] [-timeout <string>]
 //
 // The `-batch` flag causes the command to emit JSON messages on the
 // standard output, thus allowing for easy machine parsing. The default
@@ -12,7 +12,7 @@
 // performing the ndt7 test. The default is to auto-discover a suitable
 // server by using Measurement Lab's locate service.
 //
-// The `-insecure` flag allows to skip TLS certificate verification.
+// The `-no-verify` flag allows to skip TLS certificate verification.
 //
 // The `-timeout <string>` flag specifies the time after which the
 // whole test is interrupted. The `<string>` is a string suitable to
@@ -92,7 +92,7 @@ const (
 
 var (
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
-	flagInsecure = flag.Bool("insecure", false, "skip TLS certificate verification")
+	flagInsecure = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
