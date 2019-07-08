@@ -92,7 +92,7 @@ const (
 
 var (
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
-	flagInsecure = flag.Bool("no-verify", false, "skip TLS certificate verification")
+	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
@@ -165,7 +165,7 @@ func main() {
 	var r runner
 	r.client = ndt7.NewClient(userAgent)
 	r.client.Dialer.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: *flagInsecure,
+		InsecureSkipVerify: *flagNoVerify,
 	}
 	r.client.FQDN = *flagHostname
 	if *flagBatch {
