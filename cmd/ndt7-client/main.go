@@ -2,15 +2,17 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <hostname>] [-timeout <string>]
+//    ndt7-client [-batch] [-hostname <name>] [-insecure] [-timeout <string>]
 //
 // The `-batch` flag causes the command to emit JSON messages on the
 // standard output, thus allowing for easy machine parsing. The default
 // is to emit user friendly pretty output.
 //
-// The `-hostname <hostname>` flag specifies the hostname to use for
+// The `-hostname <name>` flag specifies to use the `name` hostname for
 // performing the ndt7 test. The default is to auto-discover a suitable
 // server by using Measurement Lab's locate service.
+//
+// The `-insecure` flag allows to skip TLS certificate verification.
 //
 // The `-timeout <string>` flag specifies the time after which the
 // whole test is interrupted. The `<string>` is a string suitable to
@@ -73,6 +75,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"os"
 	"time"
@@ -89,6 +92,7 @@ const (
 
 var (
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
+	flagInsecure = flag.Bool("insecure", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
@@ -160,6 +164,9 @@ func main() {
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(userAgent)
+	r.client.Dialer.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: *flagInsecure,
+	}
 	r.client.FQDN = *flagHostname
 	if *flagBatch {
 		r.emitter = emitter.NewBatch()
