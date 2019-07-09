@@ -14,5 +14,6 @@ type Conn interface {
 	SetReadLimit(limit int64)
 	SetReadDeadline(t time.Time) error
 	SetWriteDeadline(t time.Time) error
+	WriteControl(messageType int, data []byte, deadline time.Time) error
 	WritePreparedMessage(pm *websocket.PreparedMessage) error
 }

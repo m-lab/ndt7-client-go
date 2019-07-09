@@ -3,11 +3,13 @@ package upload
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/m-lab/ndt7-client-go/internal/merger"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/spec"
@@ -36,11 +38,14 @@ var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 // errNonTextMessage indicates we've got a non textual message
 var errNonTextMessage = errors.New("Received non textual message")
 
-// ignoreIncoming ignores any incoming message. The error is typically ignored
-// as this code runs in its own goroutine, yet it's useful for testing.
-func ignoreIncoming(conn websocketx.Conn) error {
+func counterflowReader(
+	ctx context.Context, conn websocketx.Conn, out chan<- spec.Measurement,
+) error {
+	defer close(out)
+	wholectx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
+	defer cancel()
 	conn.SetReadLimit(params.MaxMessageSize)
-	for {
+	for wholectx.Err() == nil {
 		// Implementation note: this guarantees that the websocket engine
 		// is processing messages. Here we're using as timeout the timeout
 		// for the whole upload, so that we know that this goroutine is
@@ -50,14 +55,33 @@ func ignoreIncoming(conn websocketx.Conn) error {
 		if err != nil {
 			return err
 		}
-		mtype, _, err := conn.ReadMessage()
+		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
 			return err
 		}
 		if mtype != websocket.TextMessage {
 			return errNonTextMessage
 		}
+		var m spec.Measurement
+		err = json.Unmarshal(mdata, &m)
+		if err != nil {
+			return err
+		}
+		m.Origin = spec.OriginServer
+		m.Direction = spec.DirectionUpload
+		out <- m
 	}
+	return nil
+}
+
+// startCounterflowReader starts the goroutine that is reading
+// the incoming counterflow messages.
+func startCounterflowReader(
+	ctx context.Context, conn websocketx.Conn,
+) <-chan spec.Measurement {
+	out := make(chan spec.Measurement)
+	go counterflowReader(ctx, conn, out)
+	return out
 }
 
 // emit emits an event during the upload.
@@ -74,12 +98,15 @@ func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
 
 // upload runs the upload until the context is done or the upload
 // timeout expires. It uses the provided websocket conn. It wil emit
-// the amount of bytes written on the provided chan. The returned
-// error is mainly useful for testing, as this code is meant to run
-// in its own goroutine setup by the caller.
+// the measurements on the provided chan. The returned error is
+// mainly useful for testing, as this code is meant to run in its
+// own goroutine setup by the caller.
 //
 // Note that upload closes the out channel.
-func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
+func upload(
+	ctx context.Context, conn websocketx.Conn,
+	out chan<- spec.Measurement,
+) error {
 	defer close(out)
 	wholectx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
 	defer cancel()
@@ -88,6 +115,8 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 		return err
 	}
 	var total int64
+	start := time.Now()
+	prev := start
 	for wholectx.Err() == nil {
 		err := conn.SetWriteDeadline(time.Now().Add(params.IOTimeout))
 		if err != nil {
@@ -99,17 +128,32 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 		// Note that the following is slightly inaccurate because we
 		// are ignoring the WebSocket overhead et al.
 		total += params.BulkMessageSize
-		out <- total
+		now := time.Now()
+		if now.Sub(prev) > params.UpdateInterval {
+			emit(out, now.Sub(start).Seconds(), total)
+			prev = now
+		}
 	}
 	return nil
 }
 
-// uploadAsync runs the upload and returns a channel where progress is
-// emitted. The channel will be close when done.
-func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
-	out := make(chan int64)
+// startUpload starts the upload goroutine and returns a channel where progress
+// is emitted. The channel will be close when done.
+func startUpload(
+	ctx context.Context, conn websocketx.Conn,
+) <-chan spec.Measurement {
+	out := make(chan spec.Measurement)
 	go upload(ctx, conn, out)
 	return out
+}
+
+// closeconn closes the WebSocket connection and returns the error.
+func closeconn(conn websocketx.Conn) error {
+	return conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseNormalClosure, "Done sending"),
+		time.Now().Add(params.IOTimeout),
+	)
 }
 
 // Run runs the upload subtest. It runs until the ctx is expired or the
@@ -119,18 +163,16 @@ func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 // which it makes more sense to return an error.
 //
 // Note that run closes both ch and conn.
-func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
+func Run(
+	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
+) error {
 	defer close(ch)
 	defer conn.Close()
-	go ignoreIncoming(conn)
-	start := time.Now()
-	prev := start
-	for tot := range uploadAsync(ctx, conn) {
-		now := time.Now()
-		if now.Sub(prev) > params.UpdateInterval {
-			emit(ch, now.Sub(start).Seconds(), tot)
-			prev = now
-		}
+	serverch := startCounterflowReader(ctx, conn)
+	clientch := startUpload(ctx, conn)
+	for m := range merger.Merge(serverch, clientch) {
+		ch <- m
 	}
+	closeconn(conn) // ignoring return value on purpose
 	return nil
 }
