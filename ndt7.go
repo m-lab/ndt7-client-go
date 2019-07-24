@@ -131,9 +131,7 @@ func (c *Client) discoverServer(ctx context.Context) (string, error) {
 }
 
 // doConnect establishes a websocket connection.
-func (c *Client) doConnect(
-	ctx context.Context, URLPath string,
-) (*websocket.Conn, error) {
+func (c *Client) doConnect(ctx context.Context, URLPath string) (*websocket.Conn, error) {
 	URL := url.URL{}
 	URL.Scheme = "wss"
 	URL.Host = c.FQDN
@@ -154,9 +152,7 @@ func (c *Client) doConnect(
 }
 
 // start is the function for starting a subtest.
-func (c *Client) start(
-	ctx context.Context, f subtestFn, p string,
-) (<-chan spec.Measurement, error) {
+func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
 		fqdn, err := c.discoverServer(ctx)
 		if err != nil {
