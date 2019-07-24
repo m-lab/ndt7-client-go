@@ -11,13 +11,15 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// userAgent is the user agent used throughout this file
-const userAgent = "ndt7-client-go/0.1.0"
+const (
+	clientName    = "ndt7-client-go-tests"
+	clientVersion = "0.1.0"
+)
 
 // newMockedClient returns a mocked client that does nothing
 // except pretending it is doing something.
 func newMockedClient(ctx context.Context) *Client {
-	client := NewClient(userAgent)
+	client := NewClient(clientName, clientVersion)
 	// Override locate to return a fake IP address
 	client.locate = func(ctx context.Context, c *mlabns.Client) (string, error) {
 		return "127.0.0.1", nil
@@ -72,7 +74,7 @@ func TestUploadCase(t *testing.T) {
 // with an error when discovering a server.
 func TestStartDiscoverServerError(t *testing.T) {
 	ctx := context.Background()
-	client := NewClient(userAgent)
+	client := NewClient(clientName, clientVersion)
 	client.MLabNSClient.BaseURL = "\t" // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
 	if err == nil {
@@ -84,7 +86,7 @@ func TestStartDiscoverServerError(t *testing.T) {
 // with an error when connecting.
 func TestStartConnectError(t *testing.T) {
 	ctx := context.Background()
-	client := NewClient(userAgent)
+	client := NewClient(clientName, clientVersion)
 	client.FQDN = "\t" // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
 	if err == nil {
@@ -97,7 +99,7 @@ func TestIntegrationDownload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
 	}
-	client := NewClient(userAgent)
+	client := NewClient(clientName, clientVersion)
 	ch, err := client.StartDownload(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +141,7 @@ func TestIntegrationUpload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
 	}
-	client := NewClient(userAgent)
+	client := NewClient(clientName, clientVersion)
 	ch, err := client.StartUpload(context.Background())
 	if err != nil {
 		t.Fatal(err)

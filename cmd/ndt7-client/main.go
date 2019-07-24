@@ -86,7 +86,8 @@ import (
 )
 
 const (
-	userAgent      = "ndt7-client-go/0.1.0"
+	clientName     = "ndt7-client-go-cmd"
+	clientVersion  = "0.1.0"
 	defaultTimeout = 55 * time.Second
 )
 
@@ -163,7 +164,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
-	r.client = ndt7.NewClient(userAgent)
+	r.client = ndt7.NewClient(clientName, clientVersion)
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
