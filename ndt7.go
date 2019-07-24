@@ -13,6 +13,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"runtime"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -22,6 +23,14 @@ import (
 	"github.com/m-lab/ndt7-client-go/internal/websocketx"
 	"github.com/m-lab/ndt7-client-go/mlabns"
 	"github.com/m-lab/ndt7-client-go/spec"
+)
+
+const (
+	// libraryName is the name of this library
+	libraryName = "ndt7-client-go"
+
+	// libraryVersion is the version of this library
+	libraryVersion = "0.1.0"
 )
 
 // locateFn is the type of function used to locate a server.
@@ -58,9 +67,13 @@ type Client struct {
 	// defaults in NewClient and you may override it.
 	MLabNSClient *mlabns.Client
 
-	// UserAgent is the user-agent that will be used. It's set by
+	// ClientName is the name of the software running ndt7 tests. It's set by
 	// NewClient; you may want to change this value.
-	UserAgent string
+	ClientName string
+
+	// ClientVersion is the version of the software running ndt7 tests. It's
+	// set by NewClient; you may want to change this value.
+	ClientVersion string
 
 	// connect is the function for connecting a specific
 	// websocket cnnection. It's set to its default value by
@@ -80,11 +93,18 @@ type Client struct {
 	upload subtestFn
 }
 
-// NewClient creates a new client instance identified by the
-// specified user agent. M-Lab services may reject requests coming
-// from clients with empty user agents in the future.
-func NewClient(userAgent string) *Client {
+// makeUserAgent creates the user agent string
+func makeUserAgent(clientName, clientVersion string) string {
+	return clientName + "/" + clientVersion + " " + libraryName + "/" + libraryVersion
+}
+
+// NewClient creates a new client instance identified by the specified
+// clientName and clientVersion. M-Lab services may reject requests coming
+// from clients that do not identify themselves properly.
+func NewClient(clientName, clientVersion string) *Client {
 	return &Client{
+		ClientName:    clientName,
+		ClientVersion: clientVersion,
 		connect: func(
 			dialer websocket.Dialer, ctx context.Context, urlStr string,
 			requestHeader http.Header) (*websocket.Conn, *http.Response, error,
@@ -98,9 +118,10 @@ func NewClient(userAgent string) *Client {
 		locate: func(ctx context.Context, c *mlabns.Client) (string, error) {
 			return c.Query(ctx)
 		},
-		MLabNSClient: mlabns.NewClient("ndt7", userAgent),
-		upload:       upload.Run,
-		UserAgent:    userAgent,
+		MLabNSClient: mlabns.NewClient(
+			"ndt7", makeUserAgent(clientName, clientVersion),
+		),
+		upload: upload.Run,
 	}
 }
 
@@ -115,9 +136,17 @@ func (c *Client) doConnect(ctx context.Context, URLPath string) (*websocket.Conn
 	URL.Scheme = "wss"
 	URL.Host = c.FQDN
 	URL.Path = URLPath
+	q := URL.Query()
+	q.Set("client_arch", runtime.GOARCH)
+	q.Set("client_library_name", libraryName)
+	q.Set("client_library_version", libraryVersion)
+	q.Set("client_name", c.ClientName)
+	q.Set("client_os", runtime.GOOS)
+	q.Set("client_version", c.ClientVersion)
+	URL.RawQuery = q.Encode()
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", params.SecWebSocketProtocol)
-	headers.Add("User-Agent", c.UserAgent)
+	headers.Add("User-Agent", makeUserAgent(c.ClientName, c.ClientVersion))
 	conn, _, err := c.connect(c.Dialer, ctx, URL.String(), headers)
 	return conn, err
 }
