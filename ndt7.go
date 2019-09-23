@@ -44,8 +44,8 @@ type connectFn = func(
 	requestHeader http.Header,
 ) (*websocket.Conn, *http.Response, error)
 
-// subtestFn is the type of the function running a subtest.
-type subtestFn = func(
+// testFn is the type of the function running a test.
+type testFn = func(
 	ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 ) error
 
@@ -80,17 +80,17 @@ type Client struct {
 	// NewClient, but you may override it.
 	connect connectFn
 
-	// download is the function running the download subtest. We
+	// download is the function running the download test. We
 	// set it in NewClient and you may override it.
-	download subtestFn
+	download testFn
 
 	// locate is the optional function to locate a ndt7 server using
 	// the mlab-ns service. This function is set to its default value
 	// by NewClient, but you may want to override it.
 	locate locateFn
 
-	// upload is like download but for the upload subtest.
-	upload subtestFn
+	// upload is like download but for the upload test.
+	upload testFn
 }
 
 // makeUserAgent creates the user agent string
@@ -151,8 +151,8 @@ func (c *Client) doConnect(ctx context.Context, URLPath string) (*websocket.Conn
 	return conn, err
 }
 
-// start is the function for starting a subtest.
-func (c *Client) start(ctx context.Context, f subtestFn, p string) (<-chan spec.Measurement, error) {
+// start is the function for starting a test.
+func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Measurement, error) {
 	if c.FQDN == "" {
 		fqdn, err := c.discoverServer(ctx)
 		if err != nil {

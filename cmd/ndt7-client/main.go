@@ -25,44 +25,39 @@
 // Events emitted in batch mode
 //
 // This section describes the events emitted in batch mode. The code
-// will always emit a single event per line. In some cases we have
-// wrapped long event lines, below, to simplify reading.
+// will always emit a single event per line.
 //
-// When the download subtest starts, this event is emitted:
+// When the download test starts, this event is emitted:
 //
-//   {"key":"status.measurement_start","value":{"subtest":"download"}}
+//   {"Key":"starting","Value":{"Test":"download"}}
 //
 // After this event is emitted, we discover the server to use (unless it
 // has been configured by the user) and we connect to it. If any of these
 // operations fail, this event is emitted:
 //
-//   {"key":"failure.measurement",
-//    "value":{"failure":"<failure>","subtest":"download"}}
+//   {"Key":"error","Value":{"Failure":"<failure>","Test":"download"}}
 //
 // where `<failure>` is the error that occurred serialized as string. In
-// case of failure, the subtest is over and the next event to be emitted is
-// `"status.measurement_done"`.
+// case of failure, the test is over and the next event to be emitted is
+// `"complete"`
 //
-// Otherwise, the download subtest starts and we see the following event:
+// Otherwise, the download test starts and we see the following event:
 //
-//   {"key":"status.measurement_begin",
-//    "value":{"server":"<server>","subtest":"download"}}
+//   {"Key":"connected","Value":{"Server":"<server>","Test":"download"}}
 //
 // where `<server>` is the FQDN of the server we're using. Then there
 // are zero or more events like:
 //
-//   {"key": "measurement", "value": <value>}
+//   {"Key": "measurement","Value": <value>}
 //
-// where `<value>` is a serialized spec.Measurement struct. Note that
-// the minimal `<value>` MUST contain a field named `"subtest"` with
-// value equal either to `"download"` or `"upload"`.
+// where `<value>` is a serialized spec.Measurement struct.
 //
-// Finally, this event is always emitted at the end of the subtest:
+// Finally, this event is always emitted at the end of the test:
 //
-//   {"key":"status.measurement_done","value":{"subtest":"download"}}
+//   {"Key":"complete","Value":{"Test":"download"}}
 //
-// The upload subtest is like the download subtest, except for the
-// value of the `"subtest"` key.
+// The upload test is like the download test, except for the
+// value of the `"Test"` key.
 //
 // Exit code
 //
@@ -104,17 +99,17 @@ type runner struct {
 	emitter emitter.Emitter
 }
 
-func (r runner) doRunSubtest(
-	ctx context.Context, subtest string,
+func (r runner) doRunTest(
+	ctx context.Context, test string,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
 	ch, err := start(ctx)
 	if err != nil {
-		r.emitter.OnError(subtest, err)
+		r.emitter.OnError(test, err)
 		return 1
 	}
-	err = r.emitter.OnConnected(subtest, r.client.FQDN)
+	err = r.emitter.OnConnected(test, r.client.FQDN)
 	if err != nil {
 		return 1
 	}
@@ -127,20 +122,20 @@ func (r runner) doRunSubtest(
 	return 0
 }
 
-func (r runner) runSubtest(
-	ctx context.Context, subtest string,
+func (r runner) runTest(
+	ctx context.Context, test string,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
 	// Implementation note: we want to always emit the initial and the
-	// final events regardless of how the actual subtest goes. What's more,
+	// final events regardless of how the actual test goes. What's more,
 	// we want the exit code to be nonzero in case of any error.
-	err := r.emitter.OnStarting(subtest)
+	err := r.emitter.OnStarting(test)
 	if err != nil {
 		return 1
 	}
-	code := r.doRunSubtest(ctx, subtest, start, emitEvent)
-	err = r.emitter.OnComplete(subtest)
+	code := r.doRunTest(ctx, test, start, emitEvent)
+	err = r.emitter.OnComplete(test)
 	if err != nil {
 		return 1
 	}
@@ -148,12 +143,12 @@ func (r runner) runSubtest(
 }
 
 func (r runner) runDownload(ctx context.Context) int {
-	return r.runSubtest(ctx, "download", r.client.StartDownload,
+	return r.runTest(ctx, "download", r.client.StartDownload,
 		r.emitter.OnDownloadEvent)
 }
 
 func (r runner) runUpload(ctx context.Context) int {
-	return r.runSubtest(ctx, "upload", r.client.StartUpload,
+	return r.runTest(ctx, "upload", r.client.StartUpload,
 		r.emitter.OnUploadEvent)
 }
 

@@ -16,8 +16,6 @@ const (
 	clientVersion = "0.1.0"
 )
 
-// newMockedClient returns a mocked client that does nothing
-// except pretending it is doing something.
 func newMockedClient(ctx context.Context) *Client {
 	client := NewClient(clientName, clientVersion)
 	// Override locate to return a fake IP address
@@ -44,7 +42,6 @@ func newMockedClient(ctx context.Context) *Client {
 	return client
 }
 
-// TestDownloadCase tests the download case.
 func TestDownloadCase(t *testing.T) {
 	ctx := context.Background()
 	client := newMockedClient(ctx)
@@ -57,7 +54,6 @@ func TestDownloadCase(t *testing.T) {
 	}
 }
 
-// TestUploadCase tests the download case.
 func TestUploadCase(t *testing.T) {
 	ctx := context.Background()
 	client := newMockedClient(ctx)
@@ -70,8 +66,6 @@ func TestUploadCase(t *testing.T) {
 	}
 }
 
-// TestStartDiscoverServerError ensures that we deal
-// with an error when discovering a server.
 func TestStartDiscoverServerError(t *testing.T) {
 	ctx := context.Background()
 	client := NewClient(clientName, clientVersion)
@@ -82,8 +76,6 @@ func TestStartDiscoverServerError(t *testing.T) {
 	}
 }
 
-// TestStartConnectError ensures that we deal
-// with an error when connecting.
 func TestStartConnectError(t *testing.T) {
 	ctx := context.Background()
 	client := NewClient(clientName, clientVersion)
@@ -94,7 +86,6 @@ func TestStartConnectError(t *testing.T) {
 	}
 }
 
-// TestIntegrationDownload is an integration test for the download.
 func TestIntegrationDownload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -104,39 +95,17 @@ func TestIntegrationDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prev := spec.Measurement{}
 	tot := 0
-	for m := range ch {
+	for range ch {
+		// We already test that measurements follow our expectations
+		// in internal/download/download_test.go.
 		tot++
-		if m.Origin != spec.OriginServer {
-			t.Fatal("Invalid origin")
-		}
-		if m.Direction != spec.DirectionDownload {
-			t.Fatal("Invalid direction")
-		}
-		if m.Elapsed <= prev.Elapsed {
-			t.Fatal("The time is not increasing")
-		}
-		if m.BBRInfo.MaxBandwidth <= 0 {
-			t.Fatal("Unexpected max bandwidth")
-		}
-		if m.BBRInfo.MinRTT <= 0.0 {
-			t.Fatal("Unexpected min RTT")
-		}
-		if m.TCPInfo.RTTVar <= 0.0 {
-			t.Fatal("Unexpected RTT var")
-		}
-		if m.TCPInfo.SmoothedRTT <= 0.0 {
-			t.Fatal("Unexpected smoothed RTT")
-		}
-		prev = m
 	}
 	if tot <= 0 {
 		t.Fatal("Expected at least a measurement")
 	}
 }
 
-// TestIntegrationUpload is an integration test for the upload.
 func TestIntegrationUpload(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -146,25 +115,11 @@ func TestIntegrationUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prev := spec.Measurement{}
 	tot := 0
-	for m := range ch {
+	for range ch {
 		tot++
-		if m.Origin != spec.OriginClient {
-			t.Fatal("Invalid origin")
-		}
-		if m.Direction != spec.DirectionUpload {
-			t.Fatal("Invalid direction")
-		}
-		if m.Elapsed <= prev.Elapsed {
-			t.Fatal("The time is not increasing")
-		}
-		// Note: it can stay constant when we're servicing
-		// a TCP timeout longer than the update interval
-		if m.AppInfo.NumBytes < prev.AppInfo.NumBytes {
-			t.Fatal("Num bytes is decreasing")
-		}
-		prev = m
+		// We already test that measurements follow our expectations
+		// in internal/upload/upload_test.go.
 	}
 	if tot <= 0 {
 		t.Fatal("Expected at least a measurement")

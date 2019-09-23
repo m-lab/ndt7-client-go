@@ -11,7 +11,6 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// TestNormal is the normal test case
 func TestNormal(t *testing.T) {
 	outch := make(chan spec.Measurement)
 	ctx, cancel := context.WithTimeout(
@@ -25,17 +24,22 @@ func TestNormal(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	prev := spec.Measurement{}
+	prev := spec.Measurement{
+		AppInfo: &spec.AppInfo{},
+	}
 	tot := 0
 	for m := range outch {
 		tot++
 		if m.Origin != spec.OriginClient {
 			t.Fatal("The origin is wrong")
 		}
-		if m.Direction != spec.DirectionUpload {
-			t.Fatal("The direction is wrong")
+		if m.Test != spec.TestUpload {
+			t.Fatal("The test is wrong")
 		}
-		if m.Elapsed <= prev.Elapsed {
+		if m.AppInfo == nil {
+			t.Fatal("m.AppInfo is nil")
+		}
+		if m.AppInfo.ElapsedTime <= prev.AppInfo.ElapsedTime {
 			t.Fatal("Time is not increasing")
 		}
 		// Note: it can stay constant when we're servicing
@@ -50,8 +54,6 @@ func TestNormal(t *testing.T) {
 	}
 }
 
-// TestSetReadDealineError ensures that we deal with
-// the case where SetReadDeadline fails.
 func TestSetReadDeadlineError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
@@ -63,8 +65,6 @@ func TestSetReadDeadlineError(t *testing.T) {
 	}
 }
 
-// TestReadMessageError ensures that we deal with
-// the case where ReadMessage fails.
 func TestReadMessageError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
@@ -76,8 +76,6 @@ func TestReadMessageError(t *testing.T) {
 	}
 }
 
-// TestReadNonTextMessageError ensures that we deal with the
-// case where ReadMessage returns a non text message.
 func TestReadNonTextMessageError(t *testing.T) {
 	conn := mocks.Conn{
 		ReadMessageType:      websocket.BinaryMessage,
@@ -89,8 +87,6 @@ func TestReadNonTextMessageError(t *testing.T) {
 	}
 }
 
-// TestMakePreparedMessageError ensures that we deal with
-// the case where makePreparedMessage fails.
 func TestMakePreparedMessageError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)
@@ -115,8 +111,6 @@ func TestMakePreparedMessageError(t *testing.T) {
 	}
 }
 
-// TestSetWriteDeadlineError ensures that we deal with
-// the case where SetWriteDeadline fails.
 func TestSetWriteDeadlineError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)
@@ -138,8 +132,6 @@ func TestSetWriteDeadlineError(t *testing.T) {
 	}
 }
 
-// TestWritePreparedMessageError ensures that we deal with
-// the case where WritePreparedMessage fails.
 func TestWritePreparedMessageError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	outch := make(chan int64)

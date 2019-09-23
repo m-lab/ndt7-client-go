@@ -12,14 +12,14 @@ import "github.com/m-lab/ndt7-client-go/spec"
 // See the documentation of the main package for more details
 // on the sequence in which events may occur.
 type Emitter interface {
-	// OnStarting is emitted before attempting to start a subtest.
-	OnStarting(subtest string) error
+	// OnStarting is emitted before attempting to start a test.
+	OnStarting(test string) error
 
-	// OnError is emitted if a subtest cannot start.
-	OnError(subtest string, err error) error
+	// OnError is emitted if a test cannot start.
+	OnError(test string, err error) error
 
 	// OnConnected is emitted when we connected to the ndt7 server.
-	OnConnected(subtest, fqdn string) error
+	OnConnected(test, fqdn string) error
 
 	// OnDownloadEvent is emitted during the download.
 	OnDownloadEvent(m *spec.Measurement) error
@@ -27,6 +27,6 @@ type Emitter interface {
 	// OnUploadEvent is emitted during the upload.
 	OnUploadEvent(m *spec.Measurement) error
 
-	// OnComplete is always emitted when the subtest is over.
-	OnComplete(subtest string) error
+	// OnComplete is always emitted when the test is over.
+	OnComplete(test string) error
 }

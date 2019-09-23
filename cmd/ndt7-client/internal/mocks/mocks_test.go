@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// TestFailingWriter verifies that the FailingWriter always fails.
 func TestFailingWriter(t *testing.T) {
 	wr := FailingWriter{}
 	n, err := wr.Write([]byte("abc"))
@@ -17,7 +16,6 @@ func TestFailingWriter(t *testing.T) {
 	}
 }
 
-// TestSavingWriter verifies that SavingWriter works.
 func TestSavingWriter(t *testing.T) {
 	sw := &SavingWriter{}
 	first := []byte("abc")

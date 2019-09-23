@@ -10,7 +10,6 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// TestBatchOnStarting verifies that OnStarting works correctly
 func TestBatchOnStarting(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
@@ -22,25 +21,23 @@ func TestBatchOnStarting(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
-			Subtest string `json:"subtest"`
-		} `json:"value"`
+			Test string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Key != "status.measurement_start" {
+	if event.Key != "starting" {
 		t.Fatal("Unexpected event key")
 	}
-	if event.Value.Subtest != "download" {
-		t.Fatal("Unexpected subtest field value")
+	if event.Value.Test != "download" {
+		t.Fatal("Unexpected test field value")
 	}
 }
 
-// TestBatchOnStartingFailure verifies that OnStarting
-// fails if we cannot write.
 func TestBatchOnStartingFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnStarting("download")
@@ -49,7 +46,6 @@ func TestBatchOnStartingFailure(t *testing.T) {
 	}
 }
 
-// TestBatchOnError verifies that OnError works correctly
 func TestBatchOnError(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
@@ -61,29 +57,27 @@ func TestBatchOnError(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
-			Failure string `json:"failure"`
-			Subtest string `json:"subtest"`
-		} `json:"value"`
+			Failure string
+			Test    string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Key != "failure.measurement" {
+	if event.Key != "error" {
 		t.Fatal("Unexpected event key")
 	}
-	if event.Value.Subtest != "download" {
-		t.Fatal("Unexpected subtest field value")
+	if event.Value.Test != "download" {
+		t.Fatal("Unexpected test field value")
 	}
 	if event.Value.Failure != "mocked error" {
 		t.Fatal("Unexpected failure field value")
 	}
 }
 
-// TestBatchOnErrorFailure verifies that OnError
-// fails if we cannot write.
 func TestBatchOnErrorFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnError("download", errors.New("some error"))
@@ -92,7 +86,6 @@ func TestBatchOnErrorFailure(t *testing.T) {
 	}
 }
 
-// TestBatchOnConnected verifies that OnConnected works correctly
 func TestBatchOnConnected(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
@@ -104,29 +97,27 @@ func TestBatchOnConnected(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
-			Server  string `json:"server"`
-			Subtest string `json:"subtest"`
-		} `json:"value"`
+			Server string
+			Test   string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Key != "status.measurement_begin" {
+	if event.Key != "connected" {
 		t.Fatal("Unexpected event key")
 	}
-	if event.Value.Subtest != "download" {
-		t.Fatal("Unexpected subtest field value")
+	if event.Value.Test != "download" {
+		t.Fatal("Unexpected test field value")
 	}
 	if event.Value.Server != "FQDN" {
 		t.Fatal("Unexpected failure field value")
 	}
 }
 
-// TestBatchOnConnectedFailure verifies that OnConnected
-// fails if we cannot write.
 func TestBatchOnConnectedFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnConnected("download", "FQDN")
@@ -135,23 +126,16 @@ func TestBatchOnConnectedFailure(t *testing.T) {
 	}
 }
 
-// TestBatchOnDownloadEvent verifies that OnDownloadEvent
-// works correctly.
 func TestBatchOnDownloadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
 	err := batch.OnDownloadEvent(&spec.Measurement{
-		BBRInfo: spec.BBRInfo{
-			MaxBandwidth: 6400000,
-			MinRTT:       71,
+		AppInfo: &spec.AppInfo{
+			ElapsedTime: 7100000,
+			NumBytes:    41000,
 		},
-		Direction: "download",
-		Elapsed:   4,
-		Origin:    "server",
-		TCPInfo: spec.TCPInfo{
-			RTTVar:      11,
-			SmoothedRTT: 150,
-		},
+		Test:   spec.TestDownload,
+		Origin: spec.OriginClient,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -160,20 +144,15 @@ func TestBatchOnDownloadEvent(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
-			BBRInfo struct {
-				MaxBandwidth int64   `json:"max_bandwidth"`
-				MinRTT       float64 `json:"min_rtt"`
-			} `json:"bbr_info"`
-			Direction string  `json:"direction"`
-			Elapsed   float64 `json:"elapsed"`
-			Origin    string  `json:"origin"`
-			TCPInfo   struct {
-				SmoothedRTT float64 `json:"smoothed_rtt"`
-				RTTVar      float64 `json:"rtt_var"`
-			} `json:"tcp_info"`
-		} `json:"value"`
+			AppInfo struct {
+				ElapsedTime int64
+				NumBytes    int64
+			}
+			Origin string
+			Test   string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
@@ -182,31 +161,20 @@ func TestBatchOnDownloadEvent(t *testing.T) {
 	if event.Key != "measurement" {
 		t.Fatal("Unexpected event key")
 	}
-	if event.Value.BBRInfo.MaxBandwidth != 6400000 {
+	if event.Value.AppInfo.ElapsedTime != 7100000 {
 		t.Fatal("Unexpected max bandwidth field value")
 	}
-	if event.Value.BBRInfo.MinRTT != 71 {
+	if event.Value.AppInfo.NumBytes != 41000 {
 		t.Fatal("Unexpected min rtt field value")
 	}
-	if event.Value.Direction != "download" {
+	if event.Value.Test != "download" {
 		t.Fatal("Unexpected direction field value")
 	}
-	if event.Value.Elapsed != 4.0 {
-		t.Fatal("Unexpected elapsed field value")
-	}
-	if event.Value.Origin != "server" {
+	if event.Value.Origin != "client" {
 		t.Fatal("Unexpected origin field value")
-	}
-	if event.Value.TCPInfo.SmoothedRTT != 150.0 {
-		t.Fatal("Unexpected smoothed rtt field value")
-	}
-	if event.Value.TCPInfo.RTTVar != 11.0 {
-		t.Fatal("Unexpected rtt var value")
 	}
 }
 
-// TestBatchOnDownloadEventFailure verifies that OnDownloadEvent
-// fails if we cannot write.
 func TestBatchOnDownloadEventFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnDownloadEvent(&spec.Measurement{})
@@ -215,18 +183,16 @@ func TestBatchOnDownloadEventFailure(t *testing.T) {
 	}
 }
 
-// TestBatchOnUploadEvent verifies that OnUploadEvent
-// works correctly.
 func TestBatchOnUploadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
 	err := batch.OnUploadEvent(&spec.Measurement{
-		AppInfo: spec.AppInfo{
-			NumBytes: 100000000,
+		AppInfo: &spec.AppInfo{
+			ElapsedTime: 3000000,
+			NumBytes:    100000000,
 		},
-		Direction: "upload",
-		Elapsed:   3.0,
-		Origin:    "client",
+		Test:   spec.TestUpload,
+		Origin: spec.OriginClient,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -235,15 +201,15 @@ func TestBatchOnUploadEvent(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
 			AppInfo struct {
-				NumBytes int64 `json:"num_bytes"`
-			} `json:"app_info"`
-			Direction string  `json:"direction"`
-			Elapsed   float64 `json:"elapsed"`
-			Origin    string  `json:"origin"`
-		} `json:"value"`
+				ElapsedTime int64
+				NumBytes    int64
+			}
+			Origin string
+			Test   string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
@@ -255,10 +221,10 @@ func TestBatchOnUploadEvent(t *testing.T) {
 	if event.Value.AppInfo.NumBytes != 100000000 {
 		t.Fatal("Unexpected num bytes field value")
 	}
-	if event.Value.Direction != "upload" {
+	if event.Value.Test != "upload" {
 		t.Fatal("Unexpected direction field value")
 	}
-	if event.Value.Elapsed != 3.0 {
+	if event.Value.AppInfo.ElapsedTime != 3000000 {
 		t.Fatal("Unexpected elapsed field value")
 	}
 	if event.Value.Origin != "client" {
@@ -266,19 +232,14 @@ func TestBatchOnUploadEvent(t *testing.T) {
 	}
 }
 
-// TestBatchOnUploadEventFailure verifies that OnUploadEvent
-// fails if we cannot write.
 func TestBatchOnUploadEventFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnUploadEvent(&spec.Measurement{
-		Elapsed: 1.0,
-	})
+	err := batch.OnUploadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-// TestBatchOnComplete verifies that OnComplete works correctly
 func TestBatchOnComplete(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	batch := Batch{sw}
@@ -290,25 +251,23 @@ func TestBatchOnComplete(t *testing.T) {
 		t.Fatal("invalid length")
 	}
 	var event struct {
-		Key   string `json:"key"`
+		Key   string
 		Value struct {
-			Subtest string `json:"subtest"`
-		} `json:"value"`
+			Test string
+		}
 	}
 	err = json.Unmarshal(sw.Data[0], &event)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if event.Key != "status.measurement_done" {
+	if event.Key != "complete" {
 		t.Fatal("Unexpected event key")
 	}
-	if event.Value.Subtest != "download" {
-		t.Fatal("Unexpected subtest field value")
+	if event.Value.Test != "download" {
+		t.Fatal("Unexpected test field value")
 	}
 }
 
-// TestBatchOnCompleteFailure verifies that OnComplete
-// fails if we cannot write.
 func TestBatchOnCompleteFailure(t *testing.T) {
 	batch := Batch{&mocks.FailingWriter{}}
 	err := batch.OnComplete("download")
@@ -317,8 +276,6 @@ func TestBatchOnCompleteFailure(t *testing.T) {
 	}
 }
 
-// TestNewBatchConstructor verifies that we are
-// constructing a batch bound to stdout.
 func TestNewBatchConstructor(t *testing.T) {
 	batch := NewBatch()
 	if batch.Writer != os.Stdout {
@@ -326,8 +283,6 @@ func TestNewBatchConstructor(t *testing.T) {
 	}
 }
 
-// TestEmitInterfaceFailure makes sure that emitInterface
-// correctly deals with a non serializable type.
 func TestEmitInterfaceFailure(t *testing.T) {
 	batch := NewBatch()
 	// See https://stackoverflow.com/a/48901259

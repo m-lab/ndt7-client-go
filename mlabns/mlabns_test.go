@@ -13,14 +13,10 @@ import (
 )
 
 const (
-	// toolName is the tool name that we use in this file.
-	toolName = "ndt7"
-
-	// userAgent is the user agent that we use in this file.
+	toolName  = "ndt7"
 	userAgent = "ndt7-client-go/0.1.0"
 )
 
-// TestQueryCommonCase tests the common case.
 func TestQueryCommonCase(t *testing.T) {
 	const expectedFQDN = "ndt7-mlab1-nai01.measurementlab.org"
 	client := NewClient(toolName, userAgent)
@@ -36,7 +32,6 @@ func TestQueryCommonCase(t *testing.T) {
 	}
 }
 
-// TestQueryURLError ensures we deal with an invalid URL.
 func TestQueryURLError(t *testing.T) {
 	client := NewClient(toolName, userAgent)
 	client.BaseURL = "\t" // breaks the parser
@@ -46,8 +41,6 @@ func TestQueryURLError(t *testing.T) {
 	}
 }
 
-// TestQueryNewRequestError ensures we deal
-// with an http.NewRequest errors.
 func TestQueryNewRequestError(t *testing.T) {
 	mockedError := errors.New("mocked error")
 	client := NewClient(toolName, userAgent)
@@ -62,7 +55,6 @@ func TestQueryNewRequestError(t *testing.T) {
 	}
 }
 
-// TestQueryNetworkError ensures we deal with network errors.
 func TestQueryNetworkError(t *testing.T) {
 	mockedError := errors.New("mocked error")
 	client := NewClient(toolName, userAgent)
@@ -77,8 +69,6 @@ func TestQueryNetworkError(t *testing.T) {
 	}
 }
 
-// TestQueryInvalidStatusCode ensures we deal with
-// a non 200 HTTP status code.
 func TestQueryInvalidStatusCode(t *testing.T) {
 	client := NewClient(toolName, userAgent)
 	client.HTTPClient = mocks.NewHTTPClient(
@@ -90,8 +80,6 @@ func TestQueryInvalidStatusCode(t *testing.T) {
 	}
 }
 
-// TestQueryJSONParseError ensures we deal with
-// a JSON parse error.
 func TestQueryJSONParseError(t *testing.T) {
 	client := NewClient(toolName, userAgent)
 	client.HTTPClient = mocks.NewHTTPClient(
@@ -103,8 +91,6 @@ func TestQueryJSONParseError(t *testing.T) {
 	}
 }
 
-// TestQueryNoServer ensures we deal with the case
-// where no servers are returned.
 func TestQueryNoServers(t *testing.T) {
 	client := NewClient(toolName, userAgent)
 	client.HTTPClient = mocks.NewHTTPClient(
@@ -116,7 +102,6 @@ func TestQueryNoServers(t *testing.T) {
 	}
 }
 
-// TestIntegration is an integration test for mlabns
 func TestIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
