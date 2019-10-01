@@ -40,39 +40,45 @@ type batchEvent struct {
 }
 
 type batchValue struct {
-	Failure string
-	Server  string
-	Test    string
+	spec.Measurement
+	Failure string `json:",omitempty"`
+	Server  string `json:",omitempty"`
 }
 
 // OnStarting emits the starting event
-func (b Batch) OnStarting(test string) error {
+func (b Batch) OnStarting(test spec.TestKind) error {
 	return b.emitInterface(batchEvent{
 		Key: "starting",
 		Value: batchValue{
-			Test: test,
+			Measurement: spec.Measurement{
+				Test: test,
+			},
 		},
 	})
 }
 
 // OnError emits the error event
-func (b Batch) OnError(test string, err error) error {
+func (b Batch) OnError(test spec.TestKind, err error) error {
 	return b.emitInterface(batchEvent{
 		Key: "error",
 		Value: batchValue{
+			Measurement: spec.Measurement{
+				Test:    test,
+			},
 			Failure: err.Error(),
-			Test:    test,
 		},
 	})
 }
 
 // OnConnected emits the connected event
-func (b Batch) OnConnected(test, fqdn string) error {
+func (b Batch) OnConnected(test spec.TestKind, fqdn string) error {
 	return b.emitInterface(batchEvent{
 		Key: "connected",
 		Value: batchValue{
+			Measurement: spec.Measurement{
+				Test:   test,
+			},
 			Server: fqdn,
-			Test:   test,
 		},
 	})
 }
@@ -94,11 +100,13 @@ func (b Batch) OnUploadEvent(m *spec.Measurement) error {
 }
 
 // OnComplete is the event signalling the end of the test
-func (b Batch) OnComplete(test string) error {
+func (b Batch) OnComplete(test spec.TestKind) error {
 	return b.emitInterface(batchEvent{
 		Key: "complete",
 		Value: batchValue{
-			Test: test,
+			Measurement: spec.Measurement{
+				Test: test,
+			},
 		},
 	})
 }

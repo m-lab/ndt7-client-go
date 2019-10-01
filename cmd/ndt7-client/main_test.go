@@ -72,15 +72,15 @@ type mockedEmitter struct {
 	CompleteError  error
 }
 
-func (me mockedEmitter) OnStarting(test string) error {
+func (me mockedEmitter) OnStarting(test spec.TestKind) error {
 	return me.StartingError
 }
 
-func (mockedEmitter) OnError(test string, err error) error {
+func (mockedEmitter) OnError(test spec.TestKind, err error) error {
 	return nil
 }
 
-func (me mockedEmitter) OnConnected(test, fqdn string) error {
+func (me mockedEmitter) OnConnected(test spec.TestKind, fqdn string) error {
 	return me.ConnectedError
 }
 
@@ -92,7 +92,7 @@ func (mockedEmitter) OnUploadEvent(m *spec.Measurement) error {
 	return nil
 }
 
-func (me mockedEmitter) OnComplete(test string) error {
+func (me mockedEmitter) OnComplete(test spec.TestKind) error {
 	return me.CompleteError
 }
 

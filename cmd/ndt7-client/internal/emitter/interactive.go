@@ -21,19 +21,19 @@ func NewInteractive() Interactive {
 }
 
 // OnStarting handles the start event
-func (i Interactive) OnStarting(test string) error {
+func (i Interactive) OnStarting(test spec.TestKind) error {
 	_, err := fmt.Fprintf(i.out, "\rstarting %s", test)
 	return err
 }
 
 // OnError handles the error event
-func (i Interactive) OnError(test string, err error) error {
+func (i Interactive) OnError(test spec.TestKind, err error) error {
 	_, failure := fmt.Fprintf(i.out, "\r%s failed: %s\n", test, err.Error())
 	return failure
 }
 
 // OnConnected handles the connected event
-func (i Interactive) OnConnected(test, fqdn string) error {
+func (i Interactive) OnConnected(test spec.TestKind, fqdn string) error {
 	_, err := fmt.Fprintf(i.out, "\r%s in progress with %s\n", test, fqdn)
 	return err
 }
@@ -65,7 +65,7 @@ func (i Interactive) onSpeedEvent(m *spec.Measurement) error {
 }
 
 // OnComplete handles the complete event
-func (i Interactive) OnComplete(test string) error {
+func (i Interactive) OnComplete(test spec.TestKind) error {
 	_, err := fmt.Fprintf(i.out, "\n%s: complete\n", test)
 	return err
 }

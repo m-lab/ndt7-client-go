@@ -100,7 +100,7 @@ type runner struct {
 }
 
 func (r runner) doRunTest(
-	ctx context.Context, test string,
+	ctx context.Context, test spec.TestKind,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
@@ -123,7 +123,7 @@ func (r runner) doRunTest(
 }
 
 func (r runner) runTest(
-	ctx context.Context, test string,
+	ctx context.Context, test spec.TestKind,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
 ) int {
@@ -143,12 +143,12 @@ func (r runner) runTest(
 }
 
 func (r runner) runDownload(ctx context.Context) int {
-	return r.runTest(ctx, "download", r.client.StartDownload,
+	return r.runTest(ctx, spec.TestDownload, r.client.StartDownload,
 		r.emitter.OnDownloadEvent)
 }
 
 func (r runner) runUpload(ctx context.Context) int {
-	return r.runTest(ctx, "upload", r.client.StartUpload,
+	return r.runTest(ctx, spec.TestUpload, r.client.StartUpload,
 		r.emitter.OnUploadEvent)
 }
 
