@@ -61,14 +61,14 @@ func ignoreIncoming(conn websocketx.Conn) error {
 }
 
 // emit emits an event during the upload.
-func emit(ch chan<- spec.Measurement, elapsed float64, numBytes int64) {
+func emit(ch chan<- spec.Measurement, elapsed time.Duration, numBytes int64) {
 	ch <- spec.Measurement{
-		AppInfo: spec.AppInfo{
-			NumBytes: numBytes,
+		AppInfo: &spec.AppInfo{
+			ElapsedTime: int64(elapsed) / int64(time.Microsecond),
+			NumBytes:    numBytes,
 		},
-		Direction: spec.DirectionUpload,
-		Elapsed:   elapsed,
-		Origin:    spec.OriginClient,
+		Test:   spec.TestUpload,
+		Origin: spec.OriginClient,
 	}
 }
 
@@ -112,7 +112,7 @@ func uploadAsync(ctx context.Context, conn websocketx.Conn) <-chan int64 {
 	return out
 }
 
-// Run runs the upload subtest. It runs until the ctx is expired or the
+// Run runs the upload test. It runs until the ctx is expired or the
 // upload timeout is expired. It uses the provided conn. It emits on the
 // provided channel upload measurements. The returned error is mainly
 // useful for making this function have the same API of download.Run, for
@@ -128,7 +128,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	for tot := range uploadAsync(ctx, conn) {
 		now := time.Now()
 		if now.Sub(prev) > params.UpdateInterval {
-			emit(ch, now.Sub(start).Seconds(), tot)
+			emit(ch, now.Sub(start), tot)
 			prev = now
 		}
 	}

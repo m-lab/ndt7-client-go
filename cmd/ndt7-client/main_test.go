@@ -14,7 +14,6 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// TestNormalUsage tests ndt7-client w/o any command line arguments.
 func TestNormalUsage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -31,7 +30,6 @@ func TestNormalUsage(t *testing.T) {
 	}
 }
 
-// TestBatchUsage tests the -batch use case.
 func TestBatchUsage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -50,7 +48,6 @@ func TestBatchUsage(t *testing.T) {
 	}
 }
 
-// TestDownloadError tests the case where a subtest fails.
 func TestDownloadError(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -75,15 +72,15 @@ type mockedEmitter struct {
 	CompleteError  error
 }
 
-func (me mockedEmitter) OnStarting(subtest string) error {
+func (me mockedEmitter) OnStarting(test spec.TestKind) error {
 	return me.StartingError
 }
 
-func (mockedEmitter) OnError(subtest string, err error) error {
+func (mockedEmitter) OnError(test spec.TestKind, err error) error {
 	return nil
 }
 
-func (me mockedEmitter) OnConnected(subtest, fqdn string) error {
+func (me mockedEmitter) OnConnected(test spec.TestKind, fqdn string) error {
 	return me.ConnectedError
 }
 
@@ -95,22 +92,20 @@ func (mockedEmitter) OnUploadEvent(m *spec.Measurement) error {
 	return nil
 }
 
-func (me mockedEmitter) OnComplete(subtest string) error {
+func (me mockedEmitter) OnComplete(test spec.TestKind) error {
 	return me.CompleteError
 }
 
-// TestRunSubtestOnStartingError deals with the case where
-// the emitter.OnStarting function fails.
-func TestRunSubtestOnStartingError(t *testing.T) {
+func TestRunTestOnStartingError(t *testing.T) {
 	runner := runner{
 		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			StartingError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
-		"subtest",
+		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
 			out := make(chan spec.Measurement)
 			close(out)
@@ -125,18 +120,16 @@ func TestRunSubtestOnStartingError(t *testing.T) {
 	}
 }
 
-// TestRunSubtestOnConnectedError deals with the case where
-// the emitter.OnConnected function fails.
-func TestRunSubtestOnConnectedError(t *testing.T) {
+func TestRunTestOnConnectedError(t *testing.T) {
 	runner := runner{
 		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			ConnectedError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
-		"subtest",
+		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
 			out := make(chan spec.Measurement)
 			close(out)
@@ -151,18 +144,16 @@ func TestRunSubtestOnConnectedError(t *testing.T) {
 	}
 }
 
-// TestRunSubtestOnCompleteError deals with the case where
-// the emitter.OnComplete function fails.
-func TestRunSubtestOnCompleteError(t *testing.T) {
+func TestRunTestOnCompleteError(t *testing.T) {
 	runner := runner{
 		client: ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{
 			CompleteError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
-		"subtest",
+		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
 			out := make(chan spec.Measurement)
 			close(out)
@@ -177,16 +168,14 @@ func TestRunSubtestOnCompleteError(t *testing.T) {
 	}
 }
 
-// TestRunSubtestEmitEventError deals with the case where
-// the emitEvent function fails.
-func TestRunSubtestEmitEventError(t *testing.T) {
+func TestRunTestEmitEventError(t *testing.T) {
 	runner := runner{
 		client:  ndt7.NewClient(clientName, clientVersion),
 		emitter: mockedEmitter{},
 	}
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
-		"subtest",
+		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
 			out := make(chan spec.Measurement)
 			go func() {
@@ -204,9 +193,6 @@ func TestRunSubtestEmitEventError(t *testing.T) {
 	}
 }
 
-// TestBatchEmitterEventsOrderNormal ensures that events are
-// emitted in the order mentioned in main.go docs, when we are
-// in the common case (i.e. no errors).
 func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -216,7 +202,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 		client:  ndt7.NewClient(clientName, clientVersion),
 		emitter: emitter.Batch{Writer: writer},
 	}
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
 		"download",
 		runner.client.StartDownload,
@@ -231,18 +217,18 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	}
 	for lineno, data := range writer.Data {
 		var m struct {
-			Key string `json:"key"`
+			Key string
 		}
 		err := json.Unmarshal(data, &m)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if lineno == 0 {
-			if m.Key != "status.measurement_start" {
+			if m.Key != "starting" {
 				t.Fatal("unexpected first key")
 			}
 		} else if lineno == 1 {
-			if m.Key != "status.measurement_begin" {
+			if m.Key != "connected" {
 				t.Fatal("unexpected second key")
 			}
 		} else if lineno < numLines-1 {
@@ -251,7 +237,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 					lineno, m.Key)
 			}
 		} else if lineno == numLines-1 {
-			if m.Key != "status.measurement_done" {
+			if m.Key != "complete" {
 				t.Fatal("unexpected last key")
 			}
 		} else {
@@ -260,9 +246,6 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	}
 }
 
-// TestBatchEmitterEventsOrderFailure ensures that events are
-// emitted in the order mentioned in main.go docs, when we are
-// in the failure case (e.g. we cannot connect).
 func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
@@ -273,7 +256,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 		emitter: emitter.Batch{Writer: writer},
 	}
 	runner.client.MLabNSClient.BaseURL = "\t" // URL parser error
-	code := runner.runSubtest(
+	code := runner.runTest(
 		context.Background(),
 		"download",
 		runner.client.StartDownload,
@@ -288,7 +271,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	}
 	for lineno, data := range writer.Data {
 		var m struct {
-			Key string `json:"key"`
+			Key string
 		}
 		err := json.Unmarshal(data, &m)
 		if err != nil {
@@ -296,15 +279,15 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 		}
 		fmt.Printf("%d - %s\n", lineno, m.Key)
 		if lineno == 0 {
-			if m.Key != "status.measurement_start" {
+			if m.Key != "starting" {
 				t.Fatal("unexpected first key")
 			}
 		} else if lineno == 1 {
-			if m.Key != "failure.measurement" {
+			if m.Key != "error" {
 				t.Fatal("unexpected second key")
 			}
 		} else if lineno == 2 {
-			if m.Key != "status.measurement_done" {
+			if m.Key != "complete" {
 				t.Fatal("unexpected third key")
 			}
 		} else {

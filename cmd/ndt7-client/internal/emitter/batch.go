@@ -35,44 +35,50 @@ func (b Batch) emitInterface(any interface{}) error {
 }
 
 type batchEvent struct {
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
+	Key   string
+	Value interface{}
 }
 
 type batchValue struct {
-	Failure string `json:"failure,omitempty"`
-	Server  string `json:"server,omitempty"`
-	Subtest string `json:"subtest"`
+	spec.Measurement
+	Failure string `json:",omitempty"`
+	Server  string `json:",omitempty"`
 }
 
 // OnStarting emits the starting event
-func (b Batch) OnStarting(subtest string) error {
+func (b Batch) OnStarting(test spec.TestKind) error {
 	return b.emitInterface(batchEvent{
-		Key: "status.measurement_start",
+		Key: "starting",
 		Value: batchValue{
-			Subtest: subtest,
+			Measurement: spec.Measurement{
+				Test: test,
+			},
 		},
 	})
 }
 
 // OnError emits the error event
-func (b Batch) OnError(subtest string, err error) error {
+func (b Batch) OnError(test spec.TestKind, err error) error {
 	return b.emitInterface(batchEvent{
-		Key: "failure.measurement",
+		Key: "error",
 		Value: batchValue{
+			Measurement: spec.Measurement{
+				Test:    test,
+			},
 			Failure: err.Error(),
-			Subtest: subtest,
 		},
 	})
 }
 
 // OnConnected emits the connected event
-func (b Batch) OnConnected(subtest, fqdn string) error {
+func (b Batch) OnConnected(test spec.TestKind, fqdn string) error {
 	return b.emitInterface(batchEvent{
-		Key: "status.measurement_begin",
+		Key: "connected",
 		Value: batchValue{
-			Server:  fqdn,
-			Subtest: subtest,
+			Measurement: spec.Measurement{
+				Test:   test,
+			},
+			Server: fqdn,
 		},
 	})
 }
@@ -93,12 +99,14 @@ func (b Batch) OnUploadEvent(m *spec.Measurement) error {
 	})
 }
 
-// OnComplete is the event signalling the end of the subtest
-func (b Batch) OnComplete(subtest string) error {
+// OnComplete is the event signalling the end of the test
+func (b Batch) OnComplete(test spec.TestKind) error {
 	return b.emitInterface(batchEvent{
-		Key: "status.measurement_done",
+		Key: "complete",
 		Value: batchValue{
-			Subtest: subtest,
+			Measurement: spec.Measurement{
+				Test: test,
+			},
 		},
 	})
 }

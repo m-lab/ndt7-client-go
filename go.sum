@@ -1,2 +1,6 @@
 github.com/gorilla/websocket v1.4.0 h1:WDFjx/TMzVgy9VdMMQi2K2Emtwi2QcUQsztZ/zLaH/Q=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
+github.com/m-lab/ndt-server v0.13.2 h1:ISasCjeOXaKcHjRo//Q2A2THbwoC2Pp01d8a2OnPC6Y=
+github.com/m-lab/ndt-server v0.13.2/go.mod h1:ZLVRCEbCBkhh0pwNjnLpwaZnHOHGEH76H/fzIIVFRWw=
+github.com/m-lab/tcp-info v1.1.0 h1:+IzCxTd/IVRjt+EXyi4Nj1bIhuX/iftbQCFB2itrB8M=
+github.com/m-lab/tcp-info v1.1.0/go.mod h1:bkvI4qbjB6QVC2tsLSHqf5OnIYcmuLEVjo7+8YA56Kg=
