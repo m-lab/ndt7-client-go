@@ -55,6 +55,14 @@ const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
 // Client is a ndt7 client.
 type Client struct {
+	// ClientName is the name of the software running ndt7 tests. It's set by
+	// NewClient; you may want to change this value.
+	ClientName string
+
+	// ClientVersion is the version of the software running ndt7 tests. It's
+	// set by NewClient; you may want to change this value.
+	ClientVersion string
+
 	// Dialer is the optional websocket Dialer. It's set to its
 	// default value by NewClient; you may override it.
 	Dialer websocket.Dialer
@@ -67,13 +75,9 @@ type Client struct {
 	// defaults in NewClient and you may override it.
 	MLabNSClient *mlabns.Client
 
-	// ClientName is the name of the software running ndt7 tests. It's set by
-	// NewClient; you may want to change this value.
-	ClientName string
-
-	// ClientVersion is the version of the software running ndt7 tests. It's
-	// set by NewClient; you may want to change this value.
-	ClientVersion string
+	// Scheme is the scheme to use. It's set to "wss" by NewClient,
+	// change it to "ws" for unencrypted ndt7.
+	Scheme string
 
 	// connect is the function for connecting a specific
 	// websocket cnnection. It's set to its default value by
@@ -122,6 +126,7 @@ func NewClient(clientName, clientVersion string) *Client {
 			"ndt7", makeUserAgent(clientName, clientVersion),
 		),
 		upload: upload.Run,
+		Scheme: "wss",
 	}
 }
 
@@ -133,7 +138,7 @@ func (c *Client) discoverServer(ctx context.Context) (string, error) {
 // doConnect establishes a websocket connection.
 func (c *Client) doConnect(ctx context.Context, URLPath string) (*websocket.Conn, error) {
 	URL := url.URL{}
-	URL.Scheme = "wss"
+	URL.Scheme = c.Scheme
 	URL.Host = c.FQDN
 	URL.Path = URLPath
 	q := URL.Query()
