@@ -80,6 +80,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
@@ -92,14 +93,24 @@ const (
 )
 
 var (
+	flagScheme = flagx.Enum{
+		Options: []string{"wss", "ws"},
+		Value:   "wss",
+	}
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
-	flagScheme   = flag.String(
-		"scheme", "wss", `use "wss" for encrypted ndt7, "ws" for cleartext ndt7`)
-	flagTimeout = flag.Duration(
+	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
 )
+
+func init() {
+	flag.Var(
+		&flagScheme,
+		"scheme",
+		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+	)
+}
 
 type runner struct {
 	client  *ndt7.Client
@@ -167,7 +178,7 @@ func main() {
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(clientName, clientVersion)
-	r.client.Scheme = *flagScheme
+	r.client.Scheme = flagScheme.Value
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
