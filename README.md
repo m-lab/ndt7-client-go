@@ -21,7 +21,7 @@ the API, but we'll try not to.
 
 ## Installing
 
-You need Go >= 1.11. We use modules. Make sure Go knows that:
+You need Go >= 1.12. We use modules. Make sure Go knows that:
 
 ```bash
 export GO111MODULE=on

@@ -2,7 +2,8 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <name>] [-no-verify] [-timeout <string>]
+//    ndt7-client [-batch] [-hostname <name>] [-no-verify]
+//                [-scheme <scheme>] [-timeout <string>]
 //
 // The `-batch` flag causes the command to emit JSON messages on the
 // standard output, thus allowing for easy machine parsing. The default
@@ -13,6 +14,10 @@
 // server by using Measurement Lab's locate service.
 //
 // The `-no-verify` flag allows to skip TLS certificate verification.
+//
+// The `-scheme <scheme>` flag allows to override the default scheme, i.e.,
+// "wss", with another scheme. The only other supported scheme is "ws"
+// and causes ndt7 to run unencrypted.
 //
 // The `-timeout <string>` flag specifies the time after which the
 // whole test is interrupted. The `<string>` is a string suitable to
@@ -75,6 +80,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
@@ -87,12 +93,24 @@ const (
 )
 
 var (
+	flagScheme = flagx.Enum{
+		Options: []string{"wss", "ws"},
+		Value:   "wss",
+	}
 	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
 )
+
+func init() {
+	flag.Var(
+		&flagScheme,
+		"scheme",
+		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+	)
+}
 
 type runner struct {
 	client  *ndt7.Client
@@ -160,6 +178,7 @@ func main() {
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(clientName, clientVersion)
+	r.client.Scheme = flagScheme.Value
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
