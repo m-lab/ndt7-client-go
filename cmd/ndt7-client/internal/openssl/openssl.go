@@ -6,10 +6,9 @@ package openssl
 import (
 	"context"
 	"errors"
+	"io/ioutil"
 	"net"
-	"os"
 	"sync"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -38,10 +37,6 @@ import (
 	//   return rv;
 	// }
 	"C"
-)
-import (
-	"fmt"
-	"io/ioutil"
 )
 
 // Dialer dials connections using OpenSSL.
@@ -111,9 +106,10 @@ func (d *Dialer) newconn(conn *net.TCPConn) (net.Conn, error) {
 		fp.Close()
 		return nil, err
 	}
+	ch := make(chan *Message)
+	go RunConnLoop(fp, ssl, ch)
 	return &opensslconn{
-		filep:      fp,
-		ssl:        ssl,
+		ch:         ch,
 		localAddr:  localAddr,
 		remoteAddr: remoteAddr,
 	}, nil
@@ -160,8 +156,7 @@ func (d *Dialer) newssl(fd uintptr) (*C.struct_ssl_st, error) {
 }
 
 type opensslconn struct {
-	filep      *os.File
-	ssl        *C.struct_ssl_st
+	ch         chan *Message
 	localAddr  net.Addr
 	mu         sync.Mutex
 	remoteAddr net.Addr
@@ -169,35 +164,30 @@ type opensslconn struct {
 	wdeadline  time.Time
 }
 
-func (c *opensslconn) Read(b []byte) (n int, err error) {
-	return c.readwrite(func() C.int {
-		return C.SSL_read(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
-	})
+func (c *opensslconn) Read(b []byte) (int, error) {
+	msg := NewMessage()
+	msg.Data = b
+	msg.Type = MessageRead
+	c.ch <- msg
+	<-msg.Done
+	return msg.Count, msg.Error
 }
 
 func (c *opensslconn) Write(b []byte) (int, error) {
-	total := len(b)
-	for len(b) > 0 {
-		n, err := c.writeonce(b)
-		if err != nil {
-			return 0, err
-		}
-		b = b[n:]
-	}
-	return total, nil
-}
-
-func (c *opensslconn) writeonce(b []byte) (int, error) {
-	return c.readwrite(func() C.int {
-		return C.SSL_write(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
-	})
+	msg := NewMessage()
+	msg.Data = b
+	msg.Type = MessageWrite
+	c.ch <- msg
+	<-msg.Done
+	return msg.Count, msg.Error
 }
 
 func (c *opensslconn) Close() error {
-	// In OpenSSL 1.1+, SSL_set_fd does not take ownership of the
-	// file descriptor hence here we aren't closing twice
-	C.SSL_free(c.ssl)
-	return c.filep.Close()
+	msg := NewMessage()
+	msg.Type = MessageClose
+	c.ch <- msg
+	<-msg.Done
+	return msg.Error
 }
 
 func (c *opensslconn) LocalAddr() net.Addr {
@@ -226,93 +216,4 @@ func (c *opensslconn) SetWriteDeadline(t time.Time) error {
 	defer c.mu.Unlock()
 	c.wdeadline = t
 	return nil
-}
-
-func (c *opensslconn) readwrite(fn func() C.int) (int, error) {
-	for {
-		var (
-			errcode   C.int
-			rdeadline time.Time
-			retval    C.int
-			wdeadline time.Time
-		)
-		// OpenSSL is quite not thread safe
-		c.mu.Lock()
-		rdeadline, wdeadline = c.rdeadline, c.wdeadline
-		if retval = fn(); retval <= 0 {
-			errcode = C.SSL_get_error(c.ssl, retval)
-		}
-		c.mu.Unlock()
-		if retval > 0 {
-			return int(retval), nil
-		}
-		switch errcode {
-		case C.SSL_ERROR_WANT_READ:
-			if err := c.poll(C.POLLIN, rdeadline); err != nil {
-				return 0, err
-			}
-		case C.SSL_ERROR_WANT_WRITE:
-			if err := c.poll(C.POLLOUT, wdeadline); err != nil {
-				return 0, err
-			}
-		default:
-			return 0, c.errcodeToErr(errcode)
-		}
-	}
-}
-
-func (c *opensslconn) errcodeToErr(errcode C.int) (err error) {
-	switch errcode {
-	case C.SSL_ERROR_NONE:
-		err = errors.New("SSL_ERROR_NONE")
-	case C.SSL_ERROR_ZERO_RETURN:
-		err = errors.New("SSL_ERROR_ZERO_RETURN")
-	case C.SSL_ERROR_WANT_READ:
-		err = errors.New("SSL_ERROR_WANT_READ")
-	case C.SSL_ERROR_WANT_WRITE:
-		err = errors.New("SSL_ERROR_WANT_WRITE")
-	case C.SSL_ERROR_WANT_CONNECT:
-		err = errors.New("SSL_ERROR_WANT_CONNECT")
-	case C.SSL_ERROR_WANT_ACCEPT:
-		err = errors.New("SSL_ERROR_WANT_ACCEPT")
-	case C.SSL_ERROR_WANT_X509_LOOKUP:
-		err = errors.New("SSL_ERROR_WANT_X509_LOOKUP")
-	case C.SSL_ERROR_SYSCALL:
-		err = errors.New("SSL_ERROR_SYSCALL")
-	case C.SSL_ERROR_SSL:
-		err = errors.New("SSL_ERROR_SSL")
-	default:
-		err = errors.New("SSL_ERROR_UNKNOWN")
-	}
-	for {
-		opensslcode := C.ERR_get_error()
-		if opensslcode == 0 {
-			break
-		}
-		reason := C.GoString(C.ERR_reason_error_string(opensslcode))
-		err = fmt.Errorf("%s: %w", reason, err)
-	}
-	return err
-}
-
-func (c *opensslconn) poll(flags C.short, deadline time.Time) error {
-	for {
-		if !deadline.IsZero() && time.Now().After(deadline) {
-			return context.DeadlineExceeded
-		}
-		var timeout time.Duration = -1
-		if !deadline.IsZero() {
-			timeout = deadline.Sub(time.Now()) * time.Millisecond
-		}
-		if timeout > C.INT_MAX {
-			timeout = C.INT_MAX
-		}
-		retval := C.pollwrapper(C.int(c.filep.Fd()), flags, C.int(timeout))
-		if retval > 0 {
-			return nil
-		}
-		if retval < 0 && -retval != C.EINTR {
-			return syscall.Errno(-retval)
-		}
-	}
 }
