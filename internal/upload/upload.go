@@ -4,6 +4,8 @@ package upload
 import (
 	"context"
 	"errors"
+	"io"
+	"io/ioutil"
 	"math/rand"
 	"time"
 
@@ -50,12 +52,15 @@ func ignoreIncoming(conn websocketx.Conn) error {
 		if err != nil {
 			return err
 		}
-		mtype, _, err := conn.ReadMessage()
+		mtype, reader, err := conn.NextReader()
 		if err != nil {
 			return err
 		}
 		if mtype != websocket.TextMessage {
 			return errNonTextMessage
+		}
+		if _, err := io.Copy(ioutil.Discard, reader); err != nil {
+			return err
 		}
 	}
 }

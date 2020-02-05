@@ -4,6 +4,8 @@ package download
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -34,11 +36,31 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		if err != nil {
 			return err
 		}
-		mtype, mdata, err := conn.ReadMessage()
+		mtype, reader, err := conn.NextReader()
 		if err != nil {
 			return err
 		}
-		total += int64(len(mdata))
+		if mtype == websocket.TextMessage {
+			mdata, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+			total += int64(len(mdata))
+			var measurement spec.Measurement
+			err = json.Unmarshal(mdata, &measurement)
+			if err != nil {
+				return err
+			}
+			measurement.Origin = spec.OriginServer
+			measurement.Test = spec.TestDownload
+			ch <- measurement
+		} else {
+			count, err := io.Copy(ioutil.Discard, reader)
+			if err != nil {
+				return err
+			}
+			total += int64(count)
+		}
 		now := time.Now()
 		if now.Sub(prev) > params.UpdateInterval {
 			prev = now
@@ -53,17 +75,6 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 			}
 			// FALLTHROUGH
 		}
-		if mtype != websocket.TextMessage {
-			continue
-		}
-		var measurement spec.Measurement
-		err = json.Unmarshal(mdata, &measurement)
-		if err != nil {
-			return err
-		}
-		measurement.Origin = spec.OriginServer
-		measurement.Test = spec.TestDownload
-		ch <- measurement
 	}
 	return nil // this is how success looks like
 }
