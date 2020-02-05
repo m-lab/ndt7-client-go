@@ -44,8 +44,9 @@ import "fmt"
 
 // Dialer dials connections using OpenSSL.
 type Dialer struct {
-	CABundlePath string
-	Dialer       *net.Dialer
+	CABundlePath       string
+	Dialer             *net.Dialer
+	InsecureSkipVerify bool
 }
 
 // ErrCannotGuessCABundlePath is returned when we cannot guess the path of the
@@ -135,9 +136,12 @@ func (d *Dialer) newhandle(fd uintptr) (*C.struct_ssl_st, error) {
 	defer C.SSL_CTX_free(ctx) // note that it's reference counted
 	caBundlePath := C.CString(d.CABundlePath)
 	defer C.free(unsafe.Pointer(caBundlePath))
-	retval := C.SSL_CTX_load_verify_locations(ctx, caBundlePath, nil)
-	if retval != 1 {
-		return nil, errors.New("SSL_CTX_load_verify_locations failed")
+	if d.InsecureSkipVerify == true {
+		retval := C.SSL_CTX_load_verify_locations(ctx, caBundlePath, nil)
+		if retval != 1 {
+			return nil, errors.New("SSL_CTX_load_verify_locations failed")
+		}
+		// XXX MORE WORK TO DO HERE?
 	}
 	ssl := C.SSL_new(ctx)
 	if ssl == nil {

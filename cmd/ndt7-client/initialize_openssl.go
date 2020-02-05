@@ -3,8 +3,6 @@
 package main
 
 import (
-	"errors"
-
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/openssl"
 )
@@ -21,9 +19,7 @@ func initialize(clnt *ndt7.Client) error {
 	switch flagScheme.Value {
 	case "ws":
 	case "wss":
-		if *flagNoVerify {
-			return errors.New("openssl: skipping verification not supported")
-		}
+		dialer.InsecureSkipVerify = *flagNoVerify
 		clnt.Dialer.NetDial = dialer.Dial
 		clnt.Dialer.NetDialContext = dialer.DialContext
 	}
