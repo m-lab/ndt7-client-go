@@ -75,12 +75,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"os"
 	"time"
 
 	"github.com/m-lab/go/flagx"
+	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
@@ -178,11 +178,8 @@ func main() {
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(clientName, clientVersion)
-	r.client.Scheme = flagScheme.Value
-	r.client.Dialer.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: *flagNoVerify,
-	}
-	r.client.FQDN = *flagHostname
+	err := initialize(r.client)
+	rtx.Must(err, "cannot initialize the ndt7 client")
 	if *flagBatch {
 		r.emitter = emitter.NewBatch()
 	} else {
