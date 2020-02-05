@@ -6,7 +6,6 @@ package openssl
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 	"net"
 	"os"
 	"sync"
@@ -40,7 +39,10 @@ import (
 	// }
 	"C"
 )
-import "fmt"
+import (
+	"fmt"
+	"io/ioutil"
+)
 
 // Dialer dials connections using OpenSSL.
 type Dialer struct {
@@ -74,15 +76,8 @@ func guessCABundlePath(readFile func(filename string) ([]byte, error)) (string, 
 
 // NewDialer creates a new dialer. It may fail if we cannot guess the
 // proper CA bundle path for this system.
-func NewDialer() (*Dialer, error) {
-	caBundlePath, err := guessCABundlePath(ioutil.ReadFile)
-	if err != nil {
-		return nil, err
-	}
-	return &Dialer{
-		CABundlePath: caBundlePath,
-		Dialer:       new(net.Dialer),
-	}, nil
+func NewDialer() *Dialer {
+	return &Dialer{Dialer: new(net.Dialer)}
 }
 
 // Dial dials an OpenSSL network connection.
@@ -134,14 +129,23 @@ func (d *Dialer) newhandle(fd uintptr) (*C.struct_ssl_st, error) {
 		return nil, errors.New("SSL_CTX_new failed")
 	}
 	defer C.SSL_CTX_free(ctx) // note that it's reference counted
-	caBundlePath := C.CString(d.CABundlePath)
-	defer C.free(unsafe.Pointer(caBundlePath))
 	if d.InsecureSkipVerify == true {
-		retval := C.SSL_CTX_load_verify_locations(ctx, caBundlePath, nil)
+		path := d.CABundlePath
+		if path == "" {
+			var err error
+			path, err = guessCABundlePath(ioutil.ReadFile)
+			if err != nil {
+				return nil, err
+			}
+		}
+		cpath := C.CString(path)
+		defer C.free(unsafe.Pointer(cpath))
+		retval := C.SSL_CTX_load_verify_locations(ctx, cpath, nil)
 		if retval != 1 {
 			return nil, errors.New("SSL_CTX_load_verify_locations failed")
 		}
-		// XXX MORE WORK TO DO HERE?
+		// TODO(bassosimone): we also need to properly enable
+		// the verification of remote certificates
 	}
 	ssl := C.SSL_new(ctx)
 	if ssl == nil {
@@ -172,6 +176,18 @@ func (c *opensslconn) Read(b []byte) (n int, err error) {
 }
 
 func (c *opensslconn) Write(b []byte) (int, error) {
+	total := len(b)
+	for len(b) > 0 {
+		n, err := c.writeonce(b)
+		if err != nil {
+			return 0, err
+		}
+		b = b[n:]
+	}
+	return total, nil
+}
+
+func (c *opensslconn) writeonce(b []byte) (int, error) {
 	return c.readwrite(func() C.int {
 		return C.SSL_write(c.handle, unsafe.Pointer(&b[0]), C.int(len(b)))
 	})

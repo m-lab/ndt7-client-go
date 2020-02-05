@@ -10,11 +10,10 @@ import (
 
 // initialize initializes |clnt| to use golang's standard library
 // for doing TLS, which is obviously nice and clean.
-func initialize(clnt *ndt7.Client) error {
+func initialize(clnt *ndt7.Client) {
 	clnt.Scheme = flagScheme.Value
 	clnt.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
 	clnt.FQDN = *flagHostname
-	return nil
 }

@@ -80,7 +80,6 @@ import (
 	"time"
 
 	"github.com/m-lab/go/flagx"
-	"github.com/m-lab/go/rtx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
@@ -178,8 +177,7 @@ func main() {
 	defer cancel()
 	var r runner
 	r.client = ndt7.NewClient(clientName, clientVersion)
-	err := initialize(r.client)
-	rtx.Must(err, "cannot initialize the ndt7 client")
+	initialize(r.client)
 	if *flagBatch {
 		r.emitter = emitter.NewBatch()
 	} else {
