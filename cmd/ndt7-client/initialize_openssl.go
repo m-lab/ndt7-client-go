@@ -10,7 +10,6 @@ import (
 // initialize initializes |clnt| for using OpenSSL. Because this is a
 // rather non standard config, this is also not super clean.
 func initialize(clnt *ndt7.Client) error {
-	clnt = ndt7.NewClient(clientName, clientVersion)
 	clnt.Scheme = "ws" // even with TLS force websocket to not do TLS
 	dialer, err := openssl.NewDialer()
 	if err != nil {
@@ -23,5 +22,6 @@ func initialize(clnt *ndt7.Client) error {
 		clnt.Dialer.NetDial = dialer.Dial
 		clnt.Dialer.NetDialContext = dialer.DialContext
 	}
+	clnt.FQDN = *flagHostname
 	return nil
 }
