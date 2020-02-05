@@ -106,20 +106,20 @@ func (d *Dialer) newconn(conn *net.TCPConn) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	handle, err := d.newhandle(fp.Fd())
+	ssl, err := d.newssl(fp.Fd())
 	if err != nil {
 		fp.Close()
 		return nil, err
 	}
 	return &opensslconn{
 		filep:      fp,
-		handle:     handle,
+		ssl:        ssl,
 		localAddr:  localAddr,
 		remoteAddr: remoteAddr,
 	}, nil
 }
 
-func (d *Dialer) newhandle(fd uintptr) (*C.struct_ssl_st, error) {
+func (d *Dialer) newssl(fd uintptr) (*C.struct_ssl_st, error) {
 	method := C.TLS_client_method()
 	if method == nil {
 		return nil, errors.New("TLS_method failed")
@@ -161,7 +161,7 @@ func (d *Dialer) newhandle(fd uintptr) (*C.struct_ssl_st, error) {
 
 type opensslconn struct {
 	filep      *os.File
-	handle     *C.struct_ssl_st
+	ssl        *C.struct_ssl_st
 	localAddr  net.Addr
 	mu         sync.Mutex
 	remoteAddr net.Addr
@@ -171,7 +171,7 @@ type opensslconn struct {
 
 func (c *opensslconn) Read(b []byte) (n int, err error) {
 	return c.readwrite(func() C.int {
-		return C.SSL_read(c.handle, unsafe.Pointer(&b[0]), C.int(len(b)))
+		return C.SSL_read(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
 	})
 }
 
@@ -189,14 +189,14 @@ func (c *opensslconn) Write(b []byte) (int, error) {
 
 func (c *opensslconn) writeonce(b []byte) (int, error) {
 	return c.readwrite(func() C.int {
-		return C.SSL_write(c.handle, unsafe.Pointer(&b[0]), C.int(len(b)))
+		return C.SSL_write(c.ssl, unsafe.Pointer(&b[0]), C.int(len(b)))
 	})
 }
 
 func (c *opensslconn) Close() error {
 	// In OpenSSL 1.1+, SSL_set_fd does not take ownership of the
 	// file descriptor hence here we aren't closing twice
-	C.SSL_free(c.handle)
+	C.SSL_free(c.ssl)
 	return c.filep.Close()
 }
 
@@ -240,7 +240,7 @@ func (c *opensslconn) readwrite(fn func() C.int) (int, error) {
 		c.mu.Lock()
 		rdeadline, wdeadline = c.rdeadline, c.wdeadline
 		if retval = fn(); retval <= 0 {
-			errcode = C.SSL_get_error(c.handle, retval)
+			errcode = C.SSL_get_error(c.ssl, retval)
 		}
 		c.mu.Unlock()
 		if retval > 0 {
