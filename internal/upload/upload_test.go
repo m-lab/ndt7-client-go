@@ -2,6 +2,7 @@ package upload
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -59,7 +60,8 @@ func TestSetReadDeadlineError(t *testing.T) {
 	conn := mocks.Conn{
 		SetReadDeadlineResult: mockedErr,
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	err := readcounterflow(context.Background(), &conn, ch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -70,7 +72,8 @@ func TestReadMessageError(t *testing.T) {
 	conn := mocks.Conn{
 		ReadMessageResult: mockedErr,
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	err := readcounterflow(context.Background(), &conn, ch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -81,9 +84,42 @@ func TestReadNonTextMessageError(t *testing.T) {
 		ReadMessageType:      websocket.BinaryMessage,
 		ReadMessageByteArray: []byte("abcdef"),
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	err := readcounterflow(context.Background(), &conn, ch)
 	if err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
+	}
+}
+
+func TestReadNonJSONError(t *testing.T) {
+	conn := mocks.Conn{
+		ReadMessageType:      websocket.TextMessage,
+		ReadMessageByteArray: []byte("{"),
+	}
+	ch := make(chan spec.Measurement, 128)
+	err := readcounterflow(context.Background(), &conn, ch)
+	var syntaxError *json.SyntaxError
+	if !errors.As(err, &syntaxError) {
+		t.Fatal("Not the error we expected")
+	}
+}
+
+func TestReadGoodMessage(t *testing.T) {
+	conn := mocks.Conn{
+		ReadMessageType:      websocket.TextMessage,
+		ReadMessageByteArray: []byte("{}"),
+	}
+	ch := make(chan spec.Measurement, 128)
+	var count int64
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for range ch {
+			count++
+			cancel()
+		}
+	}()
+	if err := readcounterflow(ctx, &conn, ch); err != nil {
+		t.Fatal(err)
 	}
 }
 
