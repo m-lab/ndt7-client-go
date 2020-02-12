@@ -9,8 +9,8 @@ import (
 
 // valueUnitPair represents a {"value": ..., "unit": ...} pair.
 type valueUnitPair struct {
-	Value float64 `json:"value"`
-	Unit  string  `json:"unit"`
+	Value float64
+	Unit  string
 }
 
 // Summary is a struct containing the values displayed to the user at
@@ -22,13 +22,13 @@ type Summary struct {
 	// Download speed, in Mbit/s. This is measured at the receiver.
 	Download valueUnitPair
 	// Upload speed, in Mbit/s. This is measured at the sender.
-	Upload valueUnitPair `json:"upload,omitempty"`
+	Upload valueUnitPair
 	// Retransmission rate. This is based on the TCPInfo values provided
 	// by the server during a download test.
-	DownloadRetrans valueUnitPair `json:"downloadRetrans,omitempty"`
+	DownloadRetrans valueUnitPair
 	// Round-trip time of the latest measurement, in milliseconds.
 	// This is provided by the server during a download test.
-	RTT valueUnitPair `json:"rtt,omitempty"`
+	RTT valueUnitPair
 }
 
 // NewSummary creates a new Summary struct based on the ndt7 test results
