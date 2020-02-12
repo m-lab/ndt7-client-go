@@ -1,7 +1,7 @@
 package emitter
 
 import (
-	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -21,36 +21,36 @@ func NewQuiet(e Emitter) Emitter {
 }
 
 // OnStarting emits the starting event
-func (s Quiet) OnStarting(test spec.TestKind) error {
+func (q Quiet) OnStarting(test spec.TestKind) error {
 	return nil
 }
 
 // OnError emits the error event
-func (s Quiet) OnError(test spec.TestKind, err error) error {
-	return s.emitter.OnError(test, err)
+func (q Quiet) OnError(test spec.TestKind, err error) error {
+	return q.emitter.OnError(test, err)
 }
 
 // OnConnected emits the connected event
-func (s Quiet) OnConnected(test spec.TestKind, fqdn string) error {
+func (q Quiet) OnConnected(test spec.TestKind, fqdn string) error {
 	return nil
 }
 
 // OnDownloadEvent handles an event emitted during the download
-func (s Quiet) OnDownloadEvent(m *spec.Measurement) error {
+func (q Quiet) OnDownloadEvent(m *spec.Measurement) error {
 	return nil
 }
 
 // OnUploadEvent handles an event emitted during the upload
-func (s Quiet) OnUploadEvent(m *spec.Measurement) error {
+func (q Quiet) OnUploadEvent(m *spec.Measurement) error {
 	return nil
 }
 
 // OnComplete is the event signalling the end of the test
-func (s Quiet) OnComplete(test spec.TestKind) error {
+func (q Quiet) OnComplete(test spec.TestKind) error {
 	return nil
 }
 
 // OnSummary handles the summary event, emitted after the test is over.
-func (s Quiet) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
-	return s.emitter.OnSummary(results)
+func (q Quiet) OnSummary(s *internal.Summary) error {
+	return q.emitter.OnSummary(s)
 }

@@ -6,7 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
+
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -72,6 +73,30 @@ func (i Interactive) OnComplete(test spec.TestKind) error {
 }
 
 // OnSummary handles the summary event.
-func (i Interactive) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
+func (i Interactive) OnSummary(s *internal.Summary) error {
+	_, err := fmt.Fprintf(i.out, "%15s: %s\n", "Server", s.ServerFQDN)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f ms\n", "Latency", float64(s.RTT)/1000)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f Mbit/s\n", "Download", s.Download)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f Mbit/s\n", "Upload", s.Upload)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(i.out, "%15s: %7.2f %%\n", "Retransmission", s.DownloadRetrans)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

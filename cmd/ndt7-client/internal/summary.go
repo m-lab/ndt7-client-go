@@ -8,6 +8,7 @@ import (
 // Summary is a struct containing the values displayed to the user at
 // the end of an ndt7 test.
 type Summary struct {
+	ServerFQDN string `json:"server"`
 	// Download speed, in Mbit/s. This is measured at the receiver.
 	Download float64 `json:"download,omitempty"`
 	// Upload speed, in Mbit/s. This is measured at the receiver.
@@ -22,8 +23,12 @@ type Summary struct {
 
 // NewSummary creates a new Summary struct based on the ndt7 test results
 // provided by the Client.
-func NewSummary(results map[spec.TestKind]*ndt7.MeasurementPair) *Summary {
-	s := &Summary{}
+func NewSummary(FQDN string,
+	results map[spec.TestKind]*ndt7.MeasurementPair) *Summary {
+
+	s := &Summary{
+		ServerFQDN: FQDN,
+	}
 
 	// Download comes from the client-side Measurement during the download
 	// test. DownloadRetrans and RTT come from the server-side Measurement,

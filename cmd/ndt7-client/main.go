@@ -80,6 +80,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
+
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
@@ -201,5 +203,6 @@ func main() {
 		osExit(code)
 	}
 
-	r.emitter.OnSummary(r.client.Results())
+	s := internal.NewSummary(r.client.FQDN, r.client.Results())
+	r.emitter.OnSummary(s)
 }

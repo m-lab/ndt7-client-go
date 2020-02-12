@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -114,6 +113,6 @@ func (b Batch) OnComplete(test spec.TestKind) error {
 }
 
 // OnSummary handles the summary event, emitted after the test is over.
-func (b Batch) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
-	return b.emitInterface(internal.NewSummary(results))
+func (b Batch) OnSummary(s *internal.Summary) error {
+	return b.emitInterface(s)
 }
