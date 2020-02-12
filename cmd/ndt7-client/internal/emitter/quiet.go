@@ -5,9 +5,9 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// Quiet is an emitter which only emits a summary at the end of the tests, plus
-// any errors. The message is actually emitted by the embedded Emitter.
-// Quiet only acts as a filter and does not perform any formatting.
+// Quiet acts as a filter allowing summary and error messages only, and
+// doesn't perform any formatting.
+// The message is actually emitted by the embedded Emitter.
 type Quiet struct {
 	emitter Emitter
 }
