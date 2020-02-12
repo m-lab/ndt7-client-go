@@ -114,7 +114,5 @@ func (b Batch) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event, emitted after the test is over.
 func (b Batch) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
-	return b.emitInterface(batchEvent{
-		Value: results,
-	})
+	return b.emitInterface(results)
 }

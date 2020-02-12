@@ -102,6 +102,7 @@ var (
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
+	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
 )
 
 func init() {
@@ -183,11 +184,18 @@ func main() {
 		InsecureSkipVerify: *flagNoVerify,
 	}
 	r.client.FQDN = *flagHostname
+
+	var e emitter.Emitter
 	if *flagBatch {
-		r.emitter = emitter.NewBatch()
+		e = emitter.NewBatch()
 	} else {
-		r.emitter = emitter.NewInteractive()
+		e = emitter.NewInteractive()
 	}
+	if *flagQuiet {
+		e = emitter.NewQuiet(e)
+	}
+	r.emitter = e
+
 	code := r.runDownload(ctx) + r.runUpload(ctx)
 	if code != 0 {
 		osExit(code)
