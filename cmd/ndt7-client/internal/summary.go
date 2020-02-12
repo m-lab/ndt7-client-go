@@ -8,10 +8,11 @@ import (
 // Summary is a struct containing the values displayed to the user at
 // the end of an ndt7 test.
 type Summary struct {
+	// FQDN of the server used for this test.
 	ServerFQDN string `json:"server"`
 	// Download speed, in Mbit/s. This is measured at the receiver.
 	Download float64 `json:"download,omitempty"`
-	// Upload speed, in Mbit/s. This is measured at the receiver.
+	// Upload speed, in Mbit/s. This is measured at the sender.
 	Upload float64 `json:"upload,omitempty"`
 	// Retransmission rate. This is based on the TCPInfo values provided
 	// by the server during a download test.
