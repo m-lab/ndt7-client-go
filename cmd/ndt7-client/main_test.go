@@ -41,9 +41,9 @@ func TestBatchUsage(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
-	*flagBatch = true
+	*flagJSON = true
 	main()
-	*flagBatch = false
+	*flagJSON = false
 	osExit = savedFunc
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
@@ -206,7 +206,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	writer := &mocks.SavingWriter{}
 	runner := runner{
 		client:  ndt7.NewClient(clientName, clientVersion),
-		emitter: emitter.Batch{Writer: writer},
+		emitter: emitter.JSON{Writer: writer},
 	}
 	code := runner.runTest(
 		context.Background(),
@@ -259,7 +259,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	writer := &mocks.SavingWriter{}
 	runner := runner{
 		client:  ndt7.NewClient(clientName, clientVersion),
-		emitter: emitter.Batch{Writer: writer},
+		emitter: emitter.JSON{Writer: writer},
 	}
 	runner.client.MLabNSClient.BaseURL = "\t" // URL parser error
 	code := runner.runTest(

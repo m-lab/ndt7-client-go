@@ -67,7 +67,7 @@ func NewSummary(FQDN string,
 			}
 			s.RTT = valueUnitPair{
 				Value: float64(dl.Server.TCPInfo.RTT) / 1000,
-				Unit:  "milliseconds",
+				Unit:  "ms",
 			}
 		}
 	}

@@ -99,7 +99,7 @@ var (
 		Options: []string{"wss", "ws"},
 		Value:   "wss",
 	}
-	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
+	flagJSON     = flag.Bool("json", false, "emit JSON events on stdout")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
@@ -188,8 +188,8 @@ func main() {
 	r.client.FQDN = *flagHostname
 
 	var e emitter.Emitter
-	if *flagBatch {
-		e = emitter.NewBatch()
+	if *flagJSON {
+		e = emitter.NewJSON()
 	} else {
 		e = emitter.NewInteractive()
 	}
