@@ -53,9 +53,12 @@ type testFn = func(
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
-type MeasurementPair struct {
-	Server spec.Measurement
-	Client spec.Measurement
+// TestData contains the latest Measurement send by the server and the client,
+// plus the latest ConnectionInfo sent by the server.
+type TestData struct {
+	Server         spec.Measurement
+	Client         spec.Measurement
+	ConnectionInfo *spec.ConnectionInfo
 }
 
 // Client is a ndt7 client.
@@ -101,7 +104,7 @@ type Client struct {
 	// upload is like download but for the upload test.
 	upload testFn
 
-	results map[spec.TestKind]*MeasurementPair
+	results map[spec.TestKind]*TestData
 }
 
 // makeUserAgent creates the user agent string
@@ -113,9 +116,9 @@ func makeUserAgent(clientName, clientVersion string) string {
 // clientName and clientVersion. M-Lab services may reject requests coming
 // from clients that do not identify themselves properly.
 func NewClient(clientName, clientVersion string) *Client {
-	results := map[spec.TestKind]*MeasurementPair{
-		spec.TestDownload: &MeasurementPair{},
-		spec.TestUpload:   &MeasurementPair{},
+	results := map[spec.TestKind]*TestData{
+		spec.TestDownload: &TestData{},
+		spec.TestUpload:   &TestData{},
 	}
 	return &Client{
 		ClientName:    clientName,
@@ -197,6 +200,12 @@ func (c *Client) collectData(ctx context.Context, f testFn, conn websocketx.Conn
 		case spec.OriginClient:
 			c.results[m.Test].Client = m
 		case spec.OriginServer:
+			// The server only sends ConnectionInfo once at the beginning of
+			// the test, thus if we want to know the client IP and test UUID
+			// we need to store it separately.
+			if m.ConnectionInfo != nil {
+				c.results[m.Test].ConnectionInfo = m.ConnectionInfo
+			}
 			c.results[m.Test].Server = m
 		}
 		outch <- m
@@ -218,6 +227,6 @@ func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, erro
 	return c.start(ctx, c.upload, params.UploadURLPath)
 }
 
-func (c *Client) Results() map[spec.TestKind]*MeasurementPair {
+func (c *Client) Results() map[spec.TestKind]*TestData {
 	return c.results
 }

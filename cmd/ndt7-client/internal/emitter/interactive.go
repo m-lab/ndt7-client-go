@@ -74,26 +74,35 @@ func (i Interactive) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event.
 func (i Interactive) OnSummary(s *internal.Summary) error {
-	_, err := fmt.Fprintf(i.out, "%15s: %s\n", "Server", s.ServerFQDN)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(i.out, "%15s: %7.1f ms\n", "Latency", float64(s.RTT)/1000)
+	_, err := fmt.Fprintf(i.out, "%15s: %s\n", "Server", s.Server)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintf(i.out, "%15s: %7.1f Mbit/s\n", "Download", s.Download)
+	_, err = fmt.Fprintf(i.out, "%15s: %s\n", "Client", s.Client)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintf(i.out, "%15s: %7.1f Mbit/s\n", "Upload", s.Upload)
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f %s\n", "Latency", s.RTT.Value, s.RTT.Unit)
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintf(i.out, "%15s: %7.2f %%\n", "Retransmission", s.DownloadRetrans)
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f %s\n", "Download",
+		s.Download.Value, s.Upload.Unit)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(i.out, "%15s: %7.1f %s\n", "Upload", s.Upload.Value,
+		s.Upload.Unit)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(i.out, "%15s: %7.2f %s\n", "Retransmission",
+		s.DownloadRetrans.Value, s.DownloadRetrans.Unit)
 	if err != nil {
 		return err
 	}
