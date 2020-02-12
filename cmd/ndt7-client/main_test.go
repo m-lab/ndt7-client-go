@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
+
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/mocks"
 
@@ -94,6 +96,10 @@ func (mockedEmitter) OnUploadEvent(m *spec.Measurement) error {
 
 func (me mockedEmitter) OnComplete(test spec.TestKind) error {
 	return me.CompleteError
+}
+
+func (me mockedEmitter) OnSummary(*internal.Summary) error {
+	return nil
 }
 
 func TestRunTestOnStartingError(t *testing.T) {
