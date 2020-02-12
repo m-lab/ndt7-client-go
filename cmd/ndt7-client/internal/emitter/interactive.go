@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -68,4 +69,9 @@ func (i Interactive) onSpeedEvent(m *spec.Measurement) error {
 func (i Interactive) OnComplete(test spec.TestKind) error {
 	_, err := fmt.Fprintf(i.out, "\n%s: complete\n", test)
 	return err
+}
+
+// OnSummary handles the summary event.
+func (i Interactive) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
+	return nil
 }

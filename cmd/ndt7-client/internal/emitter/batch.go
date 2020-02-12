@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -63,7 +64,7 @@ func (b Batch) OnError(test spec.TestKind, err error) error {
 		Key: "error",
 		Value: batchValue{
 			Measurement: spec.Measurement{
-				Test:    test,
+				Test: test,
 			},
 			Failure: err.Error(),
 		},
@@ -76,7 +77,7 @@ func (b Batch) OnConnected(test spec.TestKind, fqdn string) error {
 		Key: "connected",
 		Value: batchValue{
 			Measurement: spec.Measurement{
-				Test:   test,
+				Test: test,
 			},
 			Server: fqdn,
 		},
@@ -108,5 +109,12 @@ func (b Batch) OnComplete(test spec.TestKind) error {
 				Test: test,
 			},
 		},
+	})
+}
+
+// OnSummary handles the summary event, emitted after the test is over.
+func (b Batch) OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error {
+	return b.emitInterface(batchEvent{
+		Value: results,
 	})
 }

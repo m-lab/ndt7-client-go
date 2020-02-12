@@ -53,6 +53,11 @@ type testFn = func(
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
+type MeasurementPair struct {
+	Server spec.Measurement
+	Client spec.Measurement
+}
+
 // Client is a ndt7 client.
 type Client struct {
 	// ClientName is the name of the software running ndt7 tests. It's set by
@@ -95,6 +100,8 @@ type Client struct {
 
 	// upload is like download but for the upload test.
 	upload testFn
+
+	results map[spec.TestKind]*MeasurementPair
 }
 
 // makeUserAgent creates the user agent string
@@ -106,6 +113,10 @@ func makeUserAgent(clientName, clientVersion string) string {
 // clientName and clientVersion. M-Lab services may reject requests coming
 // from clients that do not identify themselves properly.
 func NewClient(clientName, clientVersion string) *Client {
+	results := map[spec.TestKind]*MeasurementPair{
+		spec.TestDownload: &MeasurementPair{},
+		spec.TestUpload:   &MeasurementPair{},
+	}
 	return &Client{
 		ClientName:    clientName,
 		ClientVersion: clientVersion,
@@ -125,9 +136,11 @@ func NewClient(clientName, clientVersion string) *Client {
 		MLabNSClient: mlabns.NewClient(
 			"ndt7", makeUserAgent(clientName, clientVersion),
 		),
-		upload: upload.Run,
-		Scheme: "wss",
+		upload:  upload.Run,
+		Scheme:  "wss",
+		results: results,
 	}
+
 }
 
 // discoverServer discovers and returns the closest mlab server.
@@ -170,8 +183,24 @@ func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Mea
 		return nil, err
 	}
 	ch := make(chan spec.Measurement)
-	go f(ctx, conn, ch)
+	go c.collectData(ctx, f, conn, ch)
 	return ch, nil
+}
+
+func (c *Client) collectData(ctx context.Context, f testFn, conn websocketx.Conn, outch chan<- spec.Measurement) {
+	inch := make(chan spec.Measurement)
+	defer close(outch)
+	go f(ctx, conn, inch)
+
+	for m := range inch {
+		switch m.Origin {
+		case spec.OriginClient:
+			c.results[m.Test].Client = m
+		case spec.OriginServer:
+			c.results[m.Test].Server = m
+		}
+		outch <- m
+	}
 }
 
 // StartDownload discovers a ndt7 server (if needed) and starts a download. On
@@ -187,4 +216,8 @@ func (c *Client) StartDownload(ctx context.Context) (<-chan spec.Measurement, er
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, error) {
 	return c.start(ctx, c.upload, params.UploadURLPath)
+}
+
+func (c *Client) Results() map[spec.TestKind]*MeasurementPair {
+	return c.results
 }

@@ -1,7 +1,10 @@
 // Package emitter contains the ndt7-client emitter.
 package emitter
 
-import "github.com/m-lab/ndt7-client-go/spec"
+import (
+	"github.com/m-lab/ndt7-client-go"
+	"github.com/m-lab/ndt7-client-go/spec"
+)
 
 // Emitter is a generic emitter. When an event occurs, the
 // corresponding method will be called. An error will generally
@@ -29,4 +32,7 @@ type Emitter interface {
 
 	// OnComplete is always emitted when the test is over.
 	OnComplete(test spec.TestKind) error
+
+	// OnSummary is emitted after the test is over.
+	OnSummary(results map[spec.TestKind]*ndt7.MeasurementPair) error
 }

@@ -188,5 +188,10 @@ func main() {
 	} else {
 		r.emitter = emitter.NewInteractive()
 	}
-	osExit(r.runDownload(ctx) + r.runUpload(ctx))
+	code := r.runDownload(ctx) + r.runUpload(ctx)
+	if code != 0 {
+		osExit(code)
+	}
+
+	r.emitter.OnSummary(r.client.Results())
 }
