@@ -102,9 +102,13 @@ var (
 		Options: []string{"wss", "ws"},
 		Value:   "wss",
 	}
+	flagFormat = flagx.Enum{
+		Options: []string{"human", "json"},
+		Value:   "human",
+	}
+
 	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
 		"(DEPRECATED, please use -format=json)")
-	flagFormat   = flag.String("format", "human", "output format ('human' or 'json')")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
@@ -117,6 +121,11 @@ func init() {
 		&flagScheme,
 		"scheme",
 		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+	)
+	flag.Var(
+		&flagFormat,
+		"format",
+		"output format to use: 'human' or 'json' for batch processing",
 	)
 }
 
@@ -195,7 +204,7 @@ func main() {
 	var e emitter.Emitter
 
 	// If -batch, force -format=json.
-	if *flagBatch || *flagFormat == "json" {
+	if *flagBatch || flagFormat.Value == "json" {
 		e = emitter.NewJSON()
 	} else {
 		e = emitter.NewHumanReadable()
