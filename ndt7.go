@@ -143,7 +143,6 @@ func NewClient(clientName, clientVersion string) *Client {
 		Scheme:  "wss",
 		results: results,
 	}
-
 }
 
 // discoverServer discovers and returns the closest mlab server.
