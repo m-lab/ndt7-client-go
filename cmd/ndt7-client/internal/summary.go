@@ -40,7 +40,7 @@ type Summary struct {
 // NewSummary creates a new Summary struct based on the ndt7 test results
 // provided by the Client.
 func NewSummary(FQDN string,
-	results map[spec.TestKind]*ndt7.TestData) *Summary {
+	results map[spec.TestKind]*ndt7.LatestMeasurements) *Summary {
 
 	s := &Summary{
 		Server: FQDN,

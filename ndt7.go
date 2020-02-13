@@ -53,9 +53,9 @@ type testFn = func(
 // by NewClient in the Client.Dialer.HandshakeTimeout field.
 const DefaultWebSocketHandshakeTimeout = 7 * time.Second
 
-// TestData contains the latest Measurement send by the server and the client,
+// LatestMeasurements contains the latest Measurement sent by the server and the client,
 // plus the latest ConnectionInfo sent by the server.
-type TestData struct {
+type LatestMeasurements struct {
 	Server         spec.Measurement
 	Client         spec.Measurement
 	ConnectionInfo *spec.ConnectionInfo
@@ -104,7 +104,7 @@ type Client struct {
 	// upload is like download but for the upload test.
 	upload testFn
 
-	results map[spec.TestKind]*TestData
+	results map[spec.TestKind]*LatestMeasurements
 }
 
 // makeUserAgent creates the user agent string
@@ -116,9 +116,9 @@ func makeUserAgent(clientName, clientVersion string) string {
 // clientName and clientVersion. M-Lab services may reject requests coming
 // from clients that do not identify themselves properly.
 func NewClient(clientName, clientVersion string) *Client {
-	results := map[spec.TestKind]*TestData{
-		spec.TestDownload: &TestData{},
-		spec.TestUpload:   &TestData{},
+	results := map[spec.TestKind]*LatestMeasurements{
+		spec.TestDownload: &LatestMeasurements{},
+		spec.TestUpload:   &LatestMeasurements{},
 	}
 	return &Client{
 		ClientName:    clientName,
@@ -227,6 +227,6 @@ func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, erro
 }
 
 // Results returns the test results map.
-func (c *Client) Results() map[spec.TestKind]*TestData {
+func (c *Client) Results() map[spec.TestKind]*LatestMeasurements {
 	return c.results
 }
