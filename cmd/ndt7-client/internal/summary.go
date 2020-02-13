@@ -18,15 +18,20 @@ type valueUnitPair struct {
 type Summary struct {
 	// FQDN of the server used for this test.
 	Server string
+
 	// IP address of the client.
 	Client string
+
 	// Download speed, in Mbit/s. This is measured at the receiver.
 	Download valueUnitPair
+
 	// Upload speed, in Mbit/s. This is measured at the sender.
 	Upload valueUnitPair
+
 	// Retransmission rate. This is based on the TCPInfo values provided
 	// by the server during a download test.
 	DownloadRetrans valueUnitPair
+
 	// Round-trip time of the latest measurement, in milliseconds.
 	// This is provided by the server during a download test.
 	RTT valueUnitPair
