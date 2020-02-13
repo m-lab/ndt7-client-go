@@ -2,12 +2,15 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <name>] [-no-verify]
+//    ndt7-client [-format <human|json>] [-hostname <name>] [-no-verify]
 //                [-scheme <scheme>] [-timeout <string>]
 //
-// The `-batch` flag causes the command to emit JSON messages on the
-// standard output, thus allowing for easy machine parsing. The default
-// is to emit user friendly pretty output.
+// The `-format` flag defines how the output should be emitter. Possible
+// values are "human", which is the default, and "json", where each message
+// is a valid JSON object.
+//
+// The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
+// latter should be used instead.
 //
 // The `-hostname <name>` flag specifies to use the `name` hostname for
 // performing the ndt7 test. The default is to auto-discover a suitable
@@ -27,10 +30,10 @@
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
 //
-// Events emitted in batch mode
+// JSON events emitted when -format=json
 //
-// This section describes the events emitted in batch mode. The code
-// will always emit a single event per line.
+// This section describes the events emitted when using the json output format.
+// The code will always emit a single event per line.
 //
 // When the download test starts, this event is emitted:
 //
@@ -78,6 +81,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
@@ -97,11 +101,18 @@ var (
 		Options: []string{"wss", "ws"},
 		Value:   "wss",
 	}
-	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
+	flagFormat = flagx.Enum{
+		Options: []string{"human", "json"},
+		Value:   "human",
+	}
+
+	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
+		"(DEPRECATED, please use -format=json)")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
+	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
 )
 
 func init() {
@@ -109,6 +120,11 @@ func init() {
 		&flagScheme,
 		"scheme",
 		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+	)
+	flag.Var(
+		&flagFormat,
+		"format",
+		"output format to use: 'human' or 'json' for batch processing",
 	)
 }
 
@@ -170,6 +186,57 @@ func (r runner) runUpload(ctx context.Context) int {
 		r.emitter.OnUploadEvent)
 }
 
+func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements) *emitter.Summary {
+
+	s := emitter.NewSummary(FQDN)
+
+	if results[spec.TestDownload] != nil &&
+		results[spec.TestDownload].ConnectionInfo != nil {
+		endpoint := strings.Split(
+			results[spec.TestDownload].ConnectionInfo.Client, ":")
+		s.Client = endpoint[0]
+	}
+
+	// Download comes from the client-side Measurement during the download
+	// test. DownloadRetrans and RTT come from the server-side Measurement,
+	// if it includes a TCPInfo object.
+	if dl, ok := results[spec.TestDownload]; ok {
+		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
+			s.Download = emitter.ValueUnitPair{
+				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+		if dl.Server.TCPInfo != nil {
+			if dl.Server.TCPInfo.BytesSent > 0 {
+				s.DownloadRetrans = emitter.ValueUnitPair{
+					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
+					Unit:  "%",
+				}
+			}
+			s.RTT = emitter.ValueUnitPair{
+				Value: float64(dl.Server.TCPInfo.RTT) / 1000,
+				Unit:  "ms",
+			}
+		}
+	}
+	// Upload comes from the client-side Measurement during the upload test.
+	if ul, ok := results[spec.TestUpload]; ok {
+		if ul.Client.AppInfo != nil && ul.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(ul.Client.AppInfo.ElapsedTime) / 1e06
+			s.Upload = emitter.ValueUnitPair{
+				Value: (8.0 * float64(ul.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+	}
+
+	return s
+}
+
 var osExit = os.Exit
 
 func main() {
@@ -183,10 +250,25 @@ func main() {
 		InsecureSkipVerify: *flagNoVerify,
 	}
 	r.client.FQDN = *flagHostname
-	if *flagBatch {
-		r.emitter = emitter.NewBatch()
+
+	var e emitter.Emitter
+
+	// If -batch, force -format=json.
+	if *flagBatch || flagFormat.Value == "json" {
+		e = emitter.NewJSON()
 	} else {
-		r.emitter = emitter.NewInteractive()
+		e = emitter.NewHumanReadable()
 	}
-	osExit(r.runDownload(ctx) + r.runUpload(ctx))
+	if *flagQuiet {
+		e = emitter.NewQuiet(e)
+	}
+	r.emitter = e
+
+	code := r.runDownload(ctx) + r.runUpload(ctx)
+	if code != 0 {
+		osExit(code)
+	}
+
+	s := makeSummary(r.client.FQDN, r.client.Results())
+	r.emitter.OnSummary(s)
 }

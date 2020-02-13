@@ -1,7 +1,9 @@
 // Package mocks contains mocks
 package mocks
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrMocked is a mocked error
 var ErrMocked = errors.New("mocked error")

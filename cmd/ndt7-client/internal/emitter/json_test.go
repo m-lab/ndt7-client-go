@@ -10,10 +10,10 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-func TestBatchOnStarting(t *testing.T) {
+func TestJSONOnStarting(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnStarting("download")
+	j := NewJSONWithWriter(sw)
+	err := j.OnStarting("download")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,18 +38,18 @@ func TestBatchOnStarting(t *testing.T) {
 	}
 }
 
-func TestBatchOnStartingFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnStarting("download")
+func TestJSONOnStartingFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnStarting("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestBatchOnError(t *testing.T) {
+func TestJSONOnError(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnError("download", errors.New("mocked error"))
+	j := NewJSONWithWriter(sw)
+	err := j.OnError("download", errors.New("mocked error"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,18 +78,18 @@ func TestBatchOnError(t *testing.T) {
 	}
 }
 
-func TestBatchOnErrorFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnError("download", errors.New("some error"))
+func TestJSONOnErrorFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestBatchOnConnected(t *testing.T) {
+func TestJSONOnConnected(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnConnected("download", "FQDN")
+	j := NewJSONWithWriter(sw)
+	err := j.OnConnected("download", "FQDN")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,18 +118,18 @@ func TestBatchOnConnected(t *testing.T) {
 	}
 }
 
-func TestBatchOnConnectedFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnConnected("download", "FQDN")
+func TestJSONOnConnectedFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnConnected("download", "FQDN")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestBatchOnDownloadEvent(t *testing.T) {
+func TestJSONOnDownloadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnDownloadEvent(&spec.Measurement{
+	j := NewJSONWithWriter(sw)
+	err := j.OnDownloadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 7100000,
 			NumBytes:    41000,
@@ -175,18 +175,18 @@ func TestBatchOnDownloadEvent(t *testing.T) {
 	}
 }
 
-func TestBatchOnDownloadEventFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnDownloadEvent(&spec.Measurement{})
+func TestJSONOnDownloadEventFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnDownloadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestBatchOnUploadEvent(t *testing.T) {
+func TestJSONOnUploadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnUploadEvent(&spec.Measurement{
+	j := NewJSONWithWriter(sw)
+	err := j.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 3000000,
 			NumBytes:    100000000,
@@ -232,18 +232,18 @@ func TestBatchOnUploadEvent(t *testing.T) {
 	}
 }
 
-func TestBatchOnUploadEventFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnUploadEvent(&spec.Measurement{})
+func TestJSONOnUploadEventFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnUploadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestBatchOnComplete(t *testing.T) {
+func TestJSONOnComplete(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	batch := Batch{sw}
-	err := batch.OnComplete("download")
+	j := NewJSONWithWriter(sw)
+	err := j.OnComplete("download")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,32 +268,66 @@ func TestBatchOnComplete(t *testing.T) {
 	}
 }
 
-func TestBatchOnCompleteFailure(t *testing.T) {
-	batch := Batch{&mocks.FailingWriter{}}
-	err := batch.OnComplete("download")
+func TestJSONOnCompleteFailure(t *testing.T) {
+	j := NewJSONWithWriter(&mocks.FailingWriter{})
+	err := j.OnComplete("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestNewBatchConstructor(t *testing.T) {
-	batch := NewBatch()
-	if batch.Writer != os.Stdout {
-		t.Fatal("Batch is not using stdout")
+func TestNewJSONConstructor(t *testing.T) {
+	j := NewJSON()
+	if j == nil {
+		t.Fatal("NewJSON did not return an Emitter")
+	}
+}
+
+func TestNewJSONWithWriter(t *testing.T) {
+	if NewJSONWithWriter(&mocks.SavingWriter{}) == nil {
+		t.Fatal("NewJSONWithWriter did not return an Emitter")
 	}
 }
 
 func TestEmitInterfaceFailure(t *testing.T) {
-	batch := NewBatch()
+	j := jsonEmitter{Writer: os.Stdout}
 	// See https://stackoverflow.com/a/48901259
 	x := map[string]interface{}{
 		"foo": make(chan int),
 	}
-	err := batch.emitInterface(x)
+	err := j.emitInterface(x)
 	switch err.(type) {
 	case *json.UnsupportedTypeError:
 		// nothing
 	default:
 		t.Fatal("Expected a json.UnsupportedTypeError here")
 	}
+}
+
+func TestJSONOnSummary(t *testing.T) {
+	summary := &Summary{}
+	sw := &mocks.SavingWriter{}
+	j := NewJSONWithWriter(sw)
+	err := j.OnSummary(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sw.Data) != 1 {
+		t.Fatal("invalid length")
+	}
+
+	var output Summary
+	err = json.Unmarshal(sw.Data[0], &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output.Client != summary.Client ||
+		output.Server != summary.Server ||
+		output.Download != summary.Download ||
+		output.Upload != summary.Upload ||
+		output.DownloadRetrans != summary.DownloadRetrans ||
+		output.RTT != summary.RTT {
+		t.Fatal("OnSummary(): unexpected output")
+	}
+
 }
