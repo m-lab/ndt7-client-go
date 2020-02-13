@@ -227,6 +227,7 @@ func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, erro
 	return c.start(ctx, c.upload, params.UploadURLPath)
 }
 
+// Results returns the test results map.
 func (c *Client) Results() map[spec.TestKind]*TestData {
 	return c.results
 }
