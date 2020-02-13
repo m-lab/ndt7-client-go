@@ -2,12 +2,15 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <name>] [-no-verify]
+//    ndt7-client [-format <human|json>] [-hostname <name>] [-no-verify]
 //                [-scheme <scheme>] [-timeout <string>]
 //
-// The `-batch` flag causes the command to emit JSON messages on the
-// standard output, thus allowing for easy machine parsing. The default
-// is to emit user friendly pretty output.
+// The `-format` flag defines how the output should be emitter. Possible
+// values are "human", which is the default, and "json", where each message
+// is a valid JSON object.
+//
+// The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
+// latter should be used instead.
 //
 // The `-hostname <name>` flag specifies to use the `name` hostname for
 // performing the ndt7 test. The default is to auto-discover a suitable
@@ -27,10 +30,10 @@
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
 //
-// Events emitted in batch mode
+// JSON events emitted when -format=json
 //
-// This section describes the events emitted in batch mode. The code
-// will always emit a single event per line.
+// This section describes the events emitted when using the json output format.
+// The code will always emit a single event per line.
 //
 // When the download test starts, this event is emitted:
 //
