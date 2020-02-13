@@ -220,12 +220,13 @@ func TestHumanReadableOnCompleteFailure(t *testing.T) {
 }
 
 func TestHumanReadableOnSummary(t *testing.T) {
-	expected := "         Server: test\n" +
-		"         Client: test\n" +
-		"        Latency:    10.0 ms\n" +
-		"       Download:   100.0 Mbit/s\n" +
-		"         Upload:   100.0 Mbit/s\n" +
-		" Retransmission:    1.00 %\n"
+	expected := `         Server: test
+         Client: test
+        Latency:    10.0 ms
+       Download:   100.0 Mbit/s
+         Upload:   100.0 Mbit/s
+ Retransmission:    1.00 %
+`
 	summary := &Summary{
 		Client: "test",
 		Server: "test",
