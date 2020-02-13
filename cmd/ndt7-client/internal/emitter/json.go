@@ -9,25 +9,32 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// JSON is a JSON emitter. It emits messages consistent with
+// jsonEmitter is a jsonEmitter emitter. It emits messages consistent with
 // the cmd/ndt7-client/main.go documentation for `-format=json`.
-type JSON struct {
+type jsonEmitter struct {
 	io.Writer
 }
 
 // NewJSON creates a new JSON emitter
-func NewJSON() JSON {
-	return JSON{
+func NewJSON() Emitter {
+	return jsonEmitter{
 		Writer: os.Stdout,
 	}
 }
 
-func (j JSON) emitData(data []byte) error {
+// NewJSONWithWriter create a new JSON emitter with a custom Writer.
+func NewJSONWithWriter(w io.Writer) Emitter {
+	return jsonEmitter{
+		Writer: w,
+	}
+}
+
+func (j jsonEmitter) emitData(data []byte) error {
 	_, err := j.Write(append(data, byte('\n')))
 	return err
 }
 
-func (j JSON) emitInterface(any interface{}) error {
+func (j jsonEmitter) emitInterface(any interface{}) error {
 	data, err := json.Marshal(any)
 	if err != nil {
 		return err
@@ -47,7 +54,7 @@ type batchValue struct {
 }
 
 // OnStarting emits the starting event
-func (j JSON) OnStarting(test spec.TestKind) error {
+func (j jsonEmitter) OnStarting(test spec.TestKind) error {
 	return j.emitInterface(batchEvent{
 		Key: "starting",
 		Value: batchValue{
@@ -59,7 +66,7 @@ func (j JSON) OnStarting(test spec.TestKind) error {
 }
 
 // OnError emits the error event
-func (j JSON) OnError(test spec.TestKind, err error) error {
+func (j jsonEmitter) OnError(test spec.TestKind, err error) error {
 	return j.emitInterface(batchEvent{
 		Key: "error",
 		Value: batchValue{
@@ -72,7 +79,7 @@ func (j JSON) OnError(test spec.TestKind, err error) error {
 }
 
 // OnConnected emits the connected event
-func (j JSON) OnConnected(test spec.TestKind, fqdn string) error {
+func (j jsonEmitter) OnConnected(test spec.TestKind, fqdn string) error {
 	return j.emitInterface(batchEvent{
 		Key: "connected",
 		Value: batchValue{
@@ -85,7 +92,7 @@ func (j JSON) OnConnected(test spec.TestKind, fqdn string) error {
 }
 
 // OnDownloadEvent handles an event emitted during the download
-func (j JSON) OnDownloadEvent(m *spec.Measurement) error {
+func (j jsonEmitter) OnDownloadEvent(m *spec.Measurement) error {
 	return j.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
@@ -93,7 +100,7 @@ func (j JSON) OnDownloadEvent(m *spec.Measurement) error {
 }
 
 // OnUploadEvent handles an event emitted during the upload
-func (j JSON) OnUploadEvent(m *spec.Measurement) error {
+func (j jsonEmitter) OnUploadEvent(m *spec.Measurement) error {
 	return j.emitInterface(batchEvent{
 		Key:   "measurement",
 		Value: m,
@@ -101,7 +108,7 @@ func (j JSON) OnUploadEvent(m *spec.Measurement) error {
 }
 
 // OnComplete is the event signalling the end of the test
-func (j JSON) OnComplete(test spec.TestKind) error {
+func (j jsonEmitter) OnComplete(test spec.TestKind) error {
 	return j.emitInterface(batchEvent{
 		Key: "complete",
 		Value: batchValue{
@@ -113,6 +120,6 @@ func (j JSON) OnComplete(test spec.TestKind) error {
 }
 
 // OnSummary handles the summary event, emitted after the test is over.
-func (j JSON) OnSummary(s *internal.Summary) error {
+func (j jsonEmitter) OnSummary(s *internal.Summary) error {
 	return j.emitInterface(s)
 }

@@ -12,7 +12,7 @@ import (
 
 func TestJSONOnStarting(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnStarting("download")
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestJSONOnStarting(t *testing.T) {
 }
 
 func TestJSONOnStartingFailure(t *testing.T) {
-	j := JSON{&mocks.FailingWriter{}}
+	j := jsonEmitter{&mocks.FailingWriter{}}
 	err := j.OnStarting("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -48,7 +48,7 @@ func TestJSONOnStartingFailure(t *testing.T) {
 
 func TestJSONOnError(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnError("download", errors.New("mocked error"))
 	if err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestJSONOnError(t *testing.T) {
 }
 
 func TestJSONOnErrorFailure(t *testing.T) {
-	bajch := JSON{&mocks.FailingWriter{}}
+	bajch := jsonEmitter{&mocks.FailingWriter{}}
 	err := bajch.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -88,7 +88,7 @@ func TestJSONOnErrorFailure(t *testing.T) {
 
 func TestJSONOnConnected(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnConnected("download", "FQDN")
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestJSONOnConnected(t *testing.T) {
 }
 
 func TestJSONOnConnectedFailure(t *testing.T) {
-	j := JSON{&mocks.FailingWriter{}}
+	j := jsonEmitter{&mocks.FailingWriter{}}
 	err := j.OnConnected("download", "FQDN")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -128,7 +128,7 @@ func TestJSONOnConnectedFailure(t *testing.T) {
 
 func TestJSONOnDownloadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnDownloadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 7100000,
@@ -176,7 +176,7 @@ func TestJSONOnDownloadEvent(t *testing.T) {
 }
 
 func TestJSONOnDownloadEventFailure(t *testing.T) {
-	j := JSON{&mocks.FailingWriter{}}
+	j := jsonEmitter{&mocks.FailingWriter{}}
 	err := j.OnDownloadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -185,7 +185,7 @@ func TestJSONOnDownloadEventFailure(t *testing.T) {
 
 func TestJSONOnUploadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 3000000,
@@ -233,7 +233,7 @@ func TestJSONOnUploadEvent(t *testing.T) {
 }
 
 func TestJSONOnUploadEventFailure(t *testing.T) {
-	j := JSON{&mocks.FailingWriter{}}
+	j := jsonEmitter{&mocks.FailingWriter{}}
 	err := j.OnUploadEvent(&spec.Measurement{})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -242,7 +242,7 @@ func TestJSONOnUploadEventFailure(t *testing.T) {
 
 func TestJSONOnComplete(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	j := JSON{sw}
+	j := jsonEmitter{sw}
 	err := j.OnComplete("download")
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestJSONOnComplete(t *testing.T) {
 }
 
 func TestJSONOnCompleteFailure(t *testing.T) {
-	j := JSON{&mocks.FailingWriter{}}
+	j := jsonEmitter{&mocks.FailingWriter{}}
 	err := j.OnComplete("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
@@ -278,13 +278,13 @@ func TestJSONOnCompleteFailure(t *testing.T) {
 
 func TestNewJSONConstructor(t *testing.T) {
 	j := NewJSON()
-	if j.Writer != os.Stdout {
-		t.Fatal("JSON is not using stdout")
+	if j == nil {
+		t.Fatal("NewJSON did not return an Emitter")
 	}
 }
 
 func TestEmitInterfaceFailure(t *testing.T) {
-	j := NewJSON()
+	j := jsonEmitter{Writer: os.Stdout}
 	// See https://stackoverflow.com/a/48901259
 	x := map[string]interface{}{
 		"foo": make(chan int),
