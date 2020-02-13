@@ -2,6 +2,7 @@ package emitter
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -218,9 +219,69 @@ func TestHumanReadableOnCompleteFailure(t *testing.T) {
 	}
 }
 
-func TestNewInteractiveConstructor(t *testing.T) {
+func TestHumanReadableOnSummary(t *testing.T) {
+	expected := "         Server: test\n" +
+		"         Client: test\n" +
+		"        Latency:    10.0 ms\n" +
+		"       Download:   100.0 Mbit/s\n" +
+		"         Upload:   100.0 Mbit/s\n" +
+		" Retransmission:    1.00 %\n"
+	summary := &Summary{
+		Client: "test",
+		Server: "test",
+		Download: ValueUnitPair{
+			Value: 100.0,
+			Unit:  "Mbit/s",
+		},
+		Upload: ValueUnitPair{
+			Value: 100.0,
+			Unit:  "Mbit/s",
+		},
+		DownloadRetrans: ValueUnitPair{
+			Value: 1.0,
+			Unit:  "%",
+		},
+		RTT: ValueUnitPair{
+			Value: 10.0,
+			Unit:  "ms",
+		},
+	}
+	sw := &mocks.SavingWriter{}
+	j := HumanReadable{sw}
+	err := j.OnSummary(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(sw.Data) != 1 {
+		t.Fatal("invalid length")
+	}
+	if string(sw.Data[0]) != expected {
+		fmt.Println(string(sw.Data[0]))
+		fmt.Println(expected)
+		t.Fatal("OnSummary(): unexpected data")
+	}
+}
+
+func TestHumanReadableOnSummaryFailure(t *testing.T) {
+	sw := &mocks.FailingWriter{}
+	j := HumanReadable{sw}
+	err := j.OnSummary(&Summary{})
+	if err == nil {
+		t.Fatal("OnSummary(): expected err, got nil")
+	}
+}
+
+func TestNewHumanReadableConstructor(t *testing.T) {
 	hr := NewHumanReadable()
 	if hr == nil {
 		t.Fatal("NewHumanReadable() did not return a HumanReadable")
+	}
+}
+
+func TestNewHumanReadableWithWriter(t *testing.T) {
+	hr := NewHumanReadableWithWriter(&mocks.SavingWriter{})
+	if hr == nil {
+		t.Fatal("NewHumanReadableWithWriter() did not return a HumanReadable")
 	}
 }

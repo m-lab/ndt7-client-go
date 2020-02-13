@@ -81,11 +81,11 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -186,6 +186,57 @@ func (r runner) runUpload(ctx context.Context) int {
 		r.emitter.OnUploadEvent)
 }
 
+func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements) *emitter.Summary {
+
+	s := emitter.NewSummary(FQDN)
+
+	if results[spec.TestDownload] != nil &&
+		results[spec.TestDownload].ConnectionInfo != nil {
+		endpoint := strings.Split(
+			results[spec.TestDownload].ConnectionInfo.Client, ":")
+		s.Client = endpoint[0]
+	}
+
+	// Download comes from the client-side Measurement during the download
+	// test. DownloadRetrans and RTT come from the server-side Measurement,
+	// if it includes a TCPInfo object.
+	if dl, ok := results[spec.TestDownload]; ok {
+		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
+			s.Download = emitter.ValueUnitPair{
+				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+		if dl.Server.TCPInfo != nil {
+			if dl.Server.TCPInfo.BytesSent > 0 {
+				s.DownloadRetrans = emitter.ValueUnitPair{
+					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
+					Unit:  "%",
+				}
+			}
+			s.RTT = emitter.ValueUnitPair{
+				Value: float64(dl.Server.TCPInfo.RTT) / 1000,
+				Unit:  "ms",
+			}
+		}
+	}
+	// Upload comes from the client-side Measurement during the upload test.
+	if ul, ok := results[spec.TestUpload]; ok {
+		if ul.Client.AppInfo != nil && ul.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(ul.Client.AppInfo.ElapsedTime) / 1e06
+			s.Upload = emitter.ValueUnitPair{
+				Value: (8.0 * float64(ul.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+	}
+
+	return s
+}
+
 var osExit = os.Exit
 
 func main() {
@@ -218,6 +269,6 @@ func main() {
 		osExit(code)
 	}
 
-	s := internal.NewSummary(r.client.FQDN, r.client.Results())
+	s := makeSummary(r.client.FQDN, r.client.Results())
 	r.emitter.OnSummary(s)
 }

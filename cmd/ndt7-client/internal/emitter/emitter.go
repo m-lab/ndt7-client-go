@@ -2,7 +2,6 @@
 package emitter
 
 import (
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -34,5 +33,5 @@ type Emitter interface {
 	OnComplete(test spec.TestKind) error
 
 	// OnSummary is emitted after the test is over.
-	OnSummary(s *internal.Summary) error
+	OnSummary(s *Summary) error
 }

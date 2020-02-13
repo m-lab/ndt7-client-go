@@ -79,8 +79,8 @@ func TestJSONOnError(t *testing.T) {
 }
 
 func TestJSONOnErrorFailure(t *testing.T) {
-	bajch := jsonEmitter{&mocks.FailingWriter{}}
-	err := bajch.OnError("download", errors.New("some error"))
+	j := jsonEmitter{&mocks.FailingWriter{}}
+	err := j.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
@@ -283,6 +283,12 @@ func TestNewJSONConstructor(t *testing.T) {
 	}
 }
 
+func TestNewJSONWithWriter(t *testing.T) {
+	if NewJSONWithWriter(&mocks.SavingWriter{}) == nil {
+		t.Fatal("NewJSONWithWriter did not return an Emitter")
+	}
+}
+
 func TestEmitInterfaceFailure(t *testing.T) {
 	j := jsonEmitter{Writer: os.Stdout}
 	// See https://stackoverflow.com/a/48901259
@@ -296,4 +302,32 @@ func TestEmitInterfaceFailure(t *testing.T) {
 	default:
 		t.Fatal("Expected a json.UnsupportedTypeError here")
 	}
+}
+
+func TestJSONOnSummary(t *testing.T) {
+	summary := &Summary{}
+	sw := &mocks.SavingWriter{}
+	j := jsonEmitter{sw}
+	err := j.OnSummary(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sw.Data) != 1 {
+		t.Fatal("invalid length")
+	}
+
+	var output Summary
+	err = json.Unmarshal(sw.Data[0], &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output.Client != summary.Client ||
+		output.Server != summary.Server ||
+		output.Download != summary.Download ||
+		output.Upload != summary.Upload ||
+		output.DownloadRetrans != summary.DownloadRetrans ||
+		output.RTT != summary.RTT {
+		t.Fatal("OnSummary(): unexpected output")
+	}
+
 }

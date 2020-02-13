@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
-
+	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/mocks"
-
-	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -26,6 +24,24 @@ func TestNormalUsage(t *testing.T) {
 		exitval = code
 	}
 	main()
+	osExit = savedFunc
+	if exitval != 0 {
+		t.Fatal("expected zero return code here")
+	}
+}
+
+func TestQuietUsage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+	exitval := 0
+	savedFunc := osExit
+	osExit = func(code int) {
+		exitval = code
+	}
+	*flagQuiet = true
+	main()
+	*flagQuiet = false
 	osExit = savedFunc
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
@@ -98,7 +114,7 @@ func (me mockedEmitter) OnComplete(test spec.TestKind) error {
 	return me.CompleteError
 }
 
-func (me mockedEmitter) OnSummary(*internal.Summary) error {
+func (me mockedEmitter) OnSummary(*emitter.Summary) error {
 	return nil
 }
 
@@ -299,5 +315,65 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 		} else {
 			t.Fatal("invalid index")
 		}
+	}
+}
+
+func TestMakeSummary(t *testing.T) {
+	// Simulate a 1% retransmission rate and a 10ms RTT.
+	tcpInfo := &spec.TCPInfo{}
+	tcpInfo.BytesSent = 100
+	tcpInfo.BytesRetrans = 1
+	tcpInfo.RTT = 10000
+
+	results := map[spec.TestKind]*ndt7.LatestMeasurements{
+		spec.TestDownload: &ndt7.LatestMeasurements{
+			Client: spec.Measurement{
+				AppInfo: &spec.AppInfo{
+					NumBytes:    100,
+					ElapsedTime: 1,
+				},
+			},
+			ConnectionInfo: &spec.ConnectionInfo{
+				Client: "127.0.0.1",
+				Server: "test",
+			},
+			Server: spec.Measurement{
+				TCPInfo: tcpInfo,
+			},
+		},
+		spec.TestUpload: &ndt7.LatestMeasurements{
+			Client: spec.Measurement{
+				AppInfo: &spec.AppInfo{
+					NumBytes:    100,
+					ElapsedTime: 1,
+				},
+			},
+		},
+	}
+
+	expected := &emitter.Summary{
+		Client: "127.0.0.1",
+		Server: "test",
+		Download: emitter.ValueUnitPair{
+			Value: 800.0,
+			Unit:  "Mbit/s",
+		},
+		Upload: emitter.ValueUnitPair{
+			Value: 800.0,
+			Unit:  "Mbit/s",
+		},
+		DownloadRetrans: emitter.ValueUnitPair{
+			Value: 1.0,
+			Unit:  "%",
+		},
+		RTT: emitter.ValueUnitPair{
+			Value: 10.0,
+			Unit:  "ms",
+		},
+	}
+
+	generated := makeSummary("test", results)
+	if !reflect.DeepEqual(generated, expected) {
+		t.Fatal("makeSummary(): unexpected summary data")
 	}
 }

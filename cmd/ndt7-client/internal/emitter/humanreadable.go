@@ -6,8 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal"
-
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -79,7 +77,7 @@ func (h HumanReadable) OnComplete(test spec.TestKind) error {
 }
 
 // OnSummary handles the summary event.
-func (h HumanReadable) OnSummary(s *internal.Summary) error {
+func (h HumanReadable) OnSummary(s *Summary) error {
 	const summaryFormat = `%15s: %s
 %15s: %s
 %15s: %7.1f %s
