@@ -18,8 +18,14 @@ type HumanReadable struct {
 }
 
 // NewHumanReadable returns a new human readable emitter.
-func NewHumanReadable() HumanReadable {
+func NewHumanReadable() Emitter {
 	return HumanReadable{os.Stdout}
+}
+
+// NewHumanReadableWithWriter returns a new human readable emitter using the
+// specified writer.
+func NewHumanReadableWithWriter(w io.Writer) Emitter {
+	return HumanReadable{w}
 }
 
 // OnStarting handles the start event

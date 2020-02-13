@@ -2,7 +2,6 @@ package emitter
 
 import (
 	"errors"
-	"os"
 	"reflect"
 	"testing"
 
@@ -221,7 +220,7 @@ func TestHumanReadableOnCompleteFailure(t *testing.T) {
 
 func TestNewInteractiveConstructor(t *testing.T) {
 	hr := NewHumanReadable()
-	if hr.out != os.Stdout {
-		t.Fatal("Interactive is not using stdout")
+	if hr == nil {
+		t.Fatal("NewHumanReadable() did not return a HumanReadable")
 	}
 }
