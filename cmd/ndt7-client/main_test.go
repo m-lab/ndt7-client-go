@@ -41,9 +41,9 @@ func TestBatchUsage(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
-	*flagJSON = true
+	*flagBatch = true
 	main()
-	*flagJSON = false
+	*flagBatch = false
 	osExit = savedFunc
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
