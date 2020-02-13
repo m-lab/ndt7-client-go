@@ -10,10 +10,10 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-func TestInteractiveOnStarting(t *testing.T) {
+func TestHumanReadableOnStarting(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnStarting("download")
+	hr := HumanReadable{sw}
+	err := hr.OnStarting("download")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,18 +25,18 @@ func TestInteractiveOnStarting(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnStartingFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnStarting("download")
+func TestHumanReadableOnStartingFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnStarting("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestInteractiveOnError(t *testing.T) {
+func TestHumanReadableOnError(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnError("download", errors.New("mocked error"))
+	hr := HumanReadable{sw}
+	err := hr.OnError("download", errors.New("mocked error"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,18 +48,18 @@ func TestInteractiveOnError(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnErrorFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnError("download", errors.New("some error"))
+func TestHumanReadableOnErrorFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnError("download", errors.New("some error"))
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestInteractiveOnConnected(t *testing.T) {
+func TestHumanReadableOnConnected(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnConnected("download", "FQDN")
+	hr := HumanReadable{sw}
+	err := hr.OnConnected("download", "FQDN")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,18 +71,18 @@ func TestInteractiveOnConnected(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnConnectedFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnConnected("download", "FQDN")
+func TestHumanReadableOnConnectedFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnConnected("download", "FQDN")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
-func TestInteractiveOnDownloadEvent(t *testing.T) {
+func TestHumanReadableOnDownloadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnDownloadEvent(&spec.Measurement{
+	hr := HumanReadable{sw}
+	err := hr.OnDownloadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 3000000,
 			NumBytes:    100000000,
@@ -103,9 +103,9 @@ func TestInteractiveOnDownloadEvent(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnDownloadEventFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnDownloadEvent(&spec.Measurement{
+func TestHumanReadableOnDownloadEventFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnDownloadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 1234,
 		},
@@ -116,10 +116,10 @@ func TestInteractiveOnDownloadEventFailure(t *testing.T) {
 	}
 }
 
-func TestInteractiveIgnoresServerData(t *testing.T) {
+func TestHumanReadableIgnoresServerData(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnUploadEvent(&spec.Measurement{
+	hr := HumanReadable{sw}
+	err := hr.OnUploadEvent(&spec.Measurement{
 		Origin: spec.OriginServer,
 	})
 	if err != nil {
@@ -130,10 +130,10 @@ func TestInteractiveIgnoresServerData(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnUploadEvent(t *testing.T) {
+func TestHumanReadableOnUploadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnUploadEvent(&spec.Measurement{
+	hr := HumanReadable{sw}
+	err := hr.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 3000000,
 			NumBytes:    100000000,
@@ -154,10 +154,10 @@ func TestInteractiveOnUploadEvent(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnUploadEventSafetyCheck(t *testing.T) {
+func TestHumanReadableOnUploadEventSafetyCheck(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnUploadEvent(&spec.Measurement{
+	hr := HumanReadable{sw}
+	err := hr.OnUploadEvent(&spec.Measurement{
 		Origin: spec.OriginClient,
 	})
 	if err == nil {
@@ -168,10 +168,10 @@ func TestInteractiveOnUploadEventSafetyCheck(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnUploadEventDivideByZero(t *testing.T) {
+func TestHumanReadableOnUploadEventDivideByZero(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnUploadEvent(&spec.Measurement{
+	hr := HumanReadable{sw}
+	err := hr.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{},
 		Origin:  spec.OriginClient,
 	})
@@ -183,9 +183,9 @@ func TestInteractiveOnUploadEventDivideByZero(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnUploadEventFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnUploadEvent(&spec.Measurement{
+func TestHumanReadableOnUploadEventFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{
 			ElapsedTime: 1234,
 		},
@@ -196,10 +196,10 @@ func TestInteractiveOnUploadEventFailure(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnComplete(t *testing.T) {
+func TestHumanReadableOnComplete(t *testing.T) {
 	sw := &mocks.SavingWriter{}
-	interactive := Interactive{sw}
-	err := interactive.OnComplete("download")
+	hr := HumanReadable{sw}
+	err := hr.OnComplete("download")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,17 +211,17 @@ func TestInteractiveOnComplete(t *testing.T) {
 	}
 }
 
-func TestInteractiveOnCompleteFailure(t *testing.T) {
-	interactive := Interactive{&mocks.FailingWriter{}}
-	err := interactive.OnComplete("download")
+func TestHumanReadableOnCompleteFailure(t *testing.T) {
+	hr := HumanReadable{&mocks.FailingWriter{}}
+	err := hr.OnComplete("download")
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")
 	}
 }
 
 func TestNewInteractiveConstructor(t *testing.T) {
-	interactive := NewInteractive()
-	if interactive.out != os.Stdout {
+	hr := NewHumanReadable()
+	if hr.out != os.Stdout {
 		t.Fatal("Interactive is not using stdout")
 	}
 }

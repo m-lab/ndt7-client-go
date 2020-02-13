@@ -195,7 +195,7 @@ func main() {
 	if *flagBatch || *flagFormat == "json" {
 		e = emitter.NewJSON()
 	} else {
-		e = emitter.NewInteractive()
+		e = emitter.NewHumanReadable()
 	}
 	if *flagQuiet {
 		e = emitter.NewQuiet(e)
