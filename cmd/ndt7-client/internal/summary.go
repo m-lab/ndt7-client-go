@@ -16,23 +16,24 @@ type valueUnitPair struct {
 // Summary is a struct containing the values displayed to the user at
 // the end of an ndt7 test.
 type Summary struct {
-	// FQDN of the server used for this test.
+	// Server is the FQDN of the server used for this test.
 	Server string
 
-	// IP address of the client.
+	// Client is the IP address of the client.
 	Client string
 
-	// Download speed, in Mbit/s. This is measured at the receiver.
+	// Download is the download speed, in Mbit/s. This is measured at the
+	// receiver.
 	Download valueUnitPair
 
-	// Upload speed, in Mbit/s. This is measured at the sender.
+	// Upload is the upload speed, in Mbit/s. This is measured at the sender.
 	Upload valueUnitPair
 
-	// Retransmission rate. This is based on the TCPInfo values provided
-	// by the server during a download test.
+	// DownloadRetrans is the retransmission rate. This is based on the TCPInfo
+	// values provided by the server during a download test.
 	DownloadRetrans valueUnitPair
 
-	// Round-trip time of the latest measurement, in milliseconds.
+	// RTT is the round-trip time of the latest measurement, in milliseconds.
 	// This is provided by the server during a download test.
 	RTT valueUnitPair
 }
