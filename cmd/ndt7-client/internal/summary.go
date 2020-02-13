@@ -7,7 +7,7 @@ import (
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
-// valueUnitPair represents a {"value": ..., "unit": ...} pair.
+// valueUnitPair represents a {"Value": ..., "Unit": ...} pair.
 type valueUnitPair struct {
 	Value float64
 	Unit  string
@@ -18,6 +18,7 @@ type valueUnitPair struct {
 type Summary struct {
 	// FQDN of the server used for this test.
 	Server string
+	// IP address of the client.
 	Client string
 	// Download speed, in Mbit/s. This is measured at the receiver.
 	Download valueUnitPair
