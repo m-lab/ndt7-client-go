@@ -255,7 +255,7 @@ func main() {
 
 	// If -batch, force -format=json.
 	if *flagBatch || flagFormat.Value == "json" {
-		e = emitter.NewJSON()
+		e = emitter.NewJSON(os.Stdout)
 	} else {
 		e = emitter.NewHumanReadable()
 	}
