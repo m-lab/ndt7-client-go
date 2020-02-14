@@ -222,7 +222,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	writer := &mocks.SavingWriter{}
 	runner := runner{
 		client:  ndt7.NewClient(clientName, clientVersion),
-		emitter: emitter.NewJSONWithWriter(writer),
+		emitter: emitter.NewJSON(writer),
 	}
 	code := runner.runTest(
 		context.Background(),
@@ -275,7 +275,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	writer := &mocks.SavingWriter{}
 	runner := runner{
 		client:  ndt7.NewClient(clientName, clientVersion),
-		emitter: emitter.NewJSONWithWriter(writer),
+		emitter: emitter.NewJSON(writer),
 	}
 	runner.client.MLabNSClient.BaseURL = "\t" // URL parser error
 	code := runner.runTest(

@@ -3,7 +3,6 @@ package emitter
 import (
 	"encoding/json"
 	"io"
-	"os"
 
 	"github.com/m-lab/ndt7-client-go/spec"
 )
@@ -15,14 +14,7 @@ type jsonEmitter struct {
 }
 
 // NewJSON creates a new JSON emitter
-func NewJSON() Emitter {
-	return jsonEmitter{
-		Writer: os.Stdout,
-	}
-}
-
-// NewJSONWithWriter create a new JSON emitter with a custom Writer.
-func NewJSONWithWriter(w io.Writer) Emitter {
+func NewJSON(w io.Writer) Emitter {
 	return jsonEmitter{
 		Writer: w,
 	}
