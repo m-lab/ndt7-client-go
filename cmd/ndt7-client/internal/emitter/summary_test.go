@@ -9,7 +9,7 @@ func TestNewSummary(t *testing.T) {
 	if s == nil {
 		t.Fatal("NewSummary() did not return a Summary")
 	}
-	if s.Server != "test" {
+	if s.ServerFQDN != "test" {
 		t.Fatal("NewSummary(): unexpected Server field")
 	}
 }

@@ -352,8 +352,8 @@ func TestMakeSummary(t *testing.T) {
 	}
 
 	expected := &emitter.Summary{
-		Client: "127.0.0.1",
-		Server: "test",
+		ClientIP:   "127.0.0.1",
+		ServerFQDN: "test",
 		Download: emitter.ValueUnitPair{
 			Value: 800.0,
 			Unit:  "Mbit/s",

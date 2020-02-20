@@ -80,8 +80,8 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
@@ -192,9 +192,18 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 	if results[spec.TestDownload] != nil &&
 		results[spec.TestDownload].ConnectionInfo != nil {
-		endpoint := strings.Split(
-			results[spec.TestDownload].ConnectionInfo.Client, ":")
-		s.Client = endpoint[0]
+		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
+		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
+
+		clientIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
+		if err == nil {
+			s.ClientIP = clientIP
+		}
+
+		serverIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
+		if err == nil {
+			s.ServerIP = serverIP
+		}
 	}
 
 	// Download comes from the client-side Measurement during the download
