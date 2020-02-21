@@ -314,8 +314,10 @@ func TestJSONOnSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if output.Client != summary.Client ||
-		output.Server != summary.Server ||
+	if output.ClientIP != summary.ClientIP ||
+		output.ServerFQDN != summary.ServerFQDN ||
+		output.ServerIP != summary.ServerIP ||
+		output.DownloadUUID != summary.DownloadUUID ||
 		output.Download != summary.Download ||
 		output.Upload != summary.Upload ||
 		output.DownloadRetrans != summary.DownloadRetrans ||

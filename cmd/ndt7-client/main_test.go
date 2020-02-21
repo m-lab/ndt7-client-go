@@ -334,8 +334,9 @@ func TestMakeSummary(t *testing.T) {
 				},
 			},
 			ConnectionInfo: &spec.ConnectionInfo{
-				Client: "127.0.0.1",
-				Server: "test",
+				Client: "127.0.0.1:12345",
+				Server: "127.0.0.2:443",
+				UUID:   "test-uuid",
 			},
 			Server: spec.Measurement{
 				TCPInfo: tcpInfo,
@@ -352,8 +353,10 @@ func TestMakeSummary(t *testing.T) {
 	}
 
 	expected := &emitter.Summary{
-		Client: "127.0.0.1",
-		Server: "test",
+		ServerFQDN:   "test",
+		ClientIP:     "127.0.0.1",
+		ServerIP:     "127.0.0.2",
+		DownloadUUID: "test-uuid",
 		Download: emitter.ValueUnitPair{
 			Value: 800.0,
 			Unit:  "Mbit/s",
@@ -373,6 +376,7 @@ func TestMakeSummary(t *testing.T) {
 	}
 
 	generated := makeSummary("test", results)
+
 	if !reflect.DeepEqual(generated, expected) {
 		t.Fatal("makeSummary(): unexpected summary data")
 	}
