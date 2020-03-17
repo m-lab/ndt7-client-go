@@ -34,7 +34,7 @@ FROM gcr.io/distroless/base
 
 LABEL summary="mlab Speedtest Prometheus exporter" \
       description="A Prometheus exporter for broadband speedtests using m-lab" \
-      name="wlbr/ndt7-client-go" \
+      name="wlbr/mlab-exporter" \
       url="https://github.com/wlbr/ndt7-client-go" \
       maintainer="Michael Wolber <mwolber@gmx.de>"
 
