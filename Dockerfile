@@ -44,4 +44,4 @@ COPY --from=builder /etc/passwd /etc/passwd
 
 EXPOSE 9122
 
-ENTRYPOINT [ "/usr/bin/mlab_exporter" ]
+ENTRYPOINT [ "/usr/bin/mlab_exporter", "-format", "prometheus" ]
