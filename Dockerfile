@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 FROM golang:alpine as builder
 
 ENV CGO_ENABLED=0
@@ -26,7 +27,7 @@ RUN adduser -D -g '' appuser
 ADD . ${GOPATH}/src/app/
 WORKDIR ${GOPATH}/src/app
 
-RUN go build -a -installsuffix cgo -ldflags="-w -s" -o /go/bin/mlab_exporter
+RUN go build -a -installsuffix cgo -ldflags="-w -s" -o /go/bin/mlab_exporter cmd/ndt7-client/main.go
 
 # --------------------------------------------------------------------------------
 
@@ -45,3 +46,5 @@ COPY --from=builder /etc/passwd /etc/passwd
 EXPOSE 9122
 
 ENTRYPOINT [ "/usr/bin/mlab_exporter", "-format", "prometheus" ]
+
+
