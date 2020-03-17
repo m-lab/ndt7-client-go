@@ -81,6 +81,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -102,7 +103,7 @@ var (
 		Value:   "wss",
 	}
 	flagFormat = flagx.Enum{
-		Options: []string{"human", "json"},
+		Options: []string{"human", "json", "prometheus"},
 		Value:   "human",
 	}
 
@@ -112,7 +113,9 @@ var (
 	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
-	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
+	flagQuiet     = flag.Bool("quiet", false, "emit summary and errors only")
+	listenAddress = flag.String("listen-address", "localhost:9122", "Address to listen to server prometheus metrics.")
+	metricsPath   = flag.String("metrics-path", "/metrics", "Path under which to expose prometheus metrics.")
 )
 
 func init() {
@@ -124,7 +127,7 @@ func init() {
 	flag.Var(
 		&flagFormat,
 		"format",
-		"output format to use: 'human' or 'json' for batch processing",
+		"output format to use: 'human', 'json' or 'prometheus' for batch processing",
 	)
 }
 
@@ -248,6 +251,10 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 var osExit = os.Exit
 
+func prometheusHandler() {
+
+}
+
 func main() {
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
@@ -265,6 +272,8 @@ func main() {
 	// If -batch, force -format=json.
 	if *flagBatch || flagFormat.Value == "json" {
 		e = emitter.NewJSON(os.Stdout)
+	} else if flagFormat.Value == "prometheus" {
+		e = emitter.NewPrometheusExporter()
 	} else {
 		e = emitter.NewHumanReadable()
 	}
@@ -273,11 +282,25 @@ func main() {
 	}
 	r.emitter = e
 
-	code := r.runDownload(ctx) + r.runUpload(ctx)
-	if code != 0 {
-		osExit(code)
-	}
+	if flagFormat.Value == "prometheus" {
 
-	s := makeSummary(r.client.FQDN, r.client.Results())
-	r.emitter.OnSummary(s)
+		http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+			r.emitter = emitter.NewPrometheusExporterWithWriter(w)
+			code := r.runDownload(ctx) + r.runUpload(ctx)
+			if code != 0 {
+				osExit(code)
+			}
+			s := makeSummary(r.client.FQDN, r.client.Results())
+			r.emitter.OnSummary(s)
+		})
+		http.ListenAndServe(*listenAddress, nil)
+	} else {
+		code := r.runDownload(ctx) + r.runUpload(ctx)
+		if code != 0 {
+			osExit(code)
+		}
+
+		s := makeSummary(r.client.FQDN, r.client.Results())
+		r.emitter.OnSummary(s)
+	}
 }
