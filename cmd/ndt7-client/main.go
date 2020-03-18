@@ -114,7 +114,7 @@ var (
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
 	flagQuiet     = flag.Bool("quiet", false, "emit summary and errors only")
-	listenAddress = flag.String("listen-address", "localhost:9122", "Address to listen to server prometheus metrics.")
+	listenAddress = flag.String("listen-address", ":9122", "Address to listen to server prometheus metrics.")
 	metricsPath   = flag.String("metrics-path", "/metrics", "Path under which to expose prometheus metrics.")
 )
 
