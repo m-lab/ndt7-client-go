@@ -297,7 +297,7 @@ func main() {
 			log.Printf("Speed test finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
 		})
 		log.Printf("Starting server at %s", *listenAddress)
-		http.ListenAndServe(*listenAddress, nil)
+		log.Print(http.ListenAndServe(*listenAddress, nil))
 	} else {
 		code := r.runDownload(ctx) + r.runUpload(ctx)
 		if code != 0 {
