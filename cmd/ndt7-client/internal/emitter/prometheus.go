@@ -108,7 +108,8 @@ m-lab_upload %7.1f
 m-lab_servername %s
 # HELP m-lab_clientip client IP.
 # TYPE m-lab_clientip text
-m-lab_clientip %s`
+m-lab_clientip %s
+`
 
 	_, err := fmt.Fprintf(h.out, summaryFormat,
 		s.Download.Unit,

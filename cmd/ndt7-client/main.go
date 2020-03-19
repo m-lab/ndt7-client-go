@@ -80,6 +80,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -285,14 +286,19 @@ func main() {
 	if flagFormat.Value == "prometheus" {
 
 		http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+			log.Printf("Got request to %s from %s", req.RequestURI, req.RemoteAddr)
 			r.emitter = emitter.NewPrometheusExporterWithWriter(w)
 			code := r.runDownload(ctx) + r.runUpload(ctx)
 			if code != 0 {
 				osExit(code)
 			}
+			log.Printf("Emitter finished, making summary")
 			s := makeSummary(r.client.FQDN, r.client.Results())
+			log.Printf("makeSummary finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
 			r.emitter.OnSummary(s)
+			log.Printf("OnSummary finished")
 		})
+		log.Printf("Starting server at %s", *listenAddress)
 		http.ListenAndServe(*listenAddress, nil)
 	} else {
 		code := r.runDownload(ctx) + r.runUpload(ctx)
