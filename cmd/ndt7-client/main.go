@@ -285,18 +285,16 @@ func main() {
 
 	if flagFormat.Value == "prometheus" {
 
-		http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-			log.Printf("Got request to %s from %s", req.RequestURI, req.RemoteAddr)
+		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
 			r.emitter = emitter.NewPrometheusExporterWithWriter(w)
+			log.Printf("Got request to %s from %s, starting speed test", req.RequestURI, req.RemoteAddr)
 			code := r.runDownload(ctx) + r.runUpload(ctx)
 			if code != 0 {
 				osExit(code)
 			}
-			log.Printf("Emitter finished, making summary")
 			s := makeSummary(r.client.FQDN, r.client.Results())
-			log.Printf("makeSummary finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
 			r.emitter.OnSummary(s)
-			log.Printf("OnSummary finished")
+			log.Printf("Speed test finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
 		})
 		log.Printf("Starting server at %s", *listenAddress)
 		http.ListenAndServe(*listenAddress, nil)
