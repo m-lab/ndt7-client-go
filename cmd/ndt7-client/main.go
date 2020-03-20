@@ -144,16 +144,19 @@ func (r runner) doRunTest(
 ) int {
 	ch, err := start(ctx)
 	if err != nil {
+		log.Print("doRunTest start error: %v", err)
 		r.emitter.OnError(test, err)
 		return 1
 	}
 	err = r.emitter.OnConnected(test, r.client.FQDN)
 	if err != nil {
+		log.Print("doRunTest OnConnected error: %v", err)
 		return 1
 	}
 	for ev := range ch {
 		err = emitEvent(&ev)
 		if err != nil {
+			log.Print("doRunTest emitEvent error: %v", err)
 			return 1
 		}
 	}
@@ -168,24 +171,30 @@ func (r runner) runTest(
 	// Implementation note: we want to always emit the initial and the
 	// final events regardless of how the actual test goes. What's more,
 	// we want the exit code to be nonzero in case of any error.
+	log.Printf("runTest starting")
 	err := r.emitter.OnStarting(test)
 	if err != nil {
+		log.Printf("runTest got error %s:  %s", r.client.ClientName, err)
 		return 1
 	}
 	code := r.doRunTest(ctx, test, start, emitEvent)
 	err = r.emitter.OnComplete(test)
 	if err != nil {
+		log.Printf("runTest got error in client %s: %s", r.client.ClientName, err)
 		return 1
 	}
+	log.Printf("code %d", code)
 	return code
 }
 
 func (r runner) runDownload(ctx context.Context) int {
+	log.Printf("Starting Download")
 	return r.runTest(ctx, spec.TestDownload, r.client.StartDownload,
 		r.emitter.OnDownloadEvent)
 }
 
 func (r runner) runUpload(ctx context.Context) int {
+	log.Printf("Starting  Upload")
 	return r.runTest(ctx, spec.TestUpload, r.client.StartUpload,
 		r.emitter.OnUploadEvent)
 }
@@ -252,49 +261,67 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 var osExit = os.Exit
 
+func prommain(ctx context.Context) {
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+		var r runner
+		r.client = ndt7.NewClient(clientName, clientVersion)
+		r.client.Scheme = flagScheme.Value
+		r.client.Dialer.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: *flagNoVerify,
+		}
+		r.client.FQDN = *flagHostname
+		r.emitter = emitter.NewPrometheusExporterWithWriter(w)
+		log.Printf("Got request to %s from %s, starting speed test", req.RequestURI, req.RemoteAddr)
+		codedown := r.runDownload(ctx)
+		codeup := r.runUpload(ctx)
+		if codedown+codeup != 0 {
+			if codedown != 0 {
+				log.Printf("Got error during download test of code %d", codedown)
+			} else {
+				log.Printf("Got error during upload test of code %d", codeup)
+			}
+			osExit(codeup + codedown)
+		}
+		s := makeSummary(r.client.FQDN, r.client.Results())
+		r.emitter.OnSummary(s)
+		log.Printf("Speed test finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
+	})
+
+	log.Printf("Starting server at %s", *listenAddress)
+	log.Print(http.ListenAndServe(*listenAddress, nil))
+}
+
 func main() {
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
-	var r runner
-	r.client = ndt7.NewClient(clientName, clientVersion)
-	r.client.Scheme = flagScheme.Value
-	r.client.Dialer.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: *flagNoVerify,
-	}
-	r.client.FQDN = *flagHostname
-
-	var e emitter.Emitter
-
-	// If -batch, force -format=json.
-	if *flagBatch || flagFormat.Value == "json" {
-		e = emitter.NewJSON(os.Stdout)
-	} else if flagFormat.Value == "prometheus" {
-		e = emitter.NewPrometheusExporter()
-	} else {
-		e = emitter.NewHumanReadable()
-	}
-	if *flagQuiet {
-		e = emitter.NewQuiet(e)
-	}
-	r.emitter = e
 
 	if flagFormat.Value == "prometheus" {
-		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
-			r.emitter = emitter.NewPrometheusExporterWithWriter(w)
-			log.Printf("Got request to %s from %s, starting speed test", req.RequestURI, req.RemoteAddr)
-			code := r.runDownload(ctx) + r.runUpload(ctx)
-			if code != 0 {
-				log.Printf("Got error code %d", code)
-				osExit(code)
-			}
-			s := makeSummary(r.client.FQDN, r.client.Results())
-			r.emitter.OnSummary(s)
-			log.Printf("Speed test finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
-		})
-		log.Printf("Starting server at %s", *listenAddress)
-		log.Print(http.ListenAndServe(*listenAddress, nil))
+		prommain(ctx)
 	} else {
+		var r runner
+		r.client = ndt7.NewClient(clientName, clientVersion)
+		r.client.Scheme = flagScheme.Value
+		r.client.Dialer.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: *flagNoVerify,
+		}
+		r.client.FQDN = *flagHostname
+
+		var e emitter.Emitter
+
+		// If -batch, force -format=json.
+		if *flagBatch || flagFormat.Value == "json" {
+			e = emitter.NewJSON(os.Stdout)
+		} else if flagFormat.Value == "prometheus" {
+			e = emitter.NewPrometheusExporter()
+		} else {
+			e = emitter.NewHumanReadable()
+		}
+		if *flagQuiet {
+			e = emitter.NewQuiet(e)
+		}
+		r.emitter = e
+
 		code := r.runDownload(ctx) + r.runUpload(ctx)
 		if code != 0 {
 			osExit(code)
