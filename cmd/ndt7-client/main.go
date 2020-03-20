@@ -252,10 +252,6 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 var osExit = os.Exit
 
-func prometheusHandler() {
-
-}
-
 func main() {
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
@@ -284,12 +280,12 @@ func main() {
 	r.emitter = e
 
 	if flagFormat.Value == "prometheus" {
-
 		http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
 			r.emitter = emitter.NewPrometheusExporterWithWriter(w)
 			log.Printf("Got request to %s from %s, starting speed test", req.RequestURI, req.RemoteAddr)
 			code := r.runDownload(ctx) + r.runUpload(ctx)
 			if code != 0 {
+				log.Printf("Got error code %d", code)
 				osExit(code)
 			}
 			s := makeSummary(r.client.FQDN, r.client.Results())
