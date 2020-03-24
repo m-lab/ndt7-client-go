@@ -22,8 +22,8 @@ func TestReadText(t *testing.T) {
 			NumBytes:    1234,
 		},
 		BBRInfo: &spec.BBRInfo{
-			MaxBandwidth: 12345,
-			MinRTT:       12345,
+			BW:     12345,
+			MinRTT: 12345,
 		},
 		TCPInfo: &spec.TCPInfo{
 			ElapsedTime: 1234000,
