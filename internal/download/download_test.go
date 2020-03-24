@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/m-lab/ndt7-client-go/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"github.com/m-lab/tcp-info/inetdiag"
 	"github.com/m-lab/tcp-info/tcp"
 )
 
@@ -22,8 +23,10 @@ func TestReadText(t *testing.T) {
 			NumBytes:    1234,
 		},
 		BBRInfo: &spec.BBRInfo{
-			BW:     12345,
-			MinRTT: 12345,
+			BBRInfo: inetdiag.BBRInfo{
+				BW:     12345,
+				MinRTT: 12345,
+			},
 		},
 		TCPInfo: &spec.TCPInfo{
 			ElapsedTime: 1234000,
