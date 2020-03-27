@@ -261,8 +261,12 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 var osExit = os.Exit
 
-func prommain(ctx context.Context) {
+func prommain() {
+
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
+		defer cancel()
+
 		var r runner
 		r.client = ndt7.NewClient(clientName, clientVersion)
 		r.client.Scheme = flagScheme.Value
@@ -293,12 +297,12 @@ func prommain(ctx context.Context) {
 
 func main() {
 	flag.Parse()
-	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
-	defer cancel()
 
 	if flagFormat.Value == "prometheus" {
-		prommain(ctx)
+		prommain()
 	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
+		defer cancel()
 		var r runner
 		r.client = ndt7.NewClient(clientName, clientVersion)
 		r.client.Scheme = flagScheme.Value
