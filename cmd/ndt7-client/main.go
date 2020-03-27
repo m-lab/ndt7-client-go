@@ -171,7 +171,6 @@ func (r runner) runTest(
 	// Implementation note: we want to always emit the initial and the
 	// final events regardless of how the actual test goes. What's more,
 	// we want the exit code to be nonzero in case of any error.
-	log.Printf("runTest starting")
 	err := r.emitter.OnStarting(test)
 	if err != nil {
 		log.Printf("runTest got error %s:  %s", r.client.ClientName, err)
@@ -183,18 +182,15 @@ func (r runner) runTest(
 		log.Printf("runTest got error in client %s: %s", r.client.ClientName, err)
 		return 1
 	}
-	log.Printf("code %d", code)
 	return code
 }
 
 func (r runner) runDownload(ctx context.Context) int {
-	log.Printf("Starting Download")
 	return r.runTest(ctx, spec.TestDownload, r.client.StartDownload,
 		r.emitter.OnDownloadEvent)
 }
 
 func (r runner) runUpload(ctx context.Context) int {
-	log.Printf("Starting  Upload")
 	return r.runTest(ctx, spec.TestUpload, r.client.StartUpload,
 		r.emitter.OnUploadEvent)
 }
@@ -288,7 +284,7 @@ func prommain() {
 		}
 		s := makeSummary(r.client.FQDN, r.client.Results())
 		r.emitter.OnSummary(s)
-		log.Printf("Speed test finished %0.2f / %0.2f", s.Download.Value, s.Upload.Value)
+		log.Printf("Speed test finished %0.2f / %0.2f at %s", s.Download.Value, s.Upload.Value, s.ServerFQDN)
 	})
 
 	log.Printf("Starting server at %s", *listenAddress)
