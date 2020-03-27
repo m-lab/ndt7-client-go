@@ -103,15 +103,6 @@ mlab_ping %7.1f
 # HELP mlab_upload Upload bandwidth (%s).
 # TYPE mlab_upload gauge
 mlab_upload %7.1f
-# HELP mlab_servername server FQDN.
-# TYPE mlab_servername text
-mlab_servername %s
-# HELP mlab_serverip server IP.
-# TYPE mlab_serverip text
-mlab_serverip %s
-# HELP mlab_clientip client IP.
-# TYPE mlab_clientip text
-mlab_clientip %s
 # HELP mlab_rtt RTT (%s)
 # TYPE mlab_rtt gauge
 mlab_rtt %7.1f
@@ -124,9 +115,6 @@ mlab_rtt %7.1f
 		s.RTT.Value,
 		s.Upload.Unit,
 		s.Upload.Value,
-		s.ServerFQDN,
-		s.ServerIP,
-		s.ClientIP,
 		s.RTT.Unit,
 		s.RTT.Value)
 
