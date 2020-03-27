@@ -95,20 +95,20 @@ func (h PrometheusExporter) OnComplete(test spec.TestKind) error {
 // OnSummary handles the summary event.
 func (h PrometheusExporter) OnSummary(s *Summary) error {
 	const summaryFormat = `# HELP m-lab_download Download bandwidth (%s).
-# TYPE m-lab_download gauge
-m-lab_download %7.1f
-# HELP m-lab_ping Latency (%s)
-# TYPE m-lab_ping gauge
-m-lab_ping %7.1f
-# HELP m-lab_upload Upload bandwidth (%s).
-# TYPE m-lab_upload gauge
-m-lab_upload %7.1f
-# HELP m-lab_servername server name.
-# TYPE m-lab_servername text
-m-lab_servername %s
-# HELP m-lab_clientip client IP.
-# TYPE m-lab_clientip text
-m-lab_clientip %s
+# TYPE mlab_download gauge
+mlab_download %7.1f
+# HELP mlab_ping Latency (%s)
+# TYPE mlab_ping gauge
+mlab_ping %7.1f
+# HELP mlab_upload Upload bandwidth (%s).
+# TYPE mlab_upload gauge
+mlab_upload %7.1f
+# HELP mlab_servername server name.
+# TYPE mlab_servername text
+mlab_servername %s
+# HELP mlab_clientip client IP.
+# TYPE mlab_clientip text
+mlab_clientip %s
 `
 
 	_, err := fmt.Fprintf(h.out, summaryFormat,
