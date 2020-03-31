@@ -45,3 +45,8 @@ go get -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
 
 is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
 and then cancelling the repository directory.
+
+
+### Prometheus exporter
+
+If you start the client using the flag `-format=prometheus`, then a http server will be started that runs a speed test evertime the exposed handler on http://localhost/metrics is called. The results will be shown in a format that is readable by [Prometheus](https://prometheus.io), so that you can run the tests freqeuently, automated and collect the results. This can be visualized using [Grafana](https://grafana.com), for example.
