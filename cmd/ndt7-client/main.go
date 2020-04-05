@@ -265,7 +265,7 @@ func runWithRetry(ctx context.Context, f func(c context.Context) int) int {
 	for i := 0; result != 0 && i < max; i++ {
 		result = f(ctx)
 		if i > 0 {
-			log.Printf("Retry no %d during %v, error code %d ", i, runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), result)
+			log.Printf("Retry #%d during '%v', error code: %d", i, runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), result)
 			time.Sleep(1 * time.Second)
 		}
 	}
