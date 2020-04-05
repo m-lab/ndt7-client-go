@@ -84,6 +84,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/m-lab/go/flagx"
@@ -257,6 +259,19 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 var osExit = os.Exit
 
+func runWithRetry(ctx context.Context, f func(c context.Context) int) int {
+	result := -1
+	max := 5
+	for i := 0; result != 0 && i < max; i++ {
+		result = f(ctx)
+		if i > 0 {
+			log.Printf("Retry no %d during %v, error code %d ", i, runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), result)
+			time.Sleep(1 * time.Second)
+		}
+	}
+	return result
+}
+
 func prommain() {
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, req *http.Request) {
@@ -272,8 +287,8 @@ func prommain() {
 		r.client.FQDN = *flagHostname
 		r.emitter = emitter.NewPrometheusExporterWithWriter(w)
 		log.Printf("Got request to %s from %s, starting speed test", req.RequestURI, req.RemoteAddr)
-		codedown := r.runDownload(ctx)
-		codeup := r.runUpload(ctx)
+		codedown := runWithRetry(ctx, r.runDownload)
+		codeup := runWithRetry(ctx, r.runUpload)
 		if codedown+codeup != 0 {
 			if codedown != 0 {
 				log.Printf("Got error during download test of code %d", codedown)
