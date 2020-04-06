@@ -146,19 +146,19 @@ func (r runner) doRunTest(
 ) int {
 	ch, err := start(ctx)
 	if err != nil {
-		log.Print("doRunTest start error: %v", err)
+		log.Printf("doRunTest start error: %v", err)
 		r.emitter.OnError(test, err)
 		return 1
 	}
 	err = r.emitter.OnConnected(test, r.client.FQDN)
 	if err != nil {
-		log.Print("doRunTest OnConnected error: %v", err)
+		log.Printf("doRunTest OnConnected error: %v", err)
 		return 1
 	}
 	for ev := range ch {
 		err = emitEvent(&ev)
 		if err != nil {
-			log.Print("doRunTest emitEvent error: %v", err)
+			log.Printf("doRunTest emitEvent error: %v", err)
 			return 1
 		}
 	}
@@ -261,10 +261,10 @@ var osExit = os.Exit
 
 func runWithRetry(ctx context.Context, f func(c context.Context) int) int {
 	result := -1
-	max := 5
+	max := 10
 	for i := 0; result != 0 && i < max; i++ {
 		result = f(ctx)
-		if i > 0 {
+		if i > 0 && result != 0 {
 			log.Printf("Retry #%d during '%v', error code: %d", i, runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), result)
 			time.Sleep(1 * time.Second)
 		}
