@@ -261,12 +261,12 @@ var osExit = os.Exit
 
 func runWithRetry(ctx context.Context, f func(c context.Context) int) int {
 	result := -1
-	max := 10
+	max := 4
 	for i := 0; result != 0 && i < max; i++ {
 		result = f(ctx)
 		if i > 0 && result != 0 {
 			log.Printf("Retry #%d during '%v', error code: %d", i, runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), result)
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Duration(i*3) * time.Second)
 		}
 	}
 	return result
