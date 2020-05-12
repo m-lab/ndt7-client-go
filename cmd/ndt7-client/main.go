@@ -12,9 +12,9 @@
 // The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
 // latter should be used instead.
 //
-// The `-hostname <name>` flag specifies to use the `name` hostname for
-// performing the ndt7 test. The default is to auto-discover a suitable
-// server by using Measurement Lab's locate service.
+// The `-server <name>` (previously `-hostname`) flag specifies to use the
+// `name` hostname for performing the ndt7 test. The default is to
+// auto-discover a suitable server by using Measurement Lab's locate service.
 //
 // The `-no-verify` flag allows to skip TLS certificate verification.
 //
