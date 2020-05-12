@@ -75,9 +75,9 @@ func TestDownloadError(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
-	*flagHostname = "\t" // fail parsing
+	*flagServer = "\t" // fail parsing
 	main()
-	*flagHostname = ""
+	*flagServer = ""
 	osExit = savedFunc
 	if exitval == 0 {
 		t.Fatal("expected nonzero return code here")

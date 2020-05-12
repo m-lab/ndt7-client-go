@@ -12,9 +12,9 @@
 // The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
 // latter should be used instead.
 //
-// The `-hostname <name>` flag specifies to use the `name` hostname for
-// performing the ndt7 test. The default is to auto-discover a suitable
-// server by using Measurement Lab's locate service.
+// The `-server <name>` (previously `-hostname`) flag specifies to use the
+// `name` hostname for performing the ndt7 test. The default is to
+// auto-discover a suitable server by using Measurement Lab's locate service.
 //
 // The `-no-verify` flag allows to skip TLS certificate verification.
 //
@@ -109,7 +109,7 @@ var (
 	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
 		"(DEPRECATED, please use -format=json)")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
-	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
+	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
 	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
@@ -258,7 +258,7 @@ func main() {
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
-	r.client.FQDN = *flagHostname
+	r.client.FQDN = *flagServer
 
 	var e emitter.Emitter
 
