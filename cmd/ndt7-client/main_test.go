@@ -369,7 +369,7 @@ func TestMakeSummary(t *testing.T) {
 			Value: 1.0,
 			Unit:  "%",
 		},
-		RTT: emitter.ValueUnitPair{
+		MinRTT: emitter.ValueUnitPair{
 			Value: 10.0,
 			Unit:  "ms",
 		},

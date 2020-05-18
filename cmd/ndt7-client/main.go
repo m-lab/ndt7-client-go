@@ -207,7 +207,7 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 	}
 
 	// Download comes from the client-side Measurement during the download
-	// test. DownloadRetrans and RTT come from the server-side Measurement,
+	// test. DownloadRetrans and MinRTT come from the server-side Measurement,
 	// if it includes a TCPInfo object.
 	if dl, ok := results[spec.TestDownload]; ok {
 		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
@@ -225,8 +225,8 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 					Unit:  "%",
 				}
 			}
-			s.RTT = emitter.ValueUnitPair{
-				Value: float64(dl.Server.TCPInfo.RTT) / 1000,
+			s.MinRTT = emitter.ValueUnitPair{
+				Value: float64(dl.Server.TCPInfo.MinRTT) / 1000,
 				Unit:  "ms",
 			}
 		}

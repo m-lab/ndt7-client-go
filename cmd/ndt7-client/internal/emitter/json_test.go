@@ -321,7 +321,7 @@ func TestJSONOnSummary(t *testing.T) {
 		output.Download != summary.Download ||
 		output.Upload != summary.Upload ||
 		output.DownloadRetrans != summary.DownloadRetrans ||
-		output.RTT != summary.RTT {
+		output.MinRTT != summary.MinRTT {
 		t.Fatal("OnSummary(): unexpected output")
 	}
 
