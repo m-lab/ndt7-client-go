@@ -35,7 +35,7 @@ type Summary struct {
 
 	// RTT is the round-trip time of the latest measurement, in milliseconds.
 	// This is provided by the server during a download test.
-	RTT ValueUnitPair
+	MinRTT ValueUnitPair
 }
 
 // NewSummary returns a new Summary struct for a given FQDN.

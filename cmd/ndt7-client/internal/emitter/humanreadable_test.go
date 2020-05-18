@@ -242,7 +242,7 @@ func TestHumanReadableOnSummary(t *testing.T) {
 			Value: 1.0,
 			Unit:  "%",
 		},
-		RTT: ValueUnitPair{
+		MinRTT: ValueUnitPair{
 			Value: 10.0,
 			Unit:  "ms",
 		},

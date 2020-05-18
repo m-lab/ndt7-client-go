@@ -88,7 +88,7 @@ func (h HumanReadable) OnSummary(s *Summary) error {
 	_, err := fmt.Fprintf(h.out, summaryFormat,
 		"Server", s.ServerFQDN,
 		"Client", s.ClientIP,
-		"Latency", s.RTT.Value, s.RTT.Unit,
+		"Latency", s.MinRTT.Value, s.MinRTT.Unit,
 		"Download", s.Download.Value, s.Upload.Unit,
 		"Upload", s.Upload.Value, s.Upload.Unit,
 		"Retransmission", s.DownloadRetrans.Value, s.DownloadRetrans.Unit)
