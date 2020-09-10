@@ -125,6 +125,7 @@ func TestIntegrationDownload(t *testing.T) {
 	}
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
 	l := locatetest.NewLocateServer(newLocator(fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
@@ -158,6 +159,7 @@ func TestIntegrationUpload(t *testing.T) {
 	}
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
 	l := locatetest.NewLocateServer(newLocator(fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
@@ -188,6 +190,7 @@ func TestIntegrationDownloadServiceURL(t *testing.T) {
 	}
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
 
 	u, err := url.Parse(fs.URL)
 	testingx.Must(t, err, "failed to parse ndt7test server url")
@@ -237,6 +240,7 @@ func TestDownloadNoTargets(t *testing.T) {
 
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
 	l := locatetest.NewLocateServer(newLocator(fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
@@ -270,6 +274,7 @@ func TestUploadBadConnection(t *testing.T) {
 
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
 
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
