@@ -80,13 +80,16 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -112,7 +115,10 @@ var (
 	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
-	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
+	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
+	flagService  = flagx.URL{}
+	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
+	flagDownload = flag.Bool("download", true, "perform download measurement")
 )
 
 func init() {
@@ -125,6 +131,11 @@ func init() {
 		&flagFormat,
 		"format",
 		"output format to use: 'human' or 'json' for batch processing",
+	)
+	flag.Var(
+		&flagService,
+		"service-url",
+		"Service URL specifies target hostname and other URL fields like access token. Overrides -server.",
 	)
 }
 
@@ -253,12 +264,26 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
+
+	// If a service URL is given, then only one direction is possible.
+	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
+		*flagUpload = false
+		*flagDownload = true
+	} else if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.UploadURLPath) {
+		*flagUpload = true
+		*flagDownload = false
+	} else if flagService.URL != nil {
+		fmt.Println("WARNING: ignoring unsupported service url")
+		flagService.URL = nil
+	}
+
 	r.client = ndt7.NewClient(clientName, clientVersion)
+	r.client.ServiceURL = flagService.URL
+	r.client.Server = *flagServer
 	r.client.Scheme = flagScheme.Value
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
-	r.client.FQDN = *flagServer
 
 	var e emitter.Emitter
 
@@ -273,7 +298,13 @@ func main() {
 	}
 	r.emitter = e
 
-	code := r.runDownload(ctx) + r.runUpload(ctx)
+	var code int
+	if *flagDownload {
+		code += r.runDownload(ctx)
+	}
+	if *flagUpload {
+		code += r.runUpload(ctx)
+	}
 	if code != 0 {
 		osExit(code)
 	}
