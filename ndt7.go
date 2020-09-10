@@ -43,7 +43,7 @@ var (
 	ErrNoTargets = errors.New("no targets available")
 )
 
-// Locator is the type of function used to locate a server.
+// Locator is an interface used to locate a server.
 type Locator interface {
 	Nearest(ctx context.Context, service string) ([]v2.Target, error)
 }
@@ -88,14 +88,14 @@ type Client struct {
 	Dialer websocket.Dialer
 
 	// FQDN is the server FQDN currently used by the Client. The FQDN is set
-	// during runtime.
+	// by Client at runtime. (read-only)
 	FQDN string
 
-	// Server is the optional server name. Client will use this target server if
+	// Server is an optional server name. Client will use this target server if
 	// not empty. Takes precedence over ServiceURL and Locate API.
 	Server string
 
-	// ServiceURL is the optional service url, fully specifying the scheme,
+	// ServiceURL is an optional service url, fully specifying the scheme,
 	// resource, and HTTP parameters. Takes precedence over the Locate API.
 	ServiceURL *url.URL
 
@@ -103,8 +103,8 @@ type Client struct {
 	// NewClient defaults to the public Locate API URL. You may override it.
 	Locate Locator
 
-	// Scheme is the scheme to use. It's set to "wss" by NewClient, change it to
-	// "ws" for unencrypted ndt7.
+	// Scheme is the scheme to use with Server and Locate modes. It's set to
+	// "wss" by NewClient, change it to "ws" for unencrypted ndt7.
 	Scheme string
 
 	// connect is the function for connecting a specific
