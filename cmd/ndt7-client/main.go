@@ -2,8 +2,9 @@
 //
 // Usage:
 //
-//    ndt7-client [-format <human|json>] [-hostname <name>] [-no-verify]
-//                [-scheme <scheme>] [-timeout <string>]
+//    ndt7-client [-format <human|json>] [-server <name>] [-no-verify]
+//                [-scheme <scheme>] [-timeout <string>] [-service-url <url>]
+//                [-upload <bool>] [-download <bool>]
 //
 // The `-format` flag defines how the output should be emitter. Possible
 // values are "human", which is the default, and "json", where each message
@@ -12,9 +13,17 @@
 // The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
 // latter should be used instead.
 //
-// The `-server <name>` (previously `-hostname`) flag specifies to use the
-// `name` hostname for performing the ndt7 test. The default is to
-// auto-discover a suitable server by using Measurement Lab's locate service.
+// The default behavior is for ndt7-client to discover a suitable server using
+// Measurement Lab's locate service. This behavior may be overridden using
+// either the `-server` or `-service-url` flags.
+//
+// The `-server <name>` flag specifies the server `name` for performing
+// the ndt7 test. This option overrides `-service-url`.
+//
+// The `-service-url <url>` flag specifies a complete URL that specifies the
+// scheme (e.g. "ws"), server name and port, protocol (e.g. /ndt/v7/download),
+// and HTTP parameters. By default, upload and download measurements are run
+// automatically. The `-service-url` specifies only one measurement direction.
 //
 // The `-no-verify` flag allows to skip TLS certificate verification.
 //
@@ -26,6 +35,10 @@
 // whole test is interrupted. The `<string>` is a string suitable to
 // be passed to time.ParseDuration, e.g., "15s". The default is a large
 // enough value that should be suitable for common conditions.
+//
+// The `-upload` and `-download` flags are boolean options that default to true,
+// but may be set to false on the command line to run only upload or only
+// download.
 //
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
@@ -80,13 +93,16 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
@@ -112,7 +128,10 @@ var (
 	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
-	flagQuiet = flag.Bool("quiet", false, "emit summary and errors only")
+	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
+	flagService  = flagx.URL{}
+	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
+	flagDownload = flag.Bool("download", true, "perform download measurement")
 )
 
 func init() {
@@ -125,6 +144,11 @@ func init() {
 		&flagFormat,
 		"format",
 		"output format to use: 'human' or 'json' for batch processing",
+	)
+	flag.Var(
+		&flagService,
+		"service-url",
+		"Service URL specifies target hostname and other URL fields like access token. Overrides -server.",
 	)
 }
 
@@ -253,12 +277,26 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
+
+	// If a service URL is given, then only one direction is possible.
+	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
+		*flagUpload = false
+		*flagDownload = true
+	} else if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.UploadURLPath) {
+		*flagUpload = true
+		*flagDownload = false
+	} else if flagService.URL != nil {
+		fmt.Println("WARNING: ignoring unsupported service url")
+		flagService.URL = nil
+	}
+
 	r.client = ndt7.NewClient(clientName, clientVersion)
+	r.client.ServiceURL = flagService.URL
+	r.client.Server = *flagServer
 	r.client.Scheme = flagScheme.Value
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
-	r.client.FQDN = *flagServer
 
 	var e emitter.Emitter
 
@@ -273,7 +311,13 @@ func main() {
 	}
 	r.emitter = e
 
-	code := r.runDownload(ctx) + r.runUpload(ctx)
+	var code int
+	if *flagDownload {
+		code += r.runDownload(ctx)
+	}
+	if *flagUpload {
+		code += r.runUpload(ctx)
+	}
 	if code != 0 {
 		osExit(code)
 	}
