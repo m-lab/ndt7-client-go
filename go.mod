@@ -15,7 +15,7 @@ require (
 	github.com/m-lab/go v0.1.43
 	github.com/m-lab/locate v0.4.1
 	github.com/m-lab/ndt-server v0.20.2
-	github.com/m-lab/tcp-info v1.5.0
+	github.com/m-lab/tcp-info v1.5.2
 	github.com/m-lab/uuid v0.0.0-20191115203855-549727171666 // indirect
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20200828030656-73b5761be4c5 // indirect
