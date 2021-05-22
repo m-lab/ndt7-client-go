@@ -2,9 +2,7 @@
 //
 // Usage:
 //
-//    ndt7-client [-format <human|json>] [-server <name>] [-no-verify]
-//                [-scheme <scheme>] [-timeout <string>] [-service-url <url>]
-//                [-upload <bool>] [-download <bool>]
+//    ndt7-client [flags]
 //
 // The `-format` flag defines how the output should be emitter. Possible
 // values are "human", which is the default, and "json", where each message
@@ -39,6 +37,9 @@
 // The `-upload` and `-download` flags are boolean options that default to true,
 // but may be set to false on the command line to run only upload or only
 // download.
+//
+// The `-cpuprofile` flag defines the file where to write a CPU profile
+// that later you can pass to `go tool pprof`. See https://blog.golang.org/pprof.
 //
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
@@ -94,8 +95,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -113,6 +116,9 @@ const (
 )
 
 var (
+	flagProfile = flag.String("profile", "",
+		"file where to store cpuprofile (see https://blog.golang.org/pprof)")
+
 	flagScheme = flagx.Enum{
 		Options: []string{"wss", "ws"},
 		Value:   "wss",
@@ -274,6 +280,16 @@ var osExit = os.Exit
 
 func main() {
 	flag.Parse()
+
+	if *flagProfile != "" {
+		fp, err := os.Create(*flagProfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(fp)
+		defer pprof.StopCPUProfile()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
