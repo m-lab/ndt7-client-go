@@ -140,7 +140,7 @@ func init() {
 	flag.Var(
 		&flagScheme,
 		"scheme",
-		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+		`WebSocket scheme to use: either "wss" or "ws"`,
 	)
 	flag.Var(
 		&flagFormat,
