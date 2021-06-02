@@ -45,9 +45,10 @@ func TestReadText(t *testing.T) {
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
+	log.Println(string(data))
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: data,
+		NextReaderMessageType: websocket.TextMessage,
+		ReadMessageByteArray:  data,
 	}
 	go func() {
 		err := Run(ctx, &conn, outch)
@@ -88,8 +89,8 @@ func TestReadBinary(t *testing.T) {
 	)
 	defer cancel()
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.BinaryMessage,
-		ReadMessageByteArray: []byte("12345678"),
+		NextReaderMessageType: websocket.BinaryMessage,
+		ReadMessageByteArray:  []byte("12345678"),
 	}
 	go func() {
 		err := Run(ctx, &conn, outch)
@@ -128,7 +129,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	defer cancel()
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
-		ReadMessageType:       websocket.TextMessage,
+		NextReaderMessageType: websocket.TextMessage,
 		ReadMessageByteArray:  []byte("{}"),
 		SetReadDeadlineResult: mockedErr,
 	}
@@ -151,9 +152,9 @@ func TestReadMessageError(t *testing.T) {
 	defer cancel()
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: []byte("{}"),
-		ReadMessageResult:    mockedErr,
+		NextReaderMessageType: websocket.TextMessage,
+		ReadMessageByteArray:  []byte("{}"),
+		NextReaderResult:      mockedErr,
 	}
 	go func() {
 		for range outch {
@@ -166,6 +167,47 @@ func TestReadMessageError(t *testing.T) {
 	}
 }
 
+func TestReaderError(t *testing.T) {
+	outch := make(chan spec.Measurement)
+	ctx, cancel := context.WithTimeout(
+		context.Background(), time.Duration(time.Second),
+	)
+	defer cancel()
+	// Test when type is websocket.TextMessage
+	conn := mocks.Conn{
+		NextReaderMessageType: websocket.TextMessage,
+		NextReaderMustFail:    true,
+	}
+	go func() {
+		for range outch {
+			t.Fatal("We didn't expect measurements here")
+		}
+	}()
+	err := Run(ctx, &conn, outch)
+	if err != mocks.ErrReadFailed {
+		t.Fatal("Not the error that we were expecting")
+	}
+	// Test when type is websocket.BinaryMessage
+	outch = make(chan spec.Measurement)
+	ctx, cancel = context.WithTimeout(
+		context.Background(), time.Duration(time.Second),
+	)
+	defer cancel()
+	conn = mocks.Conn{
+		NextReaderMessageType: websocket.BinaryMessage,
+		NextReaderMustFail:    true,
+	}
+	go func() {
+		for range outch {
+			t.Fatal("We didn't expect measurements here")
+		}
+	}()
+	err = Run(ctx, &conn, outch)
+	if err != mocks.ErrReadFailed {
+		t.Fatal("Not the error that we were expecting")
+	}
+}
+
 func TestReadInvalidJSON(t *testing.T) {
 	outch := make(chan spec.Measurement)
 	ctx, cancel := context.WithTimeout(
@@ -173,8 +215,8 @@ func TestReadInvalidJSON(t *testing.T) {
 	)
 	defer cancel()
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: []byte("{"),
+		NextReaderMessageType: websocket.TextMessage,
+		ReadMessageByteArray:  []byte("{"),
 	}
 	go func() {
 		for range outch {

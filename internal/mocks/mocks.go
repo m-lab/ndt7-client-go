@@ -3,12 +3,15 @@ package mocks
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+var ErrReadFailed = errors.New("Read() failed")
 
 // Conn is a mockable websocket.Conn
 type Conn struct {
@@ -17,6 +20,14 @@ type Conn struct {
 
 	// ReadMessageByteArray is the byte array returned by Conn.ReadMessage
 	ReadMessageByteArray []byte
+
+	// NextReaderMessageType is the type returned by conn.NextReader
+	NextReaderMessageType int
+
+	// NextReaderResult is the result returned by conn.NextReader
+	NextReaderResult error
+
+	NextReaderMustFail bool
 
 	// ReadMessageResult is the result returned by conn.ReadMessage
 	ReadMessageResult error
@@ -42,6 +53,14 @@ func (c *Conn) Close() error {
 // ReadMessage reads a message from the mocked connection
 func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 	return c.ReadMessageType, c.ReadMessageByteArray, c.ReadMessageResult
+}
+
+func (c *Conn) NextReader() (messageType int, r io.Reader, err error) {
+	if c.NextReaderMustFail {
+		return c.NextReaderMessageType, &FailingReader{}, c.NextReaderResult
+	}
+	return c.NextReaderMessageType, bytes.NewReader(c.ReadMessageByteArray),
+		c.NextReaderResult
 }
 
 // SetReadLimit sets the read limit of the mocked connection
@@ -109,4 +128,10 @@ func (r *httpTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, r.Error
 	}
 	return r.Response, nil
+}
+
+type FailingReader struct{}
+
+func (r *FailingReader) Read(b []byte) (int, error) {
+	return 0, ErrReadFailed
 }
