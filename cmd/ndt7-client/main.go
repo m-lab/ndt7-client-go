@@ -96,6 +96,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -115,8 +116,9 @@ const (
 var (
 	flagScheme = flagx.Enum{
 		Options: []string{"wss", "ws"},
-		Value:   "wss",
+		Value:   defaultSchemeForArch(),
 	}
+
 	flagFormat = flagx.Enum{
 		Options: []string{"human", "json"},
 		Value:   "human",
@@ -178,6 +180,16 @@ func (r runner) doRunTest(
 		}
 	}
 	return 0
+}
+
+// defaultSchemeForArch returns the default WebSocket scheme to use, depending
+// on the architecture we are running on. A CPU without native AES instructions
+// will perform poorly if TLS is enabled.
+func defaultSchemeForArch() string {
+	if runtime.GOARCH == "arm64" || runtime.GOARCH == "amd64" {
+		return "wss"
+	}
+	return "ws"
 }
 
 func (r runner) runTest(
