@@ -48,7 +48,7 @@ func TestReadText(t *testing.T) {
 	log.Println(string(data))
 	conn := mocks.Conn{
 		NextReaderMessageType: websocket.TextMessage,
-		ReadMessageByteArray:  data,
+		MessageByteArray:      data,
 	}
 	go func() {
 		err := Run(ctx, &conn, outch)
@@ -90,7 +90,7 @@ func TestReadBinary(t *testing.T) {
 	defer cancel()
 	conn := mocks.Conn{
 		NextReaderMessageType: websocket.BinaryMessage,
-		ReadMessageByteArray:  []byte("12345678"),
+		MessageByteArray:      []byte("12345678"),
 	}
 	go func() {
 		err := Run(ctx, &conn, outch)
@@ -130,7 +130,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
 		NextReaderMessageType: websocket.TextMessage,
-		ReadMessageByteArray:  []byte("{}"),
+		MessageByteArray:      []byte("{}"),
 		SetReadDeadlineResult: mockedErr,
 	}
 	go func() {
@@ -153,7 +153,7 @@ func TestReadMessageError(t *testing.T) {
 	mockedErr := errors.New("mocked error")
 	conn := mocks.Conn{
 		NextReaderMessageType: websocket.TextMessage,
-		ReadMessageByteArray:  []byte("{}"),
+		MessageByteArray:      []byte("{}"),
 		NextReaderResult:      mockedErr,
 	}
 	go func() {
@@ -216,7 +216,7 @@ func TestReadInvalidJSON(t *testing.T) {
 	defer cancel()
 	conn := mocks.Conn{
 		NextReaderMessageType: websocket.TextMessage,
-		ReadMessageByteArray:  []byte("{"),
+		MessageByteArray:      []byte("{"),
 	}
 	go func() {
 		for range outch {
