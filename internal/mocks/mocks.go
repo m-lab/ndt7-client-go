@@ -18,8 +18,9 @@ type Conn struct {
 	// CloseResult is the result of Conn.Close
 	CloseResult error
 
-	// ReadMessageByteArray is the byte array returned by Conn.ReadMessage
-	ReadMessageByteArray []byte
+	// MessageByteArray is the byte array returned by conn.ReadMessage and
+	// conn.NextReader
+	MessageByteArray []byte
 
 	// NextReaderMessageType is the type returned by conn.NextReader
 	NextReaderMessageType int
@@ -27,6 +28,7 @@ type Conn struct {
 	// NextReaderResult is the result returned by conn.NextReader
 	NextReaderResult error
 
+	// NextReader determines if the Reader's Read() method must fail
 	NextReaderMustFail bool
 
 	// ReadMessageResult is the result returned by conn.ReadMessage
@@ -52,14 +54,14 @@ func (c *Conn) Close() error {
 
 // ReadMessage reads a message from the mocked connection
 func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
-	return c.ReadMessageType, c.ReadMessageByteArray, c.ReadMessageResult
+	return c.ReadMessageType, c.MessageByteArray, c.ReadMessageResult
 }
 
 func (c *Conn) NextReader() (messageType int, r io.Reader, err error) {
 	if c.NextReaderMustFail {
 		return c.NextReaderMessageType, &FailingReader{}, c.NextReaderResult
 	}
-	return c.NextReaderMessageType, bytes.NewReader(c.ReadMessageByteArray),
+	return c.NextReaderMessageType, bytes.NewReader(c.MessageByteArray),
 		c.NextReaderResult
 }
 
