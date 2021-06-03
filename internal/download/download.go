@@ -45,7 +45,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		if mtype == websocket.BinaryMessage {
 			// Binary messages are discarded, since we are only interested
 			// in their size.
-			msgSize, err = io.Copy(io.Discard, r)
+			msgSize, err = io.Copy(ioutil.Discard, r)
 			if err != nil {
 				return err
 			}
