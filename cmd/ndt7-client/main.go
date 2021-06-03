@@ -96,7 +96,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
@@ -105,6 +104,7 @@ import (
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"golang.org/x/sys/cpu"
 )
 
 const (
@@ -186,7 +186,7 @@ func (r runner) doRunTest(
 // on the architecture we are running on. A CPU without native AES instructions
 // will perform poorly if TLS is enabled.
 func defaultSchemeForArch() string {
-	if runtime.GOARCH == "arm64" || runtime.GOARCH == "amd64" {
+	if cpu.ARM64.HasAES || cpu.ARM.HasAES || cpu.X86.HasAES {
 		return "wss"
 	}
 	return "ws"
