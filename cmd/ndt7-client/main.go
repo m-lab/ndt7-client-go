@@ -104,6 +104,7 @@ import (
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"golang.org/x/sys/cpu"
 )
 
 const (
@@ -115,8 +116,9 @@ const (
 var (
 	flagScheme = flagx.Enum{
 		Options: []string{"wss", "ws"},
-		Value:   "wss",
+		Value:   defaultSchemeForArch(),
 	}
+
 	flagFormat = flagx.Enum{
 		Options: []string{"human", "json"},
 		Value:   "human",
@@ -138,7 +140,7 @@ func init() {
 	flag.Var(
 		&flagScheme,
 		"scheme",
-		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+		`WebSocket scheme to use: either "wss" or "ws"`,
 	)
 	flag.Var(
 		&flagFormat,
@@ -178,6 +180,16 @@ func (r runner) doRunTest(
 		}
 	}
 	return 0
+}
+
+// defaultSchemeForArch returns the default WebSocket scheme to use, depending
+// on the architecture we are running on. A CPU without native AES instructions
+// will perform poorly if TLS is enabled.
+func defaultSchemeForArch() string {
+	if cpu.ARM64.HasAES || cpu.ARM.HasAES || cpu.X86.HasAES {
+		return "wss"
+	}
+	return "ws"
 }
 
 func (r runner) runTest(
