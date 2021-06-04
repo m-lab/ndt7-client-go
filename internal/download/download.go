@@ -4,6 +4,8 @@ package download
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -34,11 +36,27 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		if err != nil {
 			return err
 		}
-		mtype, mdata, err := conn.ReadMessage()
+		mtype, r, err := conn.NextReader()
 		if err != nil {
 			return err
 		}
-		total += int64(len(mdata))
+		var msgSize int64
+		var mdata []byte
+		if mtype == websocket.BinaryMessage {
+			// Binary messages are discarded, since we are only interested
+			// in their size.
+			msgSize, err = io.Copy(ioutil.Discard, r)
+			if err != nil {
+				return err
+			}
+		} else {
+			mdata, err = ioutil.ReadAll(r)
+			if err != nil {
+				return err
+			}
+			msgSize = int64(len(mdata))
+		}
+		total += msgSize
 		now := time.Now()
 		if now.Sub(prev) > params.UpdateInterval {
 			prev = now

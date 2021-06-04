@@ -78,8 +78,8 @@ func TestReadMessageError(t *testing.T) {
 
 func TestReadNonTextMessageError(t *testing.T) {
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.BinaryMessage,
-		ReadMessageByteArray: []byte("abcdef"),
+		ReadMessageType:  websocket.BinaryMessage,
+		MessageByteArray: []byte("abcdef"),
 	}
 	err := ignoreIncoming(&conn)
 	if err != errNonTextMessage {
