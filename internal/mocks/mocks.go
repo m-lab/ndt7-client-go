@@ -28,7 +28,7 @@ type Conn struct {
 	// NextReaderResult is the result returned by conn.NextReader
 	NextReaderResult error
 
-	// NextReader determines if the Reader's Read() method must fail
+	// NextReaderMustFail determines if the Reader's Read() method must fail
 	NextReaderMustFail bool
 
 	// ReadMessageResult is the result returned by conn.ReadMessage
