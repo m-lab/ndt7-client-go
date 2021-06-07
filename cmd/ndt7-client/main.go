@@ -282,7 +282,7 @@ func main() {
 	flag.Parse()
 
 	if *flagProfile != "" {
-		log.Printf("warning: using -profile will obviously reduce the performance")	
+		log.Printf("warning: using -profile will reduce the performance")	
 		fp, err := os.Create(*flagProfile)
 		if err != nil {
 			log.Fatal(err)
