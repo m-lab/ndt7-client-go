@@ -389,7 +389,7 @@ func TestMakeSummary(t *testing.T) {
 	tcpInfo.MinRTT = 10000
 
 	results := map[spec.TestKind]*ndt7.LatestMeasurements{
-		spec.TestDownload: &ndt7.LatestMeasurements{
+		spec.TestDownload: {
 			Client: spec.Measurement{
 				AppInfo: &spec.AppInfo{
 					NumBytes:    100,
@@ -405,7 +405,7 @@ func TestMakeSummary(t *testing.T) {
 				TCPInfo: tcpInfo,
 			},
 		},
-		spec.TestUpload: &ndt7.LatestMeasurements{
+		spec.TestUpload: {
 			Client: spec.Measurement{
 				AppInfo: &spec.AppInfo{
 					NumBytes:    100,
