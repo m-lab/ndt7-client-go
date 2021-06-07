@@ -38,7 +38,7 @@
 // but may be set to false on the command line to run only upload or only
 // download.
 //
-// The `-cpuprofile` flag defines the file where to write a CPU profile
+// The `-profile` flag defines the file where to write a CPU profile
 // that later you can pass to `go tool pprof`. See https://blog.golang.org/pprof.
 //
 // Additionally, passing any unrecognized flag, such as `-help`, will
@@ -117,7 +117,7 @@ const (
 
 var (
 	flagProfile = flag.String("profile", "",
-		"file where to store cpuprofile (see https://blog.golang.org/pprof)")
+		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 
 	flagScheme = flagx.Enum{
 		Options: []string{"wss", "ws"},
@@ -282,6 +282,7 @@ func main() {
 	flag.Parse()
 
 	if *flagProfile != "" {
+		log.Printf("warning: using -profile will obviously reduce the performance")	
 		fp, err := os.Create(*flagProfile)
 		if err != nil {
 			log.Fatal(err)
