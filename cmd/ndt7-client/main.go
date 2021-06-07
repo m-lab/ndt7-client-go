@@ -112,7 +112,7 @@ import (
 
 const (
 	clientName     = "ndt7-client-go-cmd"
-	clientVersion  = "0.4.1"
+	clientVersion  = "0.5.0"
 	defaultTimeout = 55 * time.Second
 )
 
@@ -294,7 +294,7 @@ func main() {
 	flag.Parse()
 
 	if *flagProfile != "" {
-		log.Printf("warning: using -profile will reduce the performance")	
+		log.Printf("warning: using -profile will reduce the performance")
 		fp, err := os.Create(*flagProfile)
 		if err != nil {
 			log.Fatal(err)
