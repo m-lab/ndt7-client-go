@@ -2,16 +2,26 @@
 //
 // Usage:
 //
-//    ndt7-client [-batch] [-hostname <name>] [-no-verify]
-//                [-scheme <scheme>] [-timeout <string>]
+//    ndt7-client [flags]
 //
-// The `-batch` flag causes the command to emit JSON messages on the
-// standard output, thus allowing for easy machine parsing. The default
-// is to emit user friendly pretty output.
+// The `-format` flag defines how the output should be emitter. Possible
+// values are "human", which is the default, and "json", where each message
+// is a valid JSON object.
 //
-// The `-hostname <name>` flag specifies to use the `name` hostname for
-// performing the ndt7 test. The default is to auto-discover a suitable
-// server by using Measurement Lab's locate service.
+// The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
+// latter should be used instead.
+//
+// The default behavior is for ndt7-client to discover a suitable server using
+// Measurement Lab's locate service. This behavior may be overridden using
+// either the `-server` or `-service-url` flags.
+//
+// The `-server <name>` flag specifies the server `name` for performing
+// the ndt7 test. This option overrides `-service-url`.
+//
+// The `-service-url <url>` flag specifies a complete URL that specifies the
+// scheme (e.g. "ws"), server name and port, protocol (e.g. /ndt/v7/download),
+// and HTTP parameters. By default, upload and download measurements are run
+// automatically. The `-service-url` specifies only one measurement direction.
 //
 // The `-no-verify` flag allows to skip TLS certificate verification.
 //
@@ -24,13 +34,20 @@
 // be passed to time.ParseDuration, e.g., "15s". The default is a large
 // enough value that should be suitable for common conditions.
 //
+// The `-upload` and `-download` flags are boolean options that default to true,
+// but may be set to false on the command line to run only upload or only
+// download.
+//
+// The `-profile` flag defines the file where to write a CPU profile
+// that later you can pass to `go tool pprof`. See https://blog.golang.org/pprof.
+//
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
 //
-// Events emitted in batch mode
+// JSON events emitted when -format=json
 //
-// This section describes the events emitted in batch mode. The code
-// will always emit a single event per line.
+// This section describes the events emitted when using the json output format.
+// The code will always emit a single event per line.
 //
 // When the download test starts, this event is emitted:
 //
@@ -77,38 +94,69 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
+	"log"
+	"net"
 	"os"
+	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"golang.org/x/sys/cpu"
 )
 
 const (
 	clientName     = "ndt7-client-go-cmd"
-	clientVersion  = "0.1.0"
+	clientVersion  = "0.5.0"
 	defaultTimeout = 55 * time.Second
 )
 
 var (
+	flagProfile = flag.String("profile", "",
+		"file where to store pprof profile (see https://blog.golang.org/pprof)")
+
 	flagScheme = flagx.Enum{
 		Options: []string{"wss", "ws"},
-		Value:   "wss",
+		Value:   defaultSchemeForArch(),
 	}
-	flagBatch    = flag.Bool("batch", false, "emit JSON events on stdout")
+
+	flagFormat = flagx.Enum{
+		Options: []string{"human", "json"},
+		Value:   "human",
+	}
+
+	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
+		"(DEPRECATED, please use -format=json)")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
-	flagHostname = flag.String("hostname", "", "optional ndt7 server hostname")
+	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
+	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
+	flagService  = flagx.URL{}
+	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
+	flagDownload = flag.Bool("download", true, "perform download measurement")
 )
 
 func init() {
 	flag.Var(
 		&flagScheme,
 		"scheme",
-		`WebSocket scheme to use: either "wss" (the default) or "ws"`,
+		`WebSocket scheme to use: either "wss" or "ws"`,
+	)
+	flag.Var(
+		&flagFormat,
+		"format",
+		"output format to use: 'human' or 'json' for batch processing",
+	)
+	flag.Var(
+		&flagService,
+		"service-url",
+		"Service URL specifies target hostname and other URL fields like access token. Overrides -server.",
 	)
 }
 
@@ -138,6 +186,16 @@ func (r runner) doRunTest(
 		}
 	}
 	return 0
+}
+
+// defaultSchemeForArch returns the default WebSocket scheme to use, depending
+// on the architecture we are running on. A CPU without native AES instructions
+// will perform poorly if TLS is enabled.
+func defaultSchemeForArch() string {
+	if cpu.ARM64.HasAES || cpu.ARM.HasAES || cpu.X86.HasAES {
+		return "wss"
+	}
+	return "ws"
 }
 
 func (r runner) runTest(
@@ -170,23 +228,129 @@ func (r runner) runUpload(ctx context.Context) int {
 		r.emitter.OnUploadEvent)
 }
 
+func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements) *emitter.Summary {
+
+	s := emitter.NewSummary(FQDN)
+
+	if results[spec.TestDownload] != nil &&
+		results[spec.TestDownload].ConnectionInfo != nil {
+		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
+		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
+
+		clientIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
+		if err == nil {
+			s.ClientIP = clientIP
+		}
+
+		serverIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
+		if err == nil {
+			s.ServerIP = serverIP
+		}
+	}
+
+	// Download comes from the client-side Measurement during the download
+	// test. DownloadRetrans and MinRTT come from the server-side Measurement,
+	// if it includes a TCPInfo object.
+	if dl, ok := results[spec.TestDownload]; ok {
+		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
+			s.Download = emitter.ValueUnitPair{
+				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+		if dl.Server.TCPInfo != nil {
+			if dl.Server.TCPInfo.BytesSent > 0 {
+				s.DownloadRetrans = emitter.ValueUnitPair{
+					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
+					Unit:  "%",
+				}
+			}
+			s.MinRTT = emitter.ValueUnitPair{
+				Value: float64(dl.Server.TCPInfo.MinRTT) / 1000,
+				Unit:  "ms",
+			}
+		}
+	}
+	// Upload comes from the client-side Measurement during the upload test.
+	if ul, ok := results[spec.TestUpload]; ok {
+		if ul.Client.AppInfo != nil && ul.Client.AppInfo.ElapsedTime > 0 {
+			elapsed := float64(ul.Client.AppInfo.ElapsedTime) / 1e06
+			s.Upload = emitter.ValueUnitPair{
+				Value: (8.0 * float64(ul.Client.AppInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+	}
+
+	return s
+}
+
 var osExit = os.Exit
 
 func main() {
 	flag.Parse()
+
+	if *flagProfile != "" {
+		log.Printf("warning: using -profile will reduce the performance")
+		fp, err := os.Create(*flagProfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(fp)
+		defer pprof.StopCPUProfile()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
 	defer cancel()
 	var r runner
+
+	// If a service URL is given, then only one direction is possible.
+	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
+		*flagUpload = false
+		*flagDownload = true
+	} else if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.UploadURLPath) {
+		*flagUpload = true
+		*flagDownload = false
+	} else if flagService.URL != nil {
+		fmt.Println("WARNING: ignoring unsupported service url")
+		flagService.URL = nil
+	}
+
 	r.client = ndt7.NewClient(clientName, clientVersion)
+	r.client.ServiceURL = flagService.URL
+	r.client.Server = *flagServer
 	r.client.Scheme = flagScheme.Value
 	r.client.Dialer.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: *flagNoVerify,
 	}
-	r.client.FQDN = *flagHostname
-	if *flagBatch {
-		r.emitter = emitter.NewBatch()
+
+	var e emitter.Emitter
+
+	// If -batch, force -format=json.
+	if *flagBatch || flagFormat.Value == "json" {
+		e = emitter.NewJSON(os.Stdout)
 	} else {
-		r.emitter = emitter.NewInteractive()
+		e = emitter.NewHumanReadable()
 	}
-	osExit(r.runDownload(ctx) + r.runUpload(ctx))
+	if *flagQuiet {
+		e = emitter.NewQuiet(e)
+	}
+	r.emitter = e
+
+	var code int
+	if *flagDownload {
+		code += r.runDownload(ctx)
+	}
+	if *flagUpload {
+		code += r.runUpload(ctx)
+	}
+	if code != 0 {
+		osExit(code)
+	}
+
+	s := makeSummary(r.client.FQDN, r.client.Results())
+	r.emitter.OnSummary(s)
 }

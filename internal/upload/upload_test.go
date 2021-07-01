@@ -81,8 +81,8 @@ func TestReadMessageError(t *testing.T) {
 
 func TestReadNonTextMessageError(t *testing.T) {
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.BinaryMessage,
-		ReadMessageByteArray: []byte("abcdef"),
+		ReadMessageType:  websocket.BinaryMessage,
+		MessageByteArray: []byte("abcdef"),
 	}
 	ch := make(chan spec.Measurement, 128)
 	err := readcounterflow(context.Background(), &conn, ch)

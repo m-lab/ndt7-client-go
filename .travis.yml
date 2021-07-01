@@ -1,7 +1,7 @@
 language: go
 go:
-- 1.13.x
-dist: xenial
+- 1.16
+dist: bionic
 
 before_script:
 - go get golang.org/x/tools/cmd/cover
