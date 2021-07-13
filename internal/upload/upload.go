@@ -40,7 +40,7 @@ var errNonTextMessage = errors.New("Received non textual message")
 // readcounterflow reads counter flow message. The error is typically ignored
 // as this code runs in its own goroutine, yet it's useful for testing.
 func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
-	errors chan<- error) {
+	errCh chan<- error) {
 	conn.SetReadLimit(params.MaxMessageSize)
 	for ctx.Err() == nil {
 		// Implementation note: this guarantees that the websocket engine
@@ -50,25 +50,25 @@ func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.M
 		// which the server is not sending us any messages.
 		err := conn.SetReadDeadline(time.Now().Add(params.UploadTimeout))
 		if err != nil {
-			errors <- err
+			errCh <- err
 		}
 		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
-			errors <- err
+			errCh <- err
 		}
 		if mtype != websocket.TextMessage {
-			errors <- errNonTextMessage
+			errCh <- errNonTextMessage
 		}
 		var measurement spec.Measurement
 		if err := json.Unmarshal(mdata, &measurement); err != nil {
-			errors <- err
+			errCh <- err
 		}
 		measurement.Origin = spec.OriginServer
 		measurement.Test = spec.TestUpload
 		ch <- measurement
 	}
 	// Signal we've finished reading counterflow messages.
-	errors <- nil
+	errCh <- nil
 }
 
 // emit emits an event during the upload.

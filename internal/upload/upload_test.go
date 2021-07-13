@@ -44,9 +44,9 @@ func TestSetReadDeadlineError(t *testing.T) {
 		SetReadDeadlineResult: mockedErr,
 	}
 	ch := make(chan spec.Measurement, 128)
-	errs := make(chan error)
-	go readcounterflow(context.Background(), &conn, ch, errs)
-	err := <-errs
+	errCh := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -58,9 +58,9 @@ func TestReadMessageError(t *testing.T) {
 		ReadMessageResult: mockedErr,
 	}
 	ch := make(chan spec.Measurement, 128)
-	errs := make(chan error)
-	go readcounterflow(context.Background(), &conn, ch, errs)
-	err := <-errs
+	errCh := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -72,9 +72,9 @@ func TestReadNonTextMessageError(t *testing.T) {
 		MessageByteArray: []byte("abcdef"),
 	}
 	ch := make(chan spec.Measurement, 128)
-	errs := make(chan error)
-	go readcounterflow(context.Background(), &conn, ch, errs)
-	err := <-errs
+	errCh := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
 	}
@@ -86,9 +86,9 @@ func TestReadNonJSONError(t *testing.T) {
 		MessageByteArray: []byte("{"),
 	}
 	ch := make(chan spec.Measurement, 128)
-	errs := make(chan error)
-	go readcounterflow(context.Background(), &conn, ch, errs)
-	err := <-errs
+	errCh := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	var syntaxError *json.SyntaxError
 	if !errors.As(err, &syntaxError) {
 		t.Fatal("Not the error we expected")
