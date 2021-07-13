@@ -61,7 +61,9 @@ func TestSetReadDeadlineError(t *testing.T) {
 		SetReadDeadlineResult: mockedErr,
 	}
 	ch := make(chan spec.Measurement, 128)
-	err := readcounterflow(context.Background(), &conn, ch)
+	errs := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errs)
+	err := <-errs
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -73,7 +75,9 @@ func TestReadMessageError(t *testing.T) {
 		ReadMessageResult: mockedErr,
 	}
 	ch := make(chan spec.Measurement, 128)
-	err := readcounterflow(context.Background(), &conn, ch)
+	errs := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errs)
+	err := <-errs
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -85,7 +89,9 @@ func TestReadNonTextMessageError(t *testing.T) {
 		MessageByteArray: []byte("abcdef"),
 	}
 	ch := make(chan spec.Measurement, 128)
-	err := readcounterflow(context.Background(), &conn, ch)
+	errs := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errs)
+	err := <-errs
 	if err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
 	}
@@ -93,11 +99,13 @@ func TestReadNonTextMessageError(t *testing.T) {
 
 func TestReadNonJSONError(t *testing.T) {
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: []byte("{"),
+		ReadMessageType:  websocket.TextMessage,
+		MessageByteArray: []byte("{"),
 	}
 	ch := make(chan spec.Measurement, 128)
-	err := readcounterflow(context.Background(), &conn, ch)
+	errs := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errs)
+	err := <-errs
 	var syntaxError *json.SyntaxError
 	if !errors.As(err, &syntaxError) {
 		t.Fatal("Not the error we expected")
@@ -106,8 +114,8 @@ func TestReadNonJSONError(t *testing.T) {
 
 func TestReadGoodMessage(t *testing.T) {
 	conn := mocks.Conn{
-		ReadMessageType:      websocket.TextMessage,
-		ReadMessageByteArray: []byte("{}"),
+		ReadMessageType:  websocket.TextMessage,
+		MessageByteArray: []byte("{}"),
 	}
 	ch := make(chan spec.Measurement, 128)
 	var count int64
@@ -118,7 +126,10 @@ func TestReadGoodMessage(t *testing.T) {
 			cancel()
 		}
 	}()
-	if err := readcounterflow(ctx, &conn, ch); err != nil {
+	errs := make(chan error)
+	go readcounterflow(ctx, &conn, ch, errs)
+	err := <-errs
+	if err != nil {
 		t.Fatal(err)
 	}
 }

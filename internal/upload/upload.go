@@ -39,7 +39,8 @@ var errNonTextMessage = errors.New("Received non textual message")
 
 // readcounterflow reads counter flow message. The error is typically ignored
 // as this code runs in its own goroutine, yet it's useful for testing.
-func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) error {
+func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
+	errors chan<- error) {
 	conn.SetReadLimit(params.MaxMessageSize)
 	for ctx.Err() == nil {
 		// Implementation note: this guarantees that the websocket engine
@@ -49,24 +50,25 @@ func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.M
 		// which the server is not sending us any messages.
 		err := conn.SetReadDeadline(time.Now().Add(params.UploadTimeout))
 		if err != nil {
-			return err
+			errors <- err
 		}
 		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
-			return err
+			errors <- err
 		}
 		if mtype != websocket.TextMessage {
-			return errNonTextMessage
+			errors <- errNonTextMessage
 		}
 		var measurement spec.Measurement
 		if err := json.Unmarshal(mdata, &measurement); err != nil {
-			return err
+			errors <- err
 		}
 		measurement.Origin = spec.OriginServer
 		measurement.Test = spec.TestUpload
 		ch <- measurement
 	}
-	return nil
+	// Signal we've finished reading counterflow messages.
+	errors <- nil
 }
 
 // emit emits an event during the upload.
@@ -130,8 +132,8 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	defer close(ch)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
-	defer cancel()
-	go readcounterflow(ctx, conn, ch)
+	errors := make(chan error)
+	go readcounterflow(ctx, conn, ch, errors)
 	start := time.Now()
 	prev := start
 	for tot := range uploadAsync(ctx, conn) {
@@ -140,6 +142,12 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 			emit(ch, now.Sub(start), tot)
 			prev = now
 		}
+	}
+	cancel()
+
+	err := <-errors
+	if err != nil {
+		return err
 	}
 	return nil
 }
