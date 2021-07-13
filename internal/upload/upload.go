@@ -131,6 +131,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	defer close(ch)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
+	defer cancel()
 	errCh := make(chan error)
 	go readcounterflow(ctx, conn, ch, errCh)
 	start := time.Now()
@@ -142,7 +143,6 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 			prev = now
 		}
 	}
-	cancel()
 
 	err := <-errCh
 	if err != nil {
