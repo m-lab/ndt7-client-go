@@ -37,8 +37,7 @@ var makePreparedMessage = func(size int) (*websocket.PreparedMessage, error) {
 // errNonTextMessage indicates we've got a non textual message
 var errNonTextMessage = errors.New("Received non textual message")
 
-// readcounterflow reads counter flow message. The error is typically ignored
-// as this code runs in its own goroutine, yet it's useful for testing.
+// readcounterflow reads counter flow message. Errors are reported via errCh.
 func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement,
 	errCh chan<- error) {
 	conn.SetReadLimit(params.MaxMessageSize)
@@ -132,8 +131,8 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	defer close(ch)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(ctx, params.UploadTimeout)
-	errors := make(chan error)
-	go readcounterflow(ctx, conn, ch, errors)
+	errCh := make(chan error)
+	go readcounterflow(ctx, conn, ch, errCh)
 	start := time.Now()
 	prev := start
 	for tot := range uploadAsync(ctx, conn) {
@@ -145,7 +144,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	}
 	cancel()
 
-	err := <-errors
+	err := <-errCh
 	if err != nil {
 		return err
 	}
