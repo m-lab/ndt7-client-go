@@ -59,6 +59,7 @@ func TestReadMessageError(t *testing.T) {
 	}
 	ch := make(chan spec.Measurement, 128)
 	errCh := make(chan error)
+	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
 	err := <-errCh
 	if err != mockedErr {
@@ -73,6 +74,7 @@ func TestReadNonTextMessageError(t *testing.T) {
 	}
 	ch := make(chan spec.Measurement, 128)
 	errCh := make(chan error)
+	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
 	err := <-errCh
 	if err != errNonTextMessage {
@@ -87,6 +89,7 @@ func TestReadNonJSONError(t *testing.T) {
 	}
 	ch := make(chan spec.Measurement, 128)
 	errCh := make(chan error)
+	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
 	err := <-errCh
 	var syntaxError *json.SyntaxError
@@ -109,9 +112,10 @@ func TestReadGoodMessage(t *testing.T) {
 			cancel()
 		}
 	}()
-	errs := make(chan error)
-	go readcounterflow(ctx, &conn, ch, errs)
-	err := <-errs
+	errCh := make(chan error)
+	defer close(errCh)
+	go readcounterflow(ctx, &conn, ch, errCh)
+	err := <-errCh
 	if err != nil {
 		t.Fatal(err)
 	}
