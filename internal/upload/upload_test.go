@@ -2,6 +2,7 @@ package upload
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -17,37 +18,20 @@ func TestNormal(t *testing.T) {
 		context.Background(), time.Duration(time.Second),
 	)
 	defer cancel()
-	conn := mocks.Conn{}
+	conn := mocks.Conn{
+		MessageByteArray: []byte("{}"),
+		ReadMessageType:  websocket.TextMessage,
+	}
 	go func() {
 		err := Run(ctx, &conn, outch)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}()
-	prev := spec.Measurement{
-		AppInfo: &spec.AppInfo{},
-	}
 	tot := 0
-	for m := range outch {
+	// Drain the channel and count the number of Measurements read.
+	for _ = range outch {
 		tot++
-		if m.Origin != spec.OriginClient {
-			t.Fatal("The origin is wrong")
-		}
-		if m.Test != spec.TestUpload {
-			t.Fatal("The test is wrong")
-		}
-		if m.AppInfo == nil {
-			t.Fatal("m.AppInfo is nil")
-		}
-		if m.AppInfo.ElapsedTime <= prev.AppInfo.ElapsedTime {
-			t.Fatal("Time is not increasing")
-		}
-		// Note: it can stay constant when we're servicing
-		// a TCP timeout longer than the update interval
-		if m.AppInfo.NumBytes < prev.AppInfo.NumBytes {
-			t.Fatal("Number of bytes is decreasing")
-		}
-		prev = m
 	}
 	if tot <= 0 {
 		t.Fatal("Expected at least one message")
@@ -59,7 +43,10 @@ func TestSetReadDeadlineError(t *testing.T) {
 	conn := mocks.Conn{
 		SetReadDeadlineResult: mockedErr,
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	errCh := make(chan error)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -70,7 +57,11 @@ func TestReadMessageError(t *testing.T) {
 	conn := mocks.Conn{
 		ReadMessageResult: mockedErr,
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	errCh := make(chan error)
+	defer close(errCh)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
@@ -81,9 +72,52 @@ func TestReadNonTextMessageError(t *testing.T) {
 		ReadMessageType:  websocket.BinaryMessage,
 		MessageByteArray: []byte("abcdef"),
 	}
-	err := ignoreIncoming(&conn)
+	ch := make(chan spec.Measurement, 128)
+	errCh := make(chan error)
+	defer close(errCh)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
 	if err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
+	}
+}
+
+func TestReadNonJSONError(t *testing.T) {
+	conn := mocks.Conn{
+		ReadMessageType:  websocket.TextMessage,
+		MessageByteArray: []byte("{"),
+	}
+	ch := make(chan spec.Measurement, 128)
+	errCh := make(chan error)
+	defer close(errCh)
+	go readcounterflow(context.Background(), &conn, ch, errCh)
+	err := <-errCh
+	var syntaxError *json.SyntaxError
+	if !errors.As(err, &syntaxError) {
+		t.Fatal("Not the error we expected")
+	}
+}
+
+func TestReadGoodMessage(t *testing.T) {
+	conn := mocks.Conn{
+		ReadMessageType:  websocket.TextMessage,
+		MessageByteArray: []byte("{}"),
+	}
+	ch := make(chan spec.Measurement, 128)
+	var count int64
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for range ch {
+			count++
+			cancel()
+		}
+	}()
+	errCh := make(chan error)
+	defer close(errCh)
+	go readcounterflow(ctx, &conn, ch, errCh)
+	err := <-errCh
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
