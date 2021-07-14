@@ -50,17 +50,21 @@ func readcounterflow(ctx context.Context, conn websocketx.Conn, ch chan<- spec.M
 		err := conn.SetReadDeadline(time.Now().Add(params.UploadTimeout))
 		if err != nil {
 			errCh <- err
+			return
 		}
 		mtype, mdata, err := conn.ReadMessage()
 		if err != nil {
 			errCh <- err
+			return
 		}
 		if mtype != websocket.TextMessage {
 			errCh <- errNonTextMessage
+			return
 		}
 		var measurement spec.Measurement
 		if err := json.Unmarshal(mdata, &measurement); err != nil {
 			errCh <- err
+			return
 		}
 		measurement.Origin = spec.OriginServer
 		measurement.Test = spec.TestUpload
