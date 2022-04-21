@@ -101,22 +101,19 @@ func TestStartConnectError(t *testing.T) {
 	}
 }
 
-func newLocator(s string) *locatetest.Locator {
-	u, err := url.Parse(s)
-	if err != nil {
-		panic(err)
+// newLocator returns a locate.Client that returns the given server URLs.
+func newLocator(serverURLs []string) *locatetest.Locator {
+	s := []string{}
+	for _, serverURL := range serverURLs {
+		u, err := url.Parse(serverURL)
+		if err != nil {
+			panic(err)
+		}
+		s = append(s, u.Host)
 	}
-	fl := &locatetest.Locator{
-		Servers: []string{u.Host},
+	return &locatetest.Locator{
+		Servers: s,
 	}
-	return fl
-}
-
-func newEmptyLocator() *locatetest.Locator {
-	fl := &locatetest.Locator{
-		Servers: []string{},
-	}
-	return fl
 }
 
 func TestIntegrationDownload(t *testing.T) {
@@ -126,7 +123,7 @@ func TestIntegrationDownload(t *testing.T) {
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
-	l := locatetest.NewLocateServer(newLocator(fs.URL))
+	l := locatetest.NewLocateServer(newLocator([]string{fs.URL}))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
@@ -160,7 +157,7 @@ func TestIntegrationUpload(t *testing.T) {
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
-	l := locatetest.NewLocateServer(newLocator(fs.URL))
+	l := locatetest.NewLocateServer(newLocator([]string{fs.URL}))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
@@ -241,7 +238,8 @@ func TestDownloadNoTargets(t *testing.T) {
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
-	l := locatetest.NewLocateServer(newLocator(fs.URL))
+	// The first URL is intentionally invalid to test the retry loop.
+	l := locatetest.NewLocateServer(newLocator([]string{"https://invalid", fs.URL}))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
@@ -250,7 +248,7 @@ func TestDownloadNoTargets(t *testing.T) {
 	loc.BaseURL = u
 	client.Locate = loc
 
-	// First attempt should succeed.
+	// This should succeed by using the second URL since the first one fails.
 	ch, err := client.StartDownload(context.Background())
 	testingx.Must(t, err, "failed to download first attempt")
 	tot := 0
@@ -260,7 +258,8 @@ func TestDownloadNoTargets(t *testing.T) {
 	if tot <= 0 {
 		t.Fatal("Expected at least a measurement")
 	}
-	// Second attempt should return ErrNoTargets.
+	// Second attempt should return ErrNoTargets since all the available
+	// servers have been tried.
 	_, err = client.StartDownload(context.Background())
 	if err != ErrNoTargets {
 		t.Fatalf("Expected no target error: %v", err)
