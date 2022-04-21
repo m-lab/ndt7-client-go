@@ -180,26 +180,7 @@ func (c *Client) doConnect(ctx context.Context, serviceURL string) (*websocket.C
 	return conn, err
 }
 
-func (c *Client) getURLforPath(ctx context.Context, p string) (string, error) {
-	// Either the server or service url fields override the Locate API.
-	// First check for the server.
-	if c.Server != "" && (p == params.DownloadURLPath || p == params.UploadURLPath) {
-		return (&url.URL{
-			Scheme: c.Scheme,
-			Host:   c.Server,
-			Path:   p,
-		}).String(), nil
-	}
-	// Second, check for the service url.
-	if c.ServiceURL != nil && (c.ServiceURL.Path == params.DownloadURLPath || c.ServiceURL.Path == params.UploadURLPath) {
-		// Override scheme to match the provided service url.
-		c.Scheme = c.ServiceURL.Scheme
-		return c.ServiceURL.String(), nil
-	} else if c.ServiceURL != nil {
-		return "", ErrServiceUnsupported
-	}
-
-	// Third, neither of the above conditions worked, so use the Locate API.
+func (c *Client) nextURLFromLocate(ctx context.Context, p string) (string, error) {
 	if len(c.targets) == 0 {
 		targets, err := c.Locate.Nearest(ctx, "ndt/ndt7")
 		if err != nil {
@@ -219,22 +200,61 @@ func (c *Client) getURLforPath(ctx context.Context, p string) (string, error) {
 
 // start is the function for starting a test.
 func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Measurement, error) {
-	s, err := c.getURLforPath(ctx, p)
-	if err != nil {
-		return nil, err
+	var customURL *url.URL
+	// Either the server or service url fields override the Locate API.
+	// First check for the server.
+	if c.Server != "" && (p == params.DownloadURLPath || p == params.UploadURLPath) {
+		customURL = &url.URL{
+			Scheme: c.Scheme,
+			Host:   c.Server,
+			Path:   p,
+		}
 	}
-	u, err := url.Parse(s)
-	if err != nil {
-		return nil, err
+	// Second, check for the service url.
+	if c.ServiceURL != nil && (c.ServiceURL.Path == params.DownloadURLPath || c.ServiceURL.Path == params.UploadURLPath) {
+		// Override scheme to match the provided service url.
+		c.Scheme = c.ServiceURL.Scheme
+		customURL = c.ServiceURL
+	} else if c.ServiceURL != nil {
+		return nil, ErrServiceUnsupported
 	}
-	c.FQDN = u.Hostname()
-	conn, err := c.doConnect(ctx, u.String())
-	if err != nil {
-		return nil, err
+
+	// If a custom URL was provided, use it.
+	if customURL != nil {
+		u, err := url.Parse(customURL.String())
+		if err != nil {
+			return nil, err
+		}
+		c.FQDN = u.Hostname()
+		conn, err := c.doConnect(ctx, u.String())
+		if err != nil {
+			return nil, err
+		}
+		ch := make(chan spec.Measurement)
+		go c.collectData(ctx, f, conn, ch)
+		return ch, nil
 	}
-	ch := make(chan spec.Measurement)
-	go c.collectData(ctx, f, conn, ch)
-	return ch, nil
+
+	// If we have no URLs, use the Locate API. In case of failure, try the next
+	// URL until there are no more URLs available.
+	for {
+		s, err := c.nextURLFromLocate(ctx, p)
+		if err != nil {
+			return nil, err
+		}
+		u, err := url.Parse(s)
+		if err != nil {
+			return nil, err
+		}
+		c.FQDN = u.Hostname()
+		conn, err := c.doConnect(ctx, u.String())
+		if err != nil {
+			continue
+		}
+		ch := make(chan spec.Measurement)
+		go c.collectData(ctx, f, conn, ch)
+		return ch, nil
+	}
 }
 
 func (c *Client) collectData(ctx context.Context, f testFn, conn websocketx.Conn, outch chan<- spec.Measurement) {
