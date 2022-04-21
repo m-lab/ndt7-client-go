@@ -180,6 +180,10 @@ func (c *Client) doConnect(ctx context.Context, serviceURL string) (*websocket.C
 	return conn, err
 }
 
+// nextURLFromLocate returns the next URL to try from the Locate API.
+// If it's the first time we're calling this function, it contacts the Locate
+// API. Subsequently, it returns the next URL from the cache.
+// If there are no more URLs to try, it returns an error.
 func (c *Client) nextURLFromLocate(ctx context.Context, p string) (string, error) {
 	if len(c.targets) == 0 {
 		targets, err := c.Locate.Nearest(ctx, "ndt/ndt7")
