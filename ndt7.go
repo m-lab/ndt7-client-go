@@ -198,6 +198,23 @@ func (c *Client) nextURLFromLocate(ctx context.Context, p string) (string, error
 	return "", ErrNoTargets
 }
 
+// tryConnect tries to establish a websocket connection. If successful, returns
+// a channel where measurements are written.
+func (c *Client) tryConnect(ctx context.Context, f testFn, s string) (<-chan spec.Measurement, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	c.FQDN = u.Hostname()
+	conn, err := c.doConnect(ctx, u.String())
+	if err != nil {
+		return nil, err
+	}
+	ch := make(chan spec.Measurement)
+	go c.collectData(ctx, f, conn, ch)
+	return ch, nil
+}
+
 // start is the function for starting a test.
 func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Measurement, error) {
 	var customURL *url.URL
@@ -221,18 +238,7 @@ func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Mea
 
 	// If a custom URL was provided, use it.
 	if customURL != nil {
-		u, err := url.Parse(customURL.String())
-		if err != nil {
-			return nil, err
-		}
-		c.FQDN = u.Hostname()
-		conn, err := c.doConnect(ctx, u.String())
-		if err != nil {
-			return nil, err
-		}
-		ch := make(chan spec.Measurement)
-		go c.collectData(ctx, f, conn, ch)
-		return ch, nil
+		return c.tryConnect(ctx, f, customURL.String())
 	}
 
 	// If we have no URLs, use the Locate API. In case of failure, try the next
@@ -242,17 +248,10 @@ func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Mea
 		if err != nil {
 			return nil, err
 		}
-		u, err := url.Parse(s)
-		if err != nil {
-			return nil, err
-		}
-		c.FQDN = u.Hostname()
-		conn, err := c.doConnect(ctx, u.String())
+		ch, err := c.tryConnect(ctx, f, s)
 		if err != nil {
 			continue
 		}
-		ch := make(chan spec.Measurement)
-		go c.collectData(ctx, f, conn, ch)
 		return ch, nil
 	}
 }
