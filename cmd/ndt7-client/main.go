@@ -112,7 +112,7 @@ import (
 
 const (
 	clientName     = "ndt7-client-go-cmd"
-	clientVersion  = "0.5.0"
+	clientVersion  = "0.6.1"
 	defaultTimeout = 55 * time.Second
 )
 
