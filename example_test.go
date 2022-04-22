@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/m-lab/ndt7-client-go"
+	ndt7 "github.com/m-lab/ndt7-client-go"
 )
 
 // This shows how to run a ndt7 test.
