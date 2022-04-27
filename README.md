@@ -54,7 +54,7 @@ value is passed to the server as metadata, doing so will allow you to retrieve
 measurements coming from your custom integration in Measurement Lab's data
 easily.
 
-To set a custom the client name at build time:
+To set a custom client name at build time:
 
 ```bash
 CLIENTNAME=my-custom-client-name
