@@ -45,3 +45,19 @@ go get -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
 
 is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
 and then cancelling the repository directory.
+
+### Building with a custom client name
+
+In case you are integrating an ndt7-client binary into a third-party
+application, it may be useful to build it with a custom client name. Since this
+value is passed to the server as metadata, doing so will allow you to retrieve
+measurements coming from your custom integration in Measurement Lab's data
+easily.
+
+To set a custom client name at build time:
+
+```bash
+CLIENTNAME=my-custom-client-name
+
+go build -ldflags "-X main.ClientName=$CLIENTNAME" ./cmd/ndt7-client
+```

@@ -111,12 +111,12 @@ import (
 )
 
 const (
-	clientName     = "ndt7-client-go-cmd"
-	clientVersion  = "0.6.1"
 	defaultTimeout = 55 * time.Second
 )
 
 var (
+	ClientName	= "ndt7-client-go-cmd"
+	ClientVersion	= "0.6.1"
 	flagProfile = flag.String("profile", "",
 		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 
@@ -319,7 +319,7 @@ func main() {
 		flagService.URL = nil
 	}
 
-	r.client = ndt7.NewClient(clientName, clientVersion)
+	r.client = ndt7.NewClient(ClientName, ClientVersion)
 	r.client.ServiceURL = flagService.URL
 	r.client.Server = *flagServer
 	r.client.Scheme = flagScheme.Value
