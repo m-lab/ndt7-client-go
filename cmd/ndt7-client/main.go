@@ -291,7 +291,6 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 var osExit = os.Exit
 
 func main() {
-	fmt.Println(ClientName)
 	flag.Parse()
 
 	if *flagProfile != "" {
