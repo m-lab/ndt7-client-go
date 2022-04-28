@@ -171,7 +171,7 @@ func (me mockedEmitter) OnSummary(*emitter.Summary) error {
 
 func TestRunTestOnStartingError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(clientName, clientVersion),
+		client: ndt7.NewClient(ClientName, ClientVersion),
 		emitter: mockedEmitter{
 			StartingError: errors.New("mocked error"),
 		},
@@ -195,7 +195,7 @@ func TestRunTestOnStartingError(t *testing.T) {
 
 func TestRunTestOnConnectedError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(clientName, clientVersion),
+		client: ndt7.NewClient(ClientName, ClientVersion),
 		emitter: mockedEmitter{
 			ConnectedError: errors.New("mocked error"),
 		},
@@ -219,7 +219,7 @@ func TestRunTestOnConnectedError(t *testing.T) {
 
 func TestRunTestOnCompleteError(t *testing.T) {
 	runner := runner{
-		client: ndt7.NewClient(clientName, clientVersion),
+		client: ndt7.NewClient(ClientName, ClientVersion),
 		emitter: mockedEmitter{
 			CompleteError: errors.New("mocked error"),
 		},
@@ -243,7 +243,7 @@ func TestRunTestOnCompleteError(t *testing.T) {
 
 func TestRunTestEmitEventError(t *testing.T) {
 	runner := runner{
-		client:  ndt7.NewClient(clientName, clientVersion),
+		client:  ndt7.NewClient(ClientName, ClientVersion),
 		emitter: mockedEmitter{},
 	}
 	code := runner.runTest(
@@ -279,7 +279,7 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 
 	writer := &mocks.SavingWriter{}
 	runner := runner{
-		client:  ndt7.NewClient(clientName, clientVersion),
+		client:  ndt7.NewClient(ClientName, ClientVersion),
 		emitter: emitter.NewJSON(writer),
 	}
 	runner.client.Scheme = "ws"
@@ -335,7 +335,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	}
 	writer := &mocks.SavingWriter{}
 	runner := runner{
-		client:  ndt7.NewClient(clientName, clientVersion),
+		client:  ndt7.NewClient(ClientName, ClientVersion),
 		emitter: emitter.NewJSON(writer),
 	}
 	loc := locate.NewClient("fake-agent")
