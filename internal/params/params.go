@@ -9,8 +9,17 @@ import (
 // SecWebSocketProtocol is the value of the Sec-WebSocket-Protocol header.
 const SecWebSocketProtocol = "net.measurementlab.ndt.v7"
 
+// InitialMessageSize is initial size of uploaded messages.
+const InitialMessageSize = 1 << 13
+
 // MaxMessageSize is the maximum accepted message size.
 const MaxMessageSize = 1 << 20
+
+// ScalingFraction sets the threshold for scaling binary messages. When
+// the current binary message size is <= than 1/scalingFactor of the
+// amount of bytes sent so far, we scale the message. This is documented
+// in the appendix of the ndt7 specification.
+const ScalingFraction = 16
 
 // DownloadTimeout is the time after which the download must stop.
 const DownloadTimeout = 15 * time.Second
@@ -26,9 +35,6 @@ const UploadURLPath = "/ndt/v7/upload"
 
 // UploadTimeout is the time after which the upload must stop.
 const UploadTimeout = 10 * time.Second
-
-// BulkMessageSize is the size of uploaded messages
-const BulkMessageSize = 1 << 13
 
 // UpdateInterval is the interval between client side upload measurements.
 const UpdateInterval = 250 * time.Millisecond

@@ -95,7 +95,8 @@ func emit(ch chan<- spec.Measurement, elapsed time.Duration, numBytes int64) {
 // Note that upload closes the out channel.
 func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 	defer close(out)
-	preparedMessage, err := makePreparedMessage(params.BulkMessageSize)
+	bulkMessageSize := params.InitialMessageSize
+	preparedMessage, err := makePreparedMessage(bulkMessageSize)
 	if err != nil {
 		return err
 	}
@@ -110,8 +111,19 @@ func upload(ctx context.Context, conn websocketx.Conn, out chan<- int64) error {
 		}
 		// Note that the following is slightly inaccurate because we
 		// are ignoring the WebSocket overhead et al.
-		total += params.BulkMessageSize
+		total += int64(bulkMessageSize)
 		out <- total
+		if bulkMessageSize >= params.MaxMessageSize {
+			continue // No further scaling is required.
+		}
+		if int64(bulkMessageSize) > total/params.ScalingFraction {
+			continue // message size still too big compared to sent data
+		}
+		bulkMessageSize *= 2
+		preparedMessage, err = makePreparedMessage(bulkMessageSize)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
