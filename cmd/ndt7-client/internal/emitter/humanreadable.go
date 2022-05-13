@@ -58,16 +58,29 @@ func (h HumanReadable) onSpeedEvent(m *spec.Measurement) error {
 	// The specification recommends that we show application level
 	// measurements. Let's just do that in interactive mode. To this
 	// end, we ignore any measurement coming from the server.
-	if m.Origin != spec.OriginClient {
-		return nil
+	switch m.Test {
+	case spec.TestDownload:
+		if m.Origin == spec.OriginClient {
+			if m.AppInfo == nil || m.AppInfo.ElapsedTime <= 0 {
+				return errors.New("missing AppInfo or invalid ElapsedTime")
+			}
+			elapsed := float64(m.AppInfo.ElapsedTime)
+			v := 8.0 * float64(m.AppInfo.NumBytes) / elapsed
+			_, err := fmt.Fprintf(h.out, "\rAvg. speed  : %7.1f Mbit/s", v)
+			return err
+		}
+	case spec.TestUpload:
+		if m.Origin == spec.OriginServer {
+			if m.TCPInfo == nil || m.TCPInfo.ElapsedTime <= 0 {
+				return errors.New("missing TCPInfo or invalid ElapsedTime")
+			}
+			elapsed := float64(m.TCPInfo.ElapsedTime)
+			v := 8.0 * float64(m.TCPInfo.BytesReceived) / elapsed
+			_, err := fmt.Fprintf(h.out, "\rAvg. speed  : %7.1f Mbit/s", v)
+			return err
+		}
 	}
-	if m.AppInfo == nil || m.AppInfo.ElapsedTime <= 0 {
-		return errors.New("Missing m.AppInfo or invalid m.AppInfo.ElapsedTime")
-	}
-	elapsed := float64(m.AppInfo.ElapsedTime) / 1e06
-	v := (8.0 * float64(m.AppInfo.NumBytes)) / elapsed / (1000.0 * 1000.0)
-	_, err := fmt.Fprintf(h.out, "\rAvg. speed  : %7.1f Mbit/s", v)
-	return err
+	return nil
 }
 
 // OnComplete handles the complete event

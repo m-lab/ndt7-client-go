@@ -115,9 +115,9 @@ const (
 )
 
 var (
-	ClientName	= "ndt7-client-go-cmd"
-	ClientVersion	= "0.6.1"
-	flagProfile = flag.String("profile", "",
+	ClientName    = "ndt7-client-go-cmd"
+	ClientVersion = "0.6.1"
+	flagProfile   = flag.String("profile", "",
 		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 
 	flagScheme = flagx.Enum{
@@ -273,12 +273,14 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 			}
 		}
 	}
-	// Upload comes from the client-side Measurement during the upload test.
+	// The upload rate comes from the receiver (the server). Currently
+	// ndt-server only provides network-level throughput via TCPInfo.
+	// TODO: Use AppInfo for application-level measurements when available.
 	if ul, ok := results[spec.TestUpload]; ok {
-		if ul.Client.AppInfo != nil && ul.Client.AppInfo.ElapsedTime > 0 {
-			elapsed := float64(ul.Client.AppInfo.ElapsedTime) / 1e06
+		if ul.Server.TCPInfo != nil && ul.Server.TCPInfo.BytesReceived > 0 {
+			elapsed := float64(ul.Server.TCPInfo.ElapsedTime) / 1e06
 			s.Upload = emitter.ValueUnitPair{
-				Value: (8.0 * float64(ul.Client.AppInfo.NumBytes)) /
+				Value: (8.0 * float64(ul.Server.TCPInfo.BytesReceived)) /
 					elapsed / (1000.0 * 1000.0),
 				Unit: "Mbit/s",
 			}
