@@ -181,7 +181,6 @@ func TestReaderError(t *testing.T) {
 	go func() {
 		for range outch {
 			t.Error("We didn't expect measurements here")
-			return
 		}
 	}()
 	err := Run(ctx, &conn, outch)
@@ -222,7 +221,6 @@ func TestReadInvalidJSON(t *testing.T) {
 	go func() {
 		for range outch {
 			t.Error("We didn't expect measurements here")
-			return
 		}
 	}()
 	err := Run(ctx, &conn, outch)
