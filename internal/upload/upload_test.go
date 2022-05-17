@@ -22,19 +22,20 @@ func TestNormal(t *testing.T) {
 		MessageByteArray: []byte("{}"),
 		ReadMessageType:  websocket.TextMessage,
 	}
-	go func() {
-		err := Run(ctx, &conn, outch)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
+	errch := make(chan error)
+	go func(errch chan<- error) {
+		errch <- Run(ctx, &conn, outch)
+	}(errch)
 	tot := 0
 	// Drain the channel and count the number of Measurements read.
-	for _ = range outch {
+	for range outch {
 		tot++
 	}
 	if tot <= 0 {
 		t.Fatal("Expected at least one message")
+	}
+	if err := <-errch; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -46,8 +47,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ch := make(chan spec.Measurement, 128)
 	errCh := make(chan error)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != mockedErr {
+	if err := <-errCh; err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -61,8 +61,7 @@ func TestReadMessageError(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != mockedErr {
+	if err := <-errCh; err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -76,8 +75,7 @@ func TestReadNonTextMessageError(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != errNonTextMessage {
+	if err := <-errCh; err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -115,8 +113,7 @@ func TestReadGoodMessage(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(ctx, &conn, ch, errCh)
-	err := <-errCh
-	if err != nil {
+	if err := <-errCh; err != nil {
 		t.Fatal(err)
 	}
 }
@@ -133,15 +130,21 @@ func TestMakePreparedMessageError(t *testing.T) {
 		return nil, mockedErr
 	}
 	conn := mocks.Conn{}
-	go func() {
+	errch := make(chan error)
+	go func(errch chan<- error) {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			errch <- errors.New("Did not expect messages here")
+			return
 		}
-	}()
+		errch <- nil
+	}(errch)
 	err := upload(ctx, &conn, outch)
 	makePreparedMessage = savedFunc
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
+	}
+	if err := <-errch; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -155,14 +158,20 @@ func TestSetWriteDeadlineError(t *testing.T) {
 	conn := mocks.Conn{
 		SetWriteDeadlineResult: mockedErr,
 	}
-	go func() {
+	errch := make(chan error, 1)
+	go func(errch chan<- error) {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			errch <- errors.New("Did not expect messages here")
+			return
 		}
-	}()
+		errch <- nil
+	}(errch)
 	err := upload(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
+	}
+	if err := <-errch; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -176,13 +185,19 @@ func TestWritePreparedMessageError(t *testing.T) {
 	conn := mocks.Conn{
 		WritePreparedMessageResult: mockedErr,
 	}
-	go func() {
+	errch := make(chan error, 1)
+	go func(errch chan<- error) {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			errch <- errors.New("Did not expect messages here")
+			return
 		}
-	}()
+		errch <- nil
+	}(errch)
 	err := upload(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
+	}
+	if err := <-errch; err != nil {
+		t.Fatal(err)
 	}
 }
