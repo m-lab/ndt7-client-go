@@ -92,10 +92,12 @@ func TestReadBinary(t *testing.T) {
 		NextReaderMessageType: websocket.BinaryMessage,
 		MessageByteArray:      []byte("12345678"),
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
-		errch <- Run(ctx, &conn, outch)
-	}(errch)
+	go func() {
+		err := Run(ctx, &conn, outch)
+		if err != nil {
+			t.Errorf("error: %v", err)
+		}
+	}()
 	prev := spec.Measurement{
 		AppInfo: &spec.AppInfo{},
 	}
@@ -117,9 +119,6 @@ func TestReadBinary(t *testing.T) {
 		}
 		prev = m
 	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestSetReadDeadlineError(t *testing.T) {
@@ -134,20 +133,14 @@ func TestSetReadDeadlineError(t *testing.T) {
 		MessageByteArray:      []byte("{}"),
 		SetReadDeadlineResult: mockedErr,
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("We didn't expect measurements here")
-			return
+			t.Error("We didn't expect measurements here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := Run(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error that we were expecting")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -163,20 +156,14 @@ func TestReadMessageError(t *testing.T) {
 		MessageByteArray:      []byte("{}"),
 		NextReaderResult:      mockedErr,
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("We didn't expect measurements here")
-			return
+			t.Error("We didn't expect measurements here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := Run(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error that we were expecting")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -191,20 +178,15 @@ func TestReaderError(t *testing.T) {
 		NextReaderMessageType: websocket.TextMessage,
 		NextReaderMustFail:    true,
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 			return
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := Run(ctx, &conn, outch)
 	if err != mocks.ErrReadFailed {
 		t.Fatal("Not the error that we were expecting")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 	// Test when type is websocket.BinaryMessage
 	outch = make(chan spec.Measurement)
@@ -216,20 +198,14 @@ func TestReaderError(t *testing.T) {
 		NextReaderMessageType: websocket.BinaryMessage,
 		NextReaderMustFail:    true,
 	}
-	errch = make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("We didn't expect measurements here")
-			return
+			t.Error("We didn't expect measurements here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err = Run(ctx, &conn, outch)
 	if err != mocks.ErrReadFailed {
 		t.Fatal("Not the error that we were expecting")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -243,19 +219,14 @@ func TestReadInvalidJSON(t *testing.T) {
 		NextReaderMessageType: websocket.TextMessage,
 		MessageByteArray:      []byte("{"),
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 			return
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := Run(ctx, &conn, outch)
 	if err == nil {
 		t.Fatal("We expected to have an error here")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }

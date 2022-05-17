@@ -22,10 +22,12 @@ func TestNormal(t *testing.T) {
 		MessageByteArray: []byte("{}"),
 		ReadMessageType:  websocket.TextMessage,
 	}
-	errch := make(chan error)
-	go func(errch chan<- error) {
-		errch <- Run(ctx, &conn, outch)
-	}(errch)
+	go func() {
+		err := Run(ctx, &conn, outch)
+		if err != nil {
+			t.Errorf("error: %v", err)
+		}
+	}()
 	tot := 0
 	// Drain the channel and count the number of Measurements read.
 	for range outch {
@@ -33,9 +35,6 @@ func TestNormal(t *testing.T) {
 	}
 	if tot <= 0 {
 		t.Fatal("Expected at least one message")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -130,21 +129,15 @@ func TestMakePreparedMessageError(t *testing.T) {
 		return nil, mockedErr
 	}
 	conn := mocks.Conn{}
-	errch := make(chan error)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("Did not expect messages here")
-			return
+			t.Error("Did not expect messages here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := upload(ctx, &conn, outch)
 	makePreparedMessage = savedFunc
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -158,20 +151,14 @@ func TestSetWriteDeadlineError(t *testing.T) {
 	conn := mocks.Conn{
 		SetWriteDeadlineResult: mockedErr,
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("Did not expect messages here")
-			return
+			t.Error("Did not expect messages here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := upload(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -185,19 +172,13 @@ func TestWritePreparedMessageError(t *testing.T) {
 	conn := mocks.Conn{
 		WritePreparedMessageResult: mockedErr,
 	}
-	errch := make(chan error, 1)
-	go func(errch chan<- error) {
+	go func() {
 		for range outch {
-			errch <- errors.New("Did not expect messages here")
-			return
+			t.Error("Did not expect messages here")
 		}
-		errch <- nil
-	}(errch)
+	}()
 	err := upload(ctx, &conn, outch)
 	if err != mockedErr {
 		t.Fatal("Not the error we expected")
-	}
-	if err := <-errch; err != nil {
-		t.Fatal(err)
 	}
 }
