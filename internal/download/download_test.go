@@ -95,7 +95,7 @@ func TestReadBinary(t *testing.T) {
 	go func() {
 		err := Run(ctx, &conn, outch)
 		if err != nil {
-			t.Fatal(err)
+			t.Errorf("error: %v", err)
 		}
 	}()
 	prev := spec.Measurement{
@@ -135,7 +135,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 		}
 	}()
 	err := Run(ctx, &conn, outch)
@@ -158,7 +158,7 @@ func TestReadMessageError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 		}
 	}()
 	err := Run(ctx, &conn, outch)
@@ -180,7 +180,7 @@ func TestReaderError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 		}
 	}()
 	err := Run(ctx, &conn, outch)
@@ -199,7 +199,7 @@ func TestReaderError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 		}
 	}()
 	err = Run(ctx, &conn, outch)
@@ -220,7 +220,7 @@ func TestReadInvalidJSON(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("We didn't expect measurements here")
+			t.Error("We didn't expect measurements here")
 		}
 	}()
 	err := Run(ctx, &conn, outch)

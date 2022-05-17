@@ -88,6 +88,7 @@ func TestHumanReadableOnDownloadEvent(t *testing.T) {
 			NumBytes:    100000000,
 		},
 		Origin: spec.OriginClient,
+		Test:   spec.TestDownload,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -110,9 +111,10 @@ func TestHumanReadableOnDownloadEventFailure(t *testing.T) {
 			ElapsedTime: 1234,
 		},
 		Origin: spec.OriginClient,
+		Test:   spec.TestDownload,
 	})
 	if err != mocks.ErrMocked {
-		t.Fatal("Not the error we expected")
+		t.Fatalf("Not the error we expected: %v", err)
 	}
 }
 
@@ -133,12 +135,13 @@ func TestHumanReadableIgnoresServerData(t *testing.T) {
 func TestHumanReadableOnUploadEvent(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	hr := HumanReadable{sw}
+	tcpInfo := &spec.TCPInfo{}
+	tcpInfo.BytesReceived = 10000000
+	tcpInfo.ElapsedTime = 10000000
 	err := hr.OnUploadEvent(&spec.Measurement{
-		AppInfo: &spec.AppInfo{
-			ElapsedTime: 3000000,
-			NumBytes:    100000000,
-		},
-		Origin: spec.OriginClient,
+		TCPInfo: tcpInfo,
+		Origin:  spec.OriginServer,
+		Test:    spec.TestUpload,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +151,7 @@ func TestHumanReadableOnUploadEvent(t *testing.T) {
 	}
 	if !reflect.DeepEqual(
 		sw.Data[0],
-		[]byte("\rAvg. speed  :   266.7 Mbit/s"),
+		[]byte("\rAvg. speed  :     8.0 Mbit/s"),
 	) {
 		t.Fatal("unexpected output")
 	}
@@ -158,22 +161,24 @@ func TestHumanReadableOnUploadEventSafetyCheck(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	hr := HumanReadable{sw}
 	err := hr.OnUploadEvent(&spec.Measurement{
-		Origin: spec.OriginClient,
+		Origin: spec.OriginServer,
+		Test:   spec.TestUpload,
 	})
 	if err == nil {
 		t.Fatal("We did expect an error here")
 	}
 	if len(sw.Data) != 0 {
-		t.Fatal("Some data was written and it shouldn't have")
+		t.Fatal("Some data was written and it shouldn't have been")
 	}
 }
 
-func TestHumanReadableOnUploadEventDivideByZero(t *testing.T) {
+func TestHumanReadableOnUploadMissingTCPInfo(t *testing.T) {
 	sw := &mocks.SavingWriter{}
 	hr := HumanReadable{sw}
 	err := hr.OnUploadEvent(&spec.Measurement{
 		AppInfo: &spec.AppInfo{},
-		Origin:  spec.OriginClient,
+		Origin:  spec.OriginServer,
+		Test:    spec.TestUpload,
 	})
 	if err == nil {
 		t.Fatal("We did expect an error here")
@@ -185,11 +190,13 @@ func TestHumanReadableOnUploadEventDivideByZero(t *testing.T) {
 
 func TestHumanReadableOnUploadEventFailure(t *testing.T) {
 	hr := HumanReadable{&mocks.FailingWriter{}}
+	tcpInfo := &spec.TCPInfo{}
+	tcpInfo.BytesReceived = 10000000
+	tcpInfo.ElapsedTime = 10000000
 	err := hr.OnUploadEvent(&spec.Measurement{
-		AppInfo: &spec.AppInfo{
-			ElapsedTime: 1234,
-		},
-		Origin: spec.OriginClient,
+		TCPInfo: tcpInfo,
+		Origin:  spec.OriginServer,
+		Test:    spec.TestUpload,
 	})
 	if err != mocks.ErrMocked {
 		t.Fatal("Not the error we expected")

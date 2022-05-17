@@ -387,6 +387,9 @@ func TestMakeSummary(t *testing.T) {
 	tcpInfo.BytesSent = 100
 	tcpInfo.BytesRetrans = 1
 	tcpInfo.MinRTT = 10000
+	// Simulate a 8Mb/s upload rate.
+	tcpInfo.BytesReceived = 10000000
+	tcpInfo.ElapsedTime = 10000000
 
 	results := map[spec.TestKind]*ndt7.LatestMeasurements{
 		spec.TestDownload: {
@@ -406,11 +409,8 @@ func TestMakeSummary(t *testing.T) {
 			},
 		},
 		spec.TestUpload: {
-			Client: spec.Measurement{
-				AppInfo: &spec.AppInfo{
-					NumBytes:    100,
-					ElapsedTime: 1,
-				},
+			Server: spec.Measurement{
+				TCPInfo: tcpInfo,
 			},
 		},
 	}
@@ -425,7 +425,7 @@ func TestMakeSummary(t *testing.T) {
 			Unit:  "Mbit/s",
 		},
 		Upload: emitter.ValueUnitPair{
-			Value: 800.0,
+			Value: 8.0,
 			Unit:  "Mbit/s",
 		},
 		DownloadRetrans: emitter.ValueUnitPair{
@@ -441,6 +441,7 @@ func TestMakeSummary(t *testing.T) {
 	generated := makeSummary("test", results)
 
 	if !reflect.DeepEqual(generated, expected) {
+		t.Errorf("expected %+v; got %+v", expected, generated)
 		t.Fatal("makeSummary(): unexpected summary data")
 	}
 }

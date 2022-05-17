@@ -25,12 +25,12 @@ func TestNormal(t *testing.T) {
 	go func() {
 		err := Run(ctx, &conn, outch)
 		if err != nil {
-			t.Fatal(err)
+			t.Errorf("error: %v", err)
 		}
 	}()
 	tot := 0
 	// Drain the channel and count the number of Measurements read.
-	for _ = range outch {
+	for range outch {
 		tot++
 	}
 	if tot <= 0 {
@@ -46,8 +46,7 @@ func TestSetReadDeadlineError(t *testing.T) {
 	ch := make(chan spec.Measurement, 128)
 	errCh := make(chan error)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != mockedErr {
+	if err := <-errCh; err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -61,8 +60,7 @@ func TestReadMessageError(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != mockedErr {
+	if err := <-errCh; err != mockedErr {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -76,8 +74,7 @@ func TestReadNonTextMessageError(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(context.Background(), &conn, ch, errCh)
-	err := <-errCh
-	if err != errNonTextMessage {
+	if err := <-errCh; err != errNonTextMessage {
 		t.Fatal("Not the error we expected")
 	}
 }
@@ -115,8 +112,7 @@ func TestReadGoodMessage(t *testing.T) {
 	errCh := make(chan error)
 	defer close(errCh)
 	go readcounterflow(ctx, &conn, ch, errCh)
-	err := <-errCh
-	if err != nil {
+	if err := <-errCh; err != nil {
 		t.Fatal(err)
 	}
 }
@@ -135,7 +131,7 @@ func TestMakePreparedMessageError(t *testing.T) {
 	conn := mocks.Conn{}
 	go func() {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			t.Error("Did not expect messages here")
 		}
 	}()
 	err := upload(ctx, &conn, outch)
@@ -157,7 +153,7 @@ func TestSetWriteDeadlineError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			t.Error("Did not expect messages here")
 		}
 	}()
 	err := upload(ctx, &conn, outch)
@@ -178,7 +174,7 @@ func TestWritePreparedMessageError(t *testing.T) {
 	}
 	go func() {
 		for range outch {
-			t.Fatal("Did not expect messages here")
+			t.Error("Did not expect messages here")
 		}
 	}()
 	err := upload(ctx, &conn, outch)
