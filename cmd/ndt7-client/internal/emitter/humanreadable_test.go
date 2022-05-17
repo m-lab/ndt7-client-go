@@ -110,9 +110,10 @@ func TestHumanReadableOnDownloadEventFailure(t *testing.T) {
 			ElapsedTime: 1234,
 		},
 		Origin: spec.OriginClient,
+		Test:   spec.TestDownload,
 	})
 	if err != mocks.ErrMocked {
-		t.Fatal("Not the error we expected")
+		t.Fatalf("Not the error we expected: %v", err)
 	}
 }
 
