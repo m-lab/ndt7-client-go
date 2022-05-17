@@ -116,7 +116,7 @@ const (
 
 var (
 	ClientName    = "ndt7-client-go-cmd"
-	ClientVersion = "0.6.1"
+	ClientVersion = "0.7.0"
 	flagProfile   = flag.String("profile", "",
 		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 

@@ -32,7 +32,7 @@ const (
 	libraryName = "ndt7-client-go"
 
 	// libraryVersion is the version of this library
-	libraryVersion = "0.6.1"
+	libraryVersion = "0.7.0"
 )
 
 var (
