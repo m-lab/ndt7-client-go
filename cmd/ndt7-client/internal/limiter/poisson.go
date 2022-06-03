@@ -14,14 +14,19 @@ var once sync.Once
 // Max].
 type PoissonLimiter struct {
 	mean, min, max float64
+	notifier func(time.Duration)
 }
 
-func NewPoissonLimiter(mean, min, max float64) Limiter {
-	return PoissonLimiter{mean, min, max}
+func NewPoissonLimiter(mean, min, max float64, notifier func(time.Duration)) Limiter {
+	return PoissonLimiter{mean, min, max, notifier}
 }
 
 func (l PoissonLimiter) Wait() {
-	time.Sleep(l.sleepTime())
+	d := l.sleepTime()
+	if l.notifier != nil {
+		l.notifier(d)
+	}
+	time.Sleep(d)
 }
 
 // Source:
