@@ -16,6 +16,7 @@ require (
 	github.com/m-lab/ndt-server v0.20.2
 	github.com/m-lab/tcp-info v1.5.2
 	github.com/m-lab/uuid v0.0.0-20191115203855-549727171666 // indirect
+	github.com/prometheus/client_golang v1.7.1
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/sys v0.0.0-20200803210538-64077c9b5642

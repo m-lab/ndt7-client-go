@@ -97,6 +97,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -105,8 +106,11 @@ import (
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/limiter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sys/cpu"
 )
 
@@ -140,6 +144,13 @@ var (
 	flagService  = flagx.URL{}
 	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
 	flagDownload = flag.Bool("download", true, "perform download measurement")
+
+	flagDaemon = flag.Bool("daemon", false, "run tests in a (rate limited) loop")
+	flagPeriodMean = flag.Int("period_mean", 21600, "mean period (in seconds) between speed tests, when running in daemon mode")
+	flagPeriodMin = flag.Int("period_min", 2160, "minimum period (in seconds) between speed tests, when running in daemon mode")
+	flagPeriodMax = flag.Int("period_max", 54000, "maximum period (in seconds) between speed tests, when running in daemon mode")
+
+	flagPort = flag.Int("port", 0, "if non-zero, start an HTTP server on this port to export prometheus metrics")
 )
 
 func init() {
@@ -160,9 +171,17 @@ func init() {
 	)
 }
 
+type runnerOptions struct {
+	download, upload bool
+	daemon bool
+	timeout time.Duration
+}
+
 type runner struct {
 	client  *ndt7.Client
 	emitter emitter.Emitter
+	limiter limiter.Limiter
+	opt     runnerOptions
 }
 
 func (r runner) doRunTest(
@@ -290,6 +309,36 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 	return s
 }
 
+func (r runner) runTests() int {
+	var code int
+	for ;; {
+		code = 0
+
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), r.opt.timeout)
+			defer cancel()
+
+			if r.opt.download {
+				code += r.runDownload(ctx)
+			}
+			if r.opt.upload {
+				code += r.runUpload(ctx)
+			}
+		}()
+
+		s := makeSummary(r.client.FQDN, r.client.Results())
+		r.emitter.OnSummary(s)
+
+		if !r.opt.daemon {
+			break
+		}
+
+		r.limiter.Wait()
+	}
+
+	return code
+}
+
 var osExit = os.Exit
 
 func main() {
@@ -305,9 +354,14 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), *flagTimeout)
-	defer cancel()
-	var r runner
+	r := runner{
+		opt: runnerOptions{
+			download: *flagDownload,
+			upload: *flagUpload,
+			daemon: *flagDaemon,
+			timeout: *flagTimeout,
+		},
+	}
 
 	// If a service URL is given, then only one direction is possible.
 	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
@@ -340,19 +394,40 @@ func main() {
 	if *flagQuiet {
 		e = emitter.NewQuiet(e)
 	}
+
+	if *flagPort > 0 {
+		downloadGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "mlab_ndt7_download",
+			Help: "m-lab ndt7 download speed in Mbit/s",
+		})
+		prometheus.MustRegister(downloadGauge)
+		uploadGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "mlab_ndt7_upload",
+			Help: "m-lab ndt7 upload speed in Mbit/s",
+		})
+		prometheus.MustRegister(uploadGauge)
+		rttGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "mlab_ndt7_rtt",
+			Help: "m-lab ndt7 round-trip time in ms",
+		})
+		prometheus.MustRegister(rttGauge)
+		completionTimeGauge := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "mlab_ndt7_completion_timestamp",
+			Help: "m-lab ndt7 test completion time in seconds since 1970-01-01 00:00:00 UTC",
+		})
+		prometheus.MustRegister(completionTimeGauge)
+		e = emitter.NewPrometheus(e, downloadGauge, uploadGauge, rttGauge, completionTimeGauge)
+		http.Handle("/metrics", promhttp.Handler())
+		go http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil)
+	}
+
 	r.emitter = e
 
-	var code int
-	if *flagDownload {
-		code += r.runDownload(ctx)
-	}
-	if *flagUpload {
-		code += r.runUpload(ctx)
-	}
-	if code != 0 {
-		osExit(code)
-	}
+	r.limiter = limiter.NewPoissonLimiter(
+			float64(*flagPeriodMean), float64(*flagPeriodMin), float64(*flagPeriodMax),
+			func(d time.Duration) {
+				log.Printf("Waiting until %s", (time.Now().Add(d)).Format(time.RFC3339))
+			})
 
-	s := makeSummary(r.client.FQDN, r.client.Results())
-	r.emitter.OnSummary(s)
+	osExit(r.runTests())
 }

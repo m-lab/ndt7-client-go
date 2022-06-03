@@ -329,6 +329,65 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	}
 }
 
+// A fake limiter that allows tests to count the number of Wait() calls.
+type countingLimiter struct {
+	waitCount int
+	ch chan int
+}
+
+func (l *countingLimiter) Wait() {
+	l.waitCount++
+	l.ch <- l.waitCount
+}
+
+func TestRunTestsDaemon(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
+	// Create local ndt7test server.
+	h, fs := ndt7test.NewNDT7Server(t)
+	defer os.RemoveAll(h.DataDir)
+	defer fs.Close()
+	u, err := url.Parse(fs.URL)
+	testingx.Must(t, err, "failed to parse ndt7test server url")
+	// Setup flags to use the service-url option.
+	url := &url.URL{
+		Scheme: "ws",
+		Host:   u.Host,
+		Path:   params.DownloadURLPath,
+	}
+
+	client := ndt7.NewClient(ClientName, ClientVersion)
+	client.ServiceURL = url
+	client.Server = u.Host
+	client.Scheme = "ws"
+
+	ch := make(chan int)
+	limiter := &countingLimiter{waitCount:0, ch: ch,}
+
+	runner := runner{
+		client: client,
+		emitter: mockedEmitter{},
+		limiter: limiter,
+		opt: runnerOptions{
+			download: false,  // skip download test
+			upload: false,  // skip upload test
+			daemon: true,
+			timeout: defaultTimeout,
+		},
+	}
+
+	go runner.runTests()
+	// Test that daemon mode calls Wait() in a loop
+	if c := <-ch; 1 != c {
+		t.Errorf("unexpected count of Wait() calls: got %d", c)
+	}
+	if c := <-ch; 2 != c {
+		t.Errorf("unexpected count of Wait() calls: got %d", c)
+	}
+}
+
 func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")
