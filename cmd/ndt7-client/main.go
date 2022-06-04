@@ -38,6 +38,12 @@
 // but may be set to false on the command line to run only upload or only
 // download.
 //
+// The `-port` flag starts an HTTP server to export summary results in a form
+// that can be consumed by Prometheus (http://prometheus.io).
+//
+// The `-daemon` flag runs tests repeatedly with rate limiting. It is intended
+// to be used together with the `-port` flag.
+//
 // The `-profile` flag defines the file where to write a CPU profile
 // that later you can pass to `go tool pprof`. See https://blog.golang.org/pprof.
 //
@@ -146,6 +152,7 @@ var (
 	flagDownload = flag.Bool("download", true, "perform download measurement")
 
 	flagDaemon = flag.Bool("daemon", false, "run tests in a (rate limited) loop")
+	// The flag values below implement rate limiting at the recommended rate
 	flagPeriodMean = flag.Int("period_mean", 21600, "mean period (in seconds) between speed tests, when running in daemon mode")
 	flagPeriodMin = flag.Int("period_min", 2160, "minimum period (in seconds) between speed tests, when running in daemon mode")
 	flagPeriodMax = flag.Int("period_max", 54000, "maximum period (in seconds) between speed tests, when running in daemon mode")
