@@ -61,3 +61,25 @@ CLIENTNAME=my-custom-client-name
 
 go build -ldflags "-X main.ClientName=$CLIENTNAME" ./cmd/ndt7-client
 ```
+
+### Building and running using Docker
+
+To build
+
+```bash
+git clone https://github.com/m-lab/ndt7-client-go
+docker build -t ndt7-client .
+```
+
+To run tests repeatedly
+
+```bash
+PORT=9191
+docker run -d -p ${PORT}:8080 ndt7-client
+```
+
+To run tests once
+
+```bash
+docker run -it -P ndt7-client ./ndt7-client --quiet=false --daemon=false
+```
