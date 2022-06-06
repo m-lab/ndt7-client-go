@@ -182,6 +182,7 @@ type runnerOptions struct {
 	download, upload bool
 	daemon bool
 	timeout time.Duration
+	clientFactory func() *ndt7.Client
 }
 
 type runner struct {
@@ -325,6 +326,8 @@ func (r runner) runTests() int {
 			ctx, cancel := context.WithTimeout(context.Background(), r.opt.timeout)
 			defer cancel()
 
+			r.client = r.opt.clientFactory()
+
 			if r.opt.download {
 				code += r.runDownload(ctx)
 			}
@@ -361,15 +364,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	r := runner{
-		opt: runnerOptions{
-			download: *flagDownload,
-			upload: *flagUpload,
-			daemon: *flagDaemon,
-			timeout: *flagTimeout,
-		},
-	}
-
 	// If a service URL is given, then only one direction is possible.
 	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
 		*flagUpload = false
@@ -382,12 +376,24 @@ func main() {
 		flagService.URL = nil
 	}
 
-	r.client = ndt7.NewClient(ClientName, ClientVersion)
-	r.client.ServiceURL = flagService.URL
-	r.client.Server = *flagServer
-	r.client.Scheme = flagScheme.Value
-	r.client.Dialer.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: *flagNoVerify,
+	r := runner{
+		opt: runnerOptions{
+			download: *flagDownload,
+			upload: *flagUpload,
+			daemon: *flagDaemon,
+			timeout: *flagTimeout,
+			clientFactory: func() *ndt7.Client {
+				c := ndt7.NewClient(ClientName, ClientVersion)
+				c.ServiceURL = flagService.URL
+				c.Server = *flagServer
+				c.Scheme = flagScheme.Value
+				c.Dialer.TLSClientConfig = &tls.Config{
+					InsecureSkipVerify: *flagNoVerify,
+				}
+
+				return c
+			},
+		},
 	}
 
 	var e emitter.Emitter

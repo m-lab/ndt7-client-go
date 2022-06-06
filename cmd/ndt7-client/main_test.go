@@ -358,16 +358,10 @@ func TestRunTestsDaemon(t *testing.T) {
 		Path:   params.DownloadURLPath,
 	}
 
-	client := ndt7.NewClient(ClientName, ClientVersion)
-	client.ServiceURL = url
-	client.Server = u.Host
-	client.Scheme = "ws"
-
 	ch := make(chan int)
 	limiter := &countingLimiter{waitCount:0, ch: ch,}
 
 	runner := runner{
-		client: client,
 		emitter: mockedEmitter{},
 		limiter: limiter,
 		opt: runnerOptions{
@@ -375,6 +369,14 @@ func TestRunTestsDaemon(t *testing.T) {
 			upload: false,  // skip upload test
 			daemon: true,
 			timeout: defaultTimeout,
+			clientFactory: func() *ndt7.Client {
+				client := ndt7.NewClient(ClientName, ClientVersion)
+				client.ServiceURL = url
+				client.Server = u.Host
+				client.Scheme = "ws"
+
+				return client
+			},
 		},
 	}
 
