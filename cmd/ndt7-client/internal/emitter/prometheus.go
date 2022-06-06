@@ -11,12 +11,13 @@ import (
 // The message is actually emitted by the embedded Emitter.
 type Prometheus struct {
 	emitter Emitter
-	download, upload, rtt, completionTime prometheus.Gauge
+	download, upload, rtt prometheus.Gauge
+	completionTime *prometheus.GaugeVec
 }
 
 // NewPrometheus returns a Summary emitter which emits messages
 // via the passed Emitter.
-func NewPrometheus(e Emitter, download, upload, rtt, completionTime prometheus.Gauge) Emitter {
+func NewPrometheus(e Emitter, download, upload, rtt prometheus.Gauge, completionTime *prometheus.GaugeVec) Emitter {
 	return &Prometheus{e, download, upload, rtt, completionTime}
 }
 
@@ -27,6 +28,8 @@ func (p Prometheus) OnStarting(test spec.TestKind) error {
 
 // OnError emits the error event
 func (p Prometheus) OnError(test spec.TestKind, err error) error {
+	g := p.completionTime.WithLabelValues(string(test), "ERROR")
+	g.Set(float64(time.Now().Unix()))
 	return p.emitter.OnError(test, err)
 }
 
@@ -47,6 +50,8 @@ func (p Prometheus) OnUploadEvent(m *spec.Measurement) error {
 
 // OnComplete is the event signalling the end of the test
 func (p Prometheus) OnComplete(test spec.TestKind) error {
+	g := p.completionTime.WithLabelValues(string(test), "OK")
+	g.Set(float64(time.Now().Unix()))
 	return p.emitter.OnComplete(test)
 }
 
@@ -55,6 +60,5 @@ func (p *Prometheus) OnSummary(s *Summary) error {
 	p.download.Set(s.Download.Value)
 	p.upload.Set(s.Upload.Value)
 	p.rtt.Set(s.MinRTT.Value)
-	p.completionTime.Set(float64(time.Now().Unix()))
 	return p.emitter.OnSummary(s)
 }

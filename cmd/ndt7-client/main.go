@@ -424,10 +424,20 @@ func main() {
 			Help: "m-lab ndt7 round-trip time in ms",
 		})
 		prometheus.MustRegister(rttGauge)
-		completionTimeGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "mlab_ndt7_completion_timestamp",
-			Help: "m-lab ndt7 test completion time in seconds since 1970-01-01 00:00:00 UTC",
-		})
+		// Prometheus query to compute time since last test completion with result
+		//
+		//     time() - topk(1, mlab_ndt_completion_timestamp) without (result)
+		completionTimeGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "mlab_ndt7_completion_timestamp",
+				Help: "m-lab ndt7 test completion time in seconds since 1970-01-01, partitioned by test and result",
+			},
+			[]string{
+				// which test completed
+				"test",
+				// test result
+				"result",
+			})
 		prometheus.MustRegister(completionTimeGauge)
 		e = emitter.NewPrometheus(e, downloadGauge, uploadGauge, rttGauge, completionTimeGauge)
 		http.Handle("/metrics", promhttp.Handler())
