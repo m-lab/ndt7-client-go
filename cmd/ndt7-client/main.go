@@ -447,7 +447,9 @@ func main() {
 		prometheus.MustRegister(completionTimeGauge)
 		e = emitter.NewPrometheus(e, downloadGauge, uploadGauge, rttGauge, completionTimeGauge)
 		http.Handle("/metrics", promhttp.Handler())
-		go http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil)
+		go func() {
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil))
+		}()
 	}
 
 	r.emitter = e
