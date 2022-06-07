@@ -409,20 +409,26 @@ func main() {
 	}
 
 	if *flagPort > 0 {
-		downloadGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "mlab_ndt7_download",
-			Help: "m-lab ndt7 download speed in Mbit/s",
-		})
+		downloadGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "mlab_ndt7_download",
+				Help: "m-lab ndt7 download speed in Mbit/s",
+			},
+			[]string{"client_ip"})
 		prometheus.MustRegister(downloadGauge)
-		uploadGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "mlab_ndt7_upload",
-			Help: "m-lab ndt7 upload speed in Mbit/s",
-		})
+		uploadGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "mlab_ndt7_upload",
+				Help: "m-lab ndt7 upload speed in Mbit/s",
+			},
+			[]string{"client_ip"})
 		prometheus.MustRegister(uploadGauge)
-		rttGauge := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "mlab_ndt7_rtt",
-			Help: "m-lab ndt7 round-trip time in ms",
-		})
+		rttGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "mlab_ndt7_rtt",
+				Help: "m-lab ndt7 round-trip time in ms",
+			},
+			[]string{"client_ip"})
 		prometheus.MustRegister(rttGauge)
 		// Prometheus query to compute time since last test completion with result
 		//
@@ -430,7 +436,7 @@ func main() {
 		completionTimeGauge := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Name: "mlab_ndt7_completion_timestamp",
-				Help: "m-lab ndt7 test completion time in seconds since 1970-01-01, partitioned by test and result",
+				Help: "m-lab ndt7 test completion time in seconds since 1970-01-01",
 			},
 			[]string{
 				// which test completed

@@ -11,13 +11,12 @@ import (
 // The message is actually emitted by the embedded Emitter.
 type Prometheus struct {
 	emitter Emitter
-	download, upload, rtt prometheus.Gauge
-	completionTime *prometheus.GaugeVec
+	download, upload, rtt, completionTime *prometheus.GaugeVec
 }
 
 // NewPrometheus returns a Summary emitter which emits messages
 // via the passed Emitter.
-func NewPrometheus(e Emitter, download, upload, rtt prometheus.Gauge, completionTime *prometheus.GaugeVec) Emitter {
+func NewPrometheus(e Emitter, download, upload, rtt, completionTime *prometheus.GaugeVec) Emitter {
 	return &Prometheus{e, download, upload, rtt, completionTime}
 }
 
@@ -57,8 +56,8 @@ func (p Prometheus) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event, emitted after the test is over.
 func (p *Prometheus) OnSummary(s *Summary) error {
-	p.download.Set(s.Download.Value)
-	p.upload.Set(s.Upload.Value)
-	p.rtt.Set(s.MinRTT.Value)
+	p.download.WithLabelValues(s.ClientIP).Set(s.Download.Value)
+	p.upload.WithLabelValues(s.ClientIP).Set(s.Upload.Value)
+	p.rtt.WithLabelValues(s.ClientIP).Set(s.MinRTT.Value)
 	return p.emitter.OnSummary(s)
 }
