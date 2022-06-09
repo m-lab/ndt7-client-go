@@ -81,5 +81,5 @@ docker run -d -p ${PORT}:8080 ndt7-client
 To run tests once
 
 ```bash
-docker run -it -P ndt7-client ./ndt7-client --quiet=false --daemon=false
+docker run -it -P ndt7-client --quiet=false --daemon=false
 ```
