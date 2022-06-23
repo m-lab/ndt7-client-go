@@ -479,7 +479,9 @@ func TestMakeSummary(t *testing.T) {
 	expected := &emitter.Summary{
 		ServerFQDN:   "test",
 		ClientIP:     "127.0.0.1",
+		ClientPort:   "12345",
 		ServerIP:     "127.0.0.2",
+		ServerPort:   "443",
 		DownloadUUID: "test-uuid",
 		Download: emitter.ValueUnitPair{
 			Value: 800.0,
