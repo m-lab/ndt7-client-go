@@ -102,7 +102,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -113,8 +112,8 @@ import (
 	"github.com/m-lab/go/memoryless"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/runner"
 	"github.com/m-lab/ndt7-client-go/internal/params"
-	"github.com/m-lab/ndt7-client-go/spec"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sys/cpu"
@@ -178,43 +177,6 @@ func init() {
 	)
 }
 
-type runnerOptions struct {
-	download, upload bool
-	daemon bool
-	timeout time.Duration
-	clientFactory func() *ndt7.Client
-}
-
-type runner struct {
-	client  *ndt7.Client
-	emitter emitter.Emitter
-	ticker  *memoryless.Ticker
-	opt     runnerOptions
-}
-
-func (r runner) doRunTest(
-	ctx context.Context, test spec.TestKind,
-	start func(context.Context) (<-chan spec.Measurement, error),
-	emitEvent func(m *spec.Measurement) error,
-) int {
-	ch, err := start(ctx)
-	if err != nil {
-		r.emitter.OnError(test, err)
-		return 1
-	}
-	err = r.emitter.OnConnected(test, r.client.FQDN)
-	if err != nil {
-		return 1
-	}
-	for ev := range ch {
-		err = emitEvent(&ev)
-		if err != nil {
-			return 1
-		}
-	}
-	return 0
-}
-
 // defaultSchemeForArch returns the default WebSocket scheme to use, depending
 // on the architecture we are running on. A CPU without native AES instructions
 // will perform poorly if TLS is enabled.
@@ -223,133 +185,6 @@ func defaultSchemeForArch() string {
 		return "wss"
 	}
 	return "ws"
-}
-
-func (r runner) runTest(
-	ctx context.Context, test spec.TestKind,
-	start func(context.Context) (<-chan spec.Measurement, error),
-	emitEvent func(m *spec.Measurement) error,
-) int {
-	// Implementation note: we want to always emit the initial and the
-	// final events regardless of how the actual test goes. What's more,
-	// we want the exit code to be nonzero in case of any error.
-	err := r.emitter.OnStarting(test)
-	if err != nil {
-		return 1
-	}
-	code := r.doRunTest(ctx, test, start, emitEvent)
-	err = r.emitter.OnComplete(test)
-	if err != nil {
-		return 1
-	}
-	return code
-}
-
-func (r runner) runDownload(ctx context.Context) int {
-	return r.runTest(ctx, spec.TestDownload, r.client.StartDownload,
-		r.emitter.OnDownloadEvent)
-}
-
-func (r runner) runUpload(ctx context.Context) int {
-	return r.runTest(ctx, spec.TestUpload, r.client.StartUpload,
-		r.emitter.OnUploadEvent)
-}
-
-func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements) *emitter.Summary {
-
-	s := emitter.NewSummary(FQDN)
-
-	if results[spec.TestDownload] != nil &&
-		results[spec.TestDownload].ConnectionInfo != nil {
-		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
-		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
-
-		clientIP, clientPort, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
-		if err == nil {
-			s.ClientIP = clientIP
-			s.ClientPort = clientPort
-		}
-
-		serverIP, serverPort, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
-		if err == nil {
-			s.ServerIP = serverIP
-			s.ServerPort = serverPort
-		}
-	}
-
-	// Download comes from the client-side Measurement during the download
-	// test. DownloadRetrans and MinRTT come from the server-side Measurement,
-	// if it includes a TCPInfo object.
-	if dl, ok := results[spec.TestDownload]; ok {
-		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
-			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
-			s.Download = emitter.ValueUnitPair{
-				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
-					elapsed / (1000.0 * 1000.0),
-				Unit: "Mbit/s",
-			}
-		}
-		if dl.Server.TCPInfo != nil {
-			if dl.Server.TCPInfo.BytesSent > 0 {
-				s.DownloadRetrans = emitter.ValueUnitPair{
-					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
-					Unit:  "%",
-				}
-			}
-			s.MinRTT = emitter.ValueUnitPair{
-				Value: float64(dl.Server.TCPInfo.MinRTT) / 1000,
-				Unit:  "ms",
-			}
-		}
-	}
-	// The upload rate comes from the receiver (the server). Currently
-	// ndt-server only provides network-level throughput via TCPInfo.
-	// TODO: Use AppInfo for application-level measurements when available.
-	if ul, ok := results[spec.TestUpload]; ok {
-		if ul.Server.TCPInfo != nil && ul.Server.TCPInfo.BytesReceived > 0 {
-			elapsed := float64(ul.Server.TCPInfo.ElapsedTime) / 1e06
-			s.Upload = emitter.ValueUnitPair{
-				Value: (8.0 * float64(ul.Server.TCPInfo.BytesReceived)) /
-					elapsed / (1000.0 * 1000.0),
-				Unit: "Mbit/s",
-			}
-		}
-	}
-
-	return s
-}
-
-func (r runner) runTests() int {
-	var code int
-	for ;; {
-		code = 0
-
-		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), r.opt.timeout)
-			defer cancel()
-
-			r.client = r.opt.clientFactory()
-
-			if r.opt.download {
-				code += r.runDownload(ctx)
-			}
-			if r.opt.upload {
-				code += r.runUpload(ctx)
-			}
-		}()
-
-		s := makeSummary(r.client.FQDN, r.client.Results())
-		r.emitter.OnSummary(s)
-
-		if !r.opt.daemon {
-			break
-		}
-
-		// Wait
-		<- r.ticker.C
-	}
-
-	return code
 }
 
 var osExit = os.Exit
@@ -377,26 +212,6 @@ func main() {
 	} else if flagService.URL != nil {
 		fmt.Println("WARNING: ignoring unsupported service url")
 		flagService.URL = nil
-	}
-
-	r := runner{
-		opt: runnerOptions{
-			download: *flagDownload,
-			upload: *flagUpload,
-			daemon: *flagDaemon,
-			timeout: *flagTimeout,
-			clientFactory: func() *ndt7.Client {
-				c := ndt7.NewClient(ClientName, ClientVersion)
-				c.ServiceURL = flagService.URL
-				c.Server = *flagServer
-				c.Scheme = flagScheme.Value
-				c.Dialer.TLSClientConfig = &tls.Config{
-					InsecureSkipVerify: *flagNoVerify,
-				}
-
-				return c
-			},
-		},
 	}
 
 	var e emitter.Emitter
@@ -497,8 +312,6 @@ func main() {
 		}()
 	}
 
-	r.emitter = e
-
 	ticker, err := memoryless.NewTicker(
 		context.Background(),
 		memoryless.Config{
@@ -510,7 +323,27 @@ func main() {
 		log.Fatalf("Failed to create memoryless.Ticker: %v", err)
 	}
 	defer ticker.Stop()
-	r.ticker = ticker
 
-	osExit(r.runTests())
+	r := runner.NewRunner(
+		runner.RunnerOptions{
+			Download: *flagDownload,
+			Upload: *flagUpload,
+			Daemon: *flagDaemon,
+			Timeout: *flagTimeout,
+			ClientFactory: func() *ndt7.Client {
+				c := ndt7.NewClient(ClientName, ClientVersion)
+				c.ServiceURL = flagService.URL
+				c.Server = *flagServer
+				c.Scheme = flagScheme.Value
+				c.Dialer.TLSClientConfig = &tls.Config{
+					InsecureSkipVerify: *flagNoVerify,
+				}
+
+				return c
+			},
+		},
+		e,
+		ticker)
+
+	osExit(r.RunTestsInLoop())
 }
