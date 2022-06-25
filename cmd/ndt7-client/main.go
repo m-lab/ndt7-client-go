@@ -110,9 +110,9 @@ import (
 	"time"
 
 	"github.com/m-lab/go/flagx"
+	"github.com/m-lab/go/memoryless"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/limiter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
 	"github.com/prometheus/client_golang/prometheus"
@@ -153,9 +153,9 @@ var (
 
 	flagDaemon = flag.Bool("daemon", false, "run tests in a (rate limited) loop")
 	// The flag values below implement rate limiting at the recommended rate
-	flagPeriodMean = flag.Int("period_mean", 21600, "mean period (in seconds) between speed tests, when running in daemon mode")
-	flagPeriodMin = flag.Int("period_min", 2160, "minimum period (in seconds) between speed tests, when running in daemon mode")
-	flagPeriodMax = flag.Int("period_max", 54000, "maximum period (in seconds) between speed tests, when running in daemon mode")
+	flagPeriodMean = flag.Duration("period_mean", 6 * time.Hour, "mean period, e.g. 6h, between speed tests, when running in daemon mode")
+	flagPeriodMin = flag.Duration("period_min", 36 * time.Minute, "minimum period, e.g. 36m, between speed tests, when running in daemon mode")
+	flagPeriodMax = flag.Duration("period_max", 15 * time.Hour, "maximum period, e.g. 15h, between speed tests, when running in daemon mode")
 
 	flagPort = flag.Int("port", 0, "if non-zero, start an HTTP server on this port to export prometheus metrics")
 )
@@ -188,7 +188,7 @@ type runnerOptions struct {
 type runner struct {
 	client  *ndt7.Client
 	emitter emitter.Emitter
-	limiter limiter.Limiter
+	ticker  *memoryless.Ticker
 	opt     runnerOptions
 }
 
@@ -345,7 +345,8 @@ func (r runner) runTests() int {
 			break
 		}
 
-		r.limiter.Wait()
+		// Wait
+		<- r.ticker.C
 	}
 
 	return code
@@ -498,11 +499,18 @@ func main() {
 
 	r.emitter = e
 
-	r.limiter = limiter.NewPoissonLimiter(
-			float64(*flagPeriodMean), float64(*flagPeriodMin), float64(*flagPeriodMax),
-			func(d time.Duration) {
-				log.Printf("Waiting until %s", (time.Now().Add(d)).Format(time.RFC3339))
-			})
+	ticker, err := memoryless.NewTicker(
+		context.Background(),
+		memoryless.Config{
+			Expected: *flagPeriodMean,
+			Min: *flagPeriodMin,
+			Max: *flagPeriodMax,
+		})
+	if err != nil {
+		log.Fatalf("Failed to create memoryless.Ticker: %v", err)
+	}
+	defer ticker.Stop()
+	r.ticker = ticker
 
 	osExit(r.runTests())
 }

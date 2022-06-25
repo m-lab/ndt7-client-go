@@ -9,8 +9,10 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/m-lab/go/testingx"
+	"github.com/m-lab/go/memoryless"
 	"github.com/m-lab/locate/api/locate"
 	"github.com/m-lab/ndt-server/ndt7/ndt7test"
 	"github.com/m-lab/ndt7-client-go"
@@ -329,15 +331,31 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	}
 }
 
-// A fake limiter that allows tests to count the number of Wait() calls.
-type countingLimiter struct {
+// We hijack the channel in a memoryless.Ticker to allow us to count the
+// number of ticks consumed (and skip the waits).
+type countingTicker struct {
+	ticker *memoryless.Ticker
 	waitCount int
-	ch chan int
+	writeChan chan<- time.Time
+	countChan chan int
 }
 
-func (l *countingLimiter) Wait() {
-	l.waitCount++
-	l.ch <- l.waitCount
+func newCountingTicker(countChan chan int) *countingTicker {
+	c := make(chan time.Time)
+	ticker := &countingTicker{
+		ticker: &memoryless.Ticker{C: c},
+		waitCount: 0,
+		writeChan: c,
+		countChan: countChan,
+	}
+	go func() {
+		for {
+			ticker.writeChan <- time.Now()
+			ticker.waitCount++
+			ticker.countChan <- ticker.waitCount
+		}
+	}()
+	return ticker
 }
 
 func TestRunTestsDaemon(t *testing.T) {
@@ -359,11 +377,11 @@ func TestRunTestsDaemon(t *testing.T) {
 	}
 
 	ch := make(chan int)
-	limiter := &countingLimiter{waitCount:0, ch: ch,}
+	ticker := newCountingTicker(ch)
 
 	runner := runner{
 		emitter: mockedEmitter{},
-		limiter: limiter,
+		ticker: ticker.ticker,
 		opt: runnerOptions{
 			download: false,  // skip download test
 			upload: false,  // skip upload test
@@ -381,7 +399,7 @@ func TestRunTestsDaemon(t *testing.T) {
 	}
 
 	go runner.runTests()
-	// Test that daemon mode calls Wait() in a loop
+	// Test that daemon mode calls uses ticker to wait in a loop
 	if c := <-ch; 1 != c {
 		t.Errorf("unexpected count of Wait() calls: got %d", c)
 	}
