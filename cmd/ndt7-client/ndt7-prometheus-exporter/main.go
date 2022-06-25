@@ -1,15 +1,8 @@
-// ndt7-client is the ndt7 command line client.
+// ndt7-promeheus-exporter is an ndt7 non-interactive prometheus exporting client
 //
 // Usage:
 //
-//    ndt7-client [flags]
-//
-// The `-format` flag defines how the output should be emitter. Possible
-// values are "human", which is the default, and "json", where each message
-// is a valid JSON object.
-//
-// The (DEPRECATED) `-batch` flag is equivalent to `-format json`, and the
-// latter should be used instead.
+//    ndt7-prometheus-exporter
 //
 // The default behavior is for ndt7-client to discover a suitable server using
 // Measurement Lab's locate service. This behavior may be overridden using
@@ -34,77 +27,36 @@
 // be passed to time.ParseDuration, e.g., "15s". The default is a large
 // enough value that should be suitable for common conditions.
 //
-// The `-upload` and `-download` flags are boolean options that default to true,
-// but may be set to false on the command line to run only upload or only
-// download.
+// The `-port` flag starts an HTTP server to export summary results in a form
+// that can be consumed by Prometheus (http://prometheus.io).
 //
 // The `-profile` flag defines the file where to write a CPU profile
 // that later you can pass to `go tool pprof`. See https://blog.golang.org/pprof.
 //
 // Additionally, passing any unrecognized flag, such as `-help`, will
 // cause ndt7-client to print a brief help message.
-//
-// JSON events emitted when -format=json
-//
-// This section describes the events emitted when using the json output format.
-// The code will always emit a single event per line.
-//
-// When the download test starts, this event is emitted:
-//
-//   {"Key":"starting","Value":{"Test":"download"}}
-//
-// After this event is emitted, we discover the server to use (unless it
-// has been configured by the user) and we connect to it. If any of these
-// operations fail, this event is emitted:
-//
-//   {"Key":"error","Value":{"Failure":"<failure>","Test":"download"}}
-//
-// where `<failure>` is the error that occurred serialized as string. In
-// case of failure, the test is over and the next event to be emitted is
-// `"complete"`
-//
-// Otherwise, the download test starts and we see the following event:
-//
-//   {"Key":"connected","Value":{"Server":"<server>","Test":"download"}}
-//
-// where `<server>` is the FQDN of the server we're using. Then there
-// are zero or more events like:
-//
-//   {"Key": "measurement","Value": <value>}
-//
-// where `<value>` is a serialized spec.Measurement struct.
-//
-// Finally, this event is always emitted at the end of the test:
-//
-//   {"Key":"complete","Value":{"Test":"download"}}
-//
-// The upload test is like the download test, except for the
-// value of the `"Test"` key.
-//
-// Exit code
-//
-// This tool exits with zero on success, nonzero on failure. Under
-// some severe internal error conditions, this tool will exit using
-// a nonzero exit code without being able to print a diagnostic
-// message explaining the error that occurred. In all other cases,
-// checking the output should help to understand the error cause.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"runtime/pprof"
 	"strings"
 	"time"
 
 	"github.com/m-lab/go/flagx"
+	"github.com/m-lab/go/memoryless"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/runner"
 	"github.com/m-lab/ndt7-client-go/internal/params"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sys/cpu"
 )
 
@@ -138,6 +90,13 @@ var (
 	flagService  = flagx.URL{}
 	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
 	flagDownload = flag.Bool("download", true, "perform download measurement")
+
+	// The flag values below implement rate limiting at the recommended rate
+	flagPeriodMean = flag.Duration("period_mean", 6 * time.Hour, "mean period, e.g. 6h, between speed tests, when running in daemon mode")
+	flagPeriodMin = flag.Duration("period_min", 36 * time.Minute, "minimum period, e.g. 36m, between speed tests, when running in daemon mode")
+	flagPeriodMax = flag.Duration("period_max", 15 * time.Hour, "maximum period, e.g. 15h, between speed tests, when running in daemon mode")
+
+	flagPort = flag.Int("port", 0, "if non-zero, start an HTTP server on this port to export prometheus metrics")
 )
 
 func init() {
@@ -195,17 +154,105 @@ func main() {
 		flagService.URL = nil
 	}
 
-	var e emitter.Emitter
+	e := emitter.NewQuiet(emitter.NewHumanReadable())
 
-	// If -batch, force -format=json.
-	if *flagBatch || flagFormat.Value == "json" {
-		e = emitter.NewJSON(os.Stdout)
-	} else {
-		e = emitter.NewHumanReadable()
+	if *flagPort > 0 {
+		downloadGauge := prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "download_rate_bps",
+				Help: "m-lab ndt7 download speed in bits/s",
+			})
+		prometheus.MustRegister(downloadGauge)
+		uploadGauge := prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "upload_rate_bps",
+				Help: "m-lab ndt7 upload speed in bits/s",
+			})
+		prometheus.MustRegister(uploadGauge)
+		rttGauge := prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "rtt_seconds",
+				Help: "m-lab ndt7 round-trip time in seconds",
+			})
+		prometheus.MustRegister(rttGauge)
+
+		// The result gauge captures the result of the last test attemp.
+		//
+		// Since its value is a timestamp, the following PromQL expression will
+		// give the most recent result for each upload and download test.
+		//
+		//     time() - topk(1, ndt7_result_timestamp_seconds) without (result)
+		lastResultGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "result_timestamp_seconds",
+				Help: "m-lab ndt7 test completion time in seconds since 1970-01-01",
+			},
+			[]string{
+				// which test completed
+				"test",
+				// test result
+				"result",
+			})
+		prometheus.MustRegister(lastResultGauge)
+
+		// The success gauge captures both the client IP and the server FQDN.
+		//
+		// Since its value is a timestamp, we can use it to determine the last
+		// client-server pair that successfully ran the tests. With some PromQL
+		// trickery, it is possible to join the client-server labels with test
+		// results.
+		//
+		// For example:
+		//
+		// - last download test result with client-server labels
+		//
+		//   ndt7_download_rate_bps + on () group_left(client, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//
+		// - last upload test result with client-server labels
+		//
+		//   ndt7_upload_rate_bps + on () group_left(client, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//
+		// - last rtt test result with client-server labels
+		//
+		//   ndt7_rtt_seconds + on () group_left(client, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//
+		lastSuccessGauge := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "last_success_timestamp_seconds",
+				Help: "last successful m-lab ndt7 test completion time in seconds since 1970-01-01",
+			},
+			[]string{
+				// client IP and remote server
+				"client",
+				"server",
+			})
+		prometheus.MustRegister(lastSuccessGauge)
+		e = emitter.NewPrometheus(e, downloadGauge, uploadGauge, rttGauge, lastResultGauge, lastSuccessGauge)
+		http.Handle("/metrics", promhttp.Handler())
+		go func() {
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil))
+		}()
 	}
-	if *flagQuiet {
-		e = emitter.NewQuiet(e)
+
+	ticker, err := memoryless.NewTicker(
+		context.Background(),
+		memoryless.Config{
+			Expected: *flagPeriodMean,
+			Min: *flagPeriodMin,
+			Max: *flagPeriodMax,
+		})
+	if err != nil {
+		log.Fatalf("Failed to create memoryless.Ticker: %v", err)
 	}
+	defer ticker.Stop()
 
 	r := runner.NewRunner(
 		runner.RunnerOptions{
@@ -225,7 +272,7 @@ func main() {
 			},
 		},
 		e,
-		nil)
+		ticker)
 
-	osExit(r.RunTestsOnce())
+	osExit(r.RunTestsInLoop())
 }

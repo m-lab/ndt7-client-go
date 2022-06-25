@@ -68,18 +68,12 @@ To build
 
 ```bash
 git clone https://github.com/m-lab/ndt7-client-go
-docker build -t ndt7-client .
+docker build -t ndt7-prometheus-exporter .
 ```
 
 To run tests repeatedly
 
 ```bash
 PORT=9191
-docker run -d -p ${PORT}:8080 ndt7-client
-```
-
-To run tests once
-
-```bash
-docker run -it -P ndt7-client --quiet=false --daemon=false
+docker run -d -p ${PORT}:8080 ndt7-prometheus-exporter
 ```

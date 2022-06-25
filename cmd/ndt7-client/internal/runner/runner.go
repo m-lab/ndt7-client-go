@@ -13,7 +13,6 @@ import (
 
 type RunnerOptions struct {
 	Download, Upload bool
-	Daemon bool
 	Timeout time.Duration
 	ClientFactory func() *ndt7.Client
 }
@@ -111,10 +110,6 @@ func (r Runner) RunTestsInLoop() int {
 	var code int
 	for ;; {
 		code = r.RunTestsOnce()
-
-		if !r.opt.Daemon {
-			break
-		}
 
 		// Wait
 		<- r.ticker.C

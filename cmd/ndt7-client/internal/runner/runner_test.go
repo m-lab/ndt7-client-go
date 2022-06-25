@@ -327,7 +327,6 @@ func TestRunTestsInLoopDaemon(t *testing.T) {
 		opt: RunnerOptions{
 			Download: false,  // skip download test
 			Upload: false,  // skip upload test
-			Daemon: true,
 			Timeout: 55 * time.Second, 
 			ClientFactory: func() *ndt7.Client {
 				client := ndt7.NewClient(ClientName, ClientVersion)
