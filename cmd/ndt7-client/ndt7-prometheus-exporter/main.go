@@ -75,13 +75,6 @@ var (
 		Value:   defaultSchemeForArch(),
 	}
 
-	flagFormat = flagx.Enum{
-		Options: []string{"human", "json"},
-		Value:   "human",
-	}
-
-	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
-		"(DEPRECATED, please use -format=json)")
 	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
 	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
 	flagTimeout  = flag.Duration(
@@ -104,11 +97,6 @@ func init() {
 		&flagScheme,
 		"scheme",
 		`WebSocket scheme to use: either "wss" or "ws"`,
-	)
-	flag.Var(
-		&flagFormat,
-		"format",
-		"output format to use: 'human' or 'json' for batch processing",
 	)
 	flag.Var(
 		&flagService,
