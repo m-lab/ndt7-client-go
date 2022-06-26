@@ -210,18 +210,18 @@ func main() {
 		//
 		// - last download test result with client-server labels
 		//
-		//   ndt7_download_rate_bps + on () group_left(client, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//   ndt7_download_rate_bps + on () group_left(client_ip, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
 		//
 		// - last upload test result with client-server labels
 		//
-		//   ndt7_upload_rate_bps + on () group_left(client, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//   ndt7_upload_rate_bps + on () group_left(client_ip, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
 		//
 		// - last rtt test result with client-server labels
 		//
-		//   ndt7_rtt_seconds + on () group_left(client, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client, server)
+		//   ndt7_rtt_seconds + on () group_left(client_ip, server)
+		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
 		//
 		lastSuccessGauge := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -231,7 +231,7 @@ func main() {
 			},
 			[]string{
 				// client IP and remote server
-				"client",
+				"client_ip",
 				"server",
 			})
 		prometheus.MustRegister(lastSuccessGauge)

@@ -22,7 +22,7 @@ type Prometheus struct {
 	lastResult *prometheus.GaugeVec
 	// Last successful test
 	// Value: time in seconds since unix epoch
-	// labels: client, server
+	// labels: client_ip, server
 	lastSuccess *prometheus.GaugeVec
 }
 
@@ -76,7 +76,7 @@ func (p *Prometheus) OnSummary(s *Summary) error {
 	p.rtt.Set(s.MinRTT.Value / 1000.0)
 
 	success := p.lastSuccess.WithLabelValues(
-		fmt.Sprintf("%s:%s", s.ClientIP, s.ClientPort),
+		s.ClientIP,
 		fmt.Sprintf("%s:%s", s.ServerIP, s.ServerPort))
 	success.Set(float64(time.Now().Unix()))
 
