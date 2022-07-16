@@ -127,16 +127,14 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
 		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
 
-		clientIP, clientPort, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
+		clientIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
 		if err == nil {
 			s.ClientIP = clientIP
-			s.ClientPort = clientPort
 		}
 
-		serverIP, serverPort, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
+		serverIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
 		if err == nil {
 			s.ServerIP = serverIP
-			s.ServerPort = serverPort
 		}
 	}
 
