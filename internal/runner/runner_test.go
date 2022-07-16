@@ -16,8 +16,8 @@ import (
 	"github.com/m-lab/locate/api/locate"
 	"github.com/m-lab/ndt-server/ndt7/ndt7test"
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/mocks"
+	"github.com/m-lab/ndt7-client-go/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 	"github.com/m-lab/ndt7-client-go/spec"
 )

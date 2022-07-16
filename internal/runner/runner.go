@@ -7,7 +7,7 @@ import (
 
 	"github.com/m-lab/go/memoryless"
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
+	"github.com/m-lab/ndt7-client-go/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 

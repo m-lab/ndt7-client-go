@@ -102,9 +102,9 @@ import (
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/ndt7-client-go"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/emitter"
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/runner"
+	"github.com/m-lab/ndt7-client-go/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
+	"github.com/m-lab/ndt7-client-go/internal/runner"
 	"golang.org/x/sys/cpu"
 )
 
