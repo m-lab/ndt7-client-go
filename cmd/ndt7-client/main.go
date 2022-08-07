@@ -227,5 +227,5 @@ func main() {
 		e,
 		nil)
 
-	osExit(r.RunTestsOnce())
+	osExit(len(r.RunTestsOnce()))
 }

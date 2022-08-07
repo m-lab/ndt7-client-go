@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -36,57 +37,58 @@ func (r Runner) doRunTest(
 	ctx context.Context, test spec.TestKind,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
-) int {
+) error {
 	ch, err := start(ctx)
 	if err != nil {
 		r.emitter.OnError(test, err)
-		return 1
+		return fmt.Errorf("Failed to start test %v: %v", test, err)
 	}
 	err = r.emitter.OnConnected(test, r.client.FQDN)
 	if err != nil {
-		return 1
+		return fmt.Errorf("Failed to emit connection event for test %v: %v", test, err)
 	}
 	for ev := range ch {
 		err = emitEvent(&ev)
 		if err != nil {
-			return 1
+			return fmt.Errorf("Failed to emit event for test %v: %v", test, err)
 		}
 	}
-	return 0
+	return nil
 }
 
 func (r Runner) runTest(
 	ctx context.Context, test spec.TestKind,
 	start func(context.Context) (<-chan spec.Measurement, error),
 	emitEvent func(m *spec.Measurement) error,
-) int {
+) error {
 	// Implementation note: we want to always emit the initial and the
 	// final events regardless of how the actual test goes. What's more,
 	// we want the exit code to be nonzero in case of any error.
-	err := r.emitter.OnStarting(test)
-	if err != nil {
-		return 1
+	if err := r.emitter.OnStarting(test); err != nil {
+		return fmt.Errorf("Failed to start test %v: %v", test, err)
 	}
-	code := r.doRunTest(ctx, test, start, emitEvent)
-	err = r.emitter.OnComplete(test)
-	if err != nil {
-		return 1
+	err := r.doRunTest(ctx, test, start, emitEvent)
+	if emitErr := r.emitter.OnComplete(test); emitErr != nil {
+		return fmt.Errorf("Failed to emit completion event for test %v: %v", test, emitErr)
 	}
-	return code
+	if err != nil {
+		return fmt.Errorf("Failed to run test %v: %v", test, err)
+	}
+	return nil
 }
 
-func (r Runner) runDownload(ctx context.Context) int {
+func (r Runner) runDownload(ctx context.Context) error {
 	return r.runTest(ctx, spec.TestDownload, r.client.StartDownload,
 		r.emitter.OnDownloadEvent)
 }
 
-func (r Runner) runUpload(ctx context.Context) int {
+func (r Runner) runUpload(ctx context.Context) error {
 	return r.runTest(ctx, spec.TestUpload, r.client.StartUpload,
 		r.emitter.OnUploadEvent)
 }
 
-func (r Runner) RunTestsOnce() int {
-	var code int
+func (r Runner) RunTestsOnce() []error {
+	errs := make([]error, 0)
 	
 	ctx, cancel := context.WithTimeout(context.Background(), r.opt.Timeout)
 	defer cancel()
@@ -94,28 +96,34 @@ func (r Runner) RunTestsOnce() int {
 	r.client = r.opt.ClientFactory()
 
 	if r.opt.Download {
-		code += r.runDownload(ctx)
+		err := r.runDownload(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 	if r.opt.Upload {
-		code += r.runUpload(ctx)
+		err := r.runUpload(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	s := makeSummary(r.client.FQDN, r.client.Results())
 	r.emitter.OnSummary(s)
 
-	return code
+	return errs
 }
 
-func (r Runner) RunTestsInLoop() int {
-	var code int
+func (r Runner) RunTestsInLoop() {
 	for {
-		code = r.RunTestsOnce()
+		// We ignore the return value here since we rely on the emiiters
+		// to report that the measurement failed. We want to continue
+		// even when there is an error.
+		_ = r.RunTestsOnce()
 
 		// Wait
 		<- r.ticker.C
 	}
-
-	return code
 }
 
 func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements) *emitter.Summary {
