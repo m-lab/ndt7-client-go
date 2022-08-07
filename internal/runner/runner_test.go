@@ -341,10 +341,10 @@ func TestRunTestsInLoopDaemon(t *testing.T) {
 
 	go runner.RunTestsInLoop()
 	// Test that daemon mode calls uses ticker to wait in a loop
-	if c := <-ch; 1 != c {
+	if c := <-ch; c != 1 {
 		t.Errorf("unexpected count of Wait() calls: got %d", c)
 	}
-	if c := <-ch; 2 != c {
+	if c := <-ch; c != 2 {
 		t.Errorf("unexpected count of Wait() calls: got %d", c)
 	}
 }
