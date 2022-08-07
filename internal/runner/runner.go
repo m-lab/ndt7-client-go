@@ -24,7 +24,7 @@ type Runner struct {
 	opt     RunnerOptions
 }
 
-func NewRunner(opt RunnerOptions, emitter emitter.Emitter, ticker *memoryless.Ticker) *Runner {
+func New(opt RunnerOptions, emitter emitter.Emitter, ticker *memoryless.Ticker) *Runner {
 	return &Runner{
 		opt: opt,
 		emitter: emitter,
