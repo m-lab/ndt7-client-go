@@ -108,7 +108,7 @@ func (r Runner) RunTestsOnce() int {
 
 func (r Runner) RunTestsInLoop() int {
 	var code int
-	for ;; {
+	for {
 		code = r.RunTestsOnce()
 
 		// Wait
