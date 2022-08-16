@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/m-lab/ndt7-client-go/cmd/ndt7-client/internal/mocks"
+	"github.com/m-lab/ndt7-client-go/internal/mocks"
 	"github.com/m-lab/ndt7-client-go/spec"
 )
 
