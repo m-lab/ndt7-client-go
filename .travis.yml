@@ -1,11 +1,10 @@
 language: go
 go:
-- 1.17
+- 1.18
 dist: focal
 
 before_script:
-- go get golang.org/x/tools/cmd/cover
-- go get github.com/mattn/goveralls
+- go install github.com/mattn/goveralls@latest
 
 script:
 - go test -v -coverprofile=coverage.cov -coverpkg=./... ./...
