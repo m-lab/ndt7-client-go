@@ -1,4 +1,4 @@
-// ndt7-promeheus-exporter is an ndt7 non-interactive prometheus exporting client
+// ndt7-prometheus-exporter is an ndt7 non-interactive prometheus exporting client
 //
 // Usage:
 //
