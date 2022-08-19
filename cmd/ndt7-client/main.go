@@ -207,7 +207,6 @@ func main() {
 		e = emitter.NewQuiet(e)
 	}
 
-	r := runner.NewRunner(
 		runner.RunnerOptions{
 			Download: *flagDownload,
 			Upload: *flagUpload,
@@ -227,5 +226,5 @@ func main() {
 		e,
 		nil)
 
-	osExit(r.RunTestsOnce())
+	osExit(len(r.RunTestsOnce()))
 }

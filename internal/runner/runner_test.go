@@ -68,7 +68,7 @@ func TestRunTestOnStartingError(t *testing.T) {
 			StartingError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runTest(
+	err := runner.runTest(
 		context.Background(),
 		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
@@ -80,8 +80,8 @@ func TestRunTestOnStartingError(t *testing.T) {
 			return nil
 		},
 	)
-	if code == 0 {
-		t.Fatal("expected nonzero return code here")
+	if err == nil {
+		t.Fatal("expected error here")
 	}
 }
 
@@ -92,7 +92,7 @@ func TestRunTestOnConnectedError(t *testing.T) {
 			ConnectedError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runTest(
+	err := runner.runTest(
 		context.Background(),
 		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
@@ -104,8 +104,8 @@ func TestRunTestOnConnectedError(t *testing.T) {
 			return nil
 		},
 	)
-	if code == 0 {
-		t.Fatal("expected nonzero return code here")
+	if err == nil {
+		t.Fatal("expected error here")
 	}
 }
 
@@ -116,7 +116,7 @@ func TestRunTestOnCompleteError(t *testing.T) {
 			CompleteError: errors.New("mocked error"),
 		},
 	}
-	code := runner.runTest(
+	err := runner.runTest(
 		context.Background(),
 		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
@@ -128,8 +128,8 @@ func TestRunTestOnCompleteError(t *testing.T) {
 			return nil
 		},
 	)
-	if code == 0 {
-		t.Fatal("expected nonzero return code here")
+	if err == nil {
+		t.Fatal("expected error here")
 	}
 }
 
@@ -138,7 +138,7 @@ func TestRunTestEmitEventError(t *testing.T) {
 		client:  ndt7.NewClient(ClientName, ClientVersion),
 		emitter: mockedEmitter{},
 	}
-	code := runner.runTest(
+	err := runner.runTest(
 		context.Background(),
 		"download",
 		func(context.Context) (<-chan spec.Measurement, error) {
@@ -153,8 +153,8 @@ func TestRunTestEmitEventError(t *testing.T) {
 			return errors.New("mocked error")
 		},
 	)
-	if code == 0 {
-		t.Fatal("expected nonzero return code here")
+	if err == nil {
+		t.Fatal("expected error here")
 	}
 }
 
@@ -177,15 +177,13 @@ func TestBatchEmitterEventsOrderNormal(t *testing.T) {
 	runner.client.Scheme = "ws"
 	runner.client.Server = u.Host
 
-	code := runner.runTest(
+	err = runner.runTest(
 		context.Background(),
 		"download",
 		runner.client.StartDownload,
 		runner.emitter.OnDownloadEvent,
 	)
-	if code != 0 {
-		t.Fatal("expected zero return code here")
-	}
+	testingx.Must(t, err, "failed to run test")
 	numLines := len(writer.Data)
 	if numLines < 4 {
 		t.Fatal("expected at least four lines")
@@ -233,14 +231,14 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 	loc := locate.NewClient("fake-agent")
 	loc.BaseURL = &url.URL{Path: "\t"}
 	runner.client.Locate = loc
-	code := runner.runTest(
+	err := runner.runTest(
 		context.Background(),
 		"download",
 		runner.client.StartDownload,
 		runner.emitter.OnDownloadEvent,
 	)
-	if code == 0 {
-		t.Fatal("expected nonzero return code here")
+	if err == nil {
+		t.Fatal("expected error here")
 	}
 	numLines := len(writer.Data)
 	if numLines != 3 {
@@ -341,10 +339,10 @@ func TestRunTestsInLoopDaemon(t *testing.T) {
 
 	go runner.RunTestsInLoop()
 	// Test that daemon mode calls uses ticker to wait in a loop
-	if c := <-ch; 1 != c {
+	if c := <-ch; c != 1 {
 		t.Errorf("unexpected count of Wait() calls: got %d", c)
 	}
-	if c := <-ch; 2 != c {
+	if c := <-ch; c != 2 {
 		t.Errorf("unexpected count of Wait() calls: got %d", c)
 	}
 }
@@ -386,9 +384,7 @@ func TestMakeSummary(t *testing.T) {
 	expected := &emitter.Summary{
 		ServerFQDN:   "test",
 		ClientIP:     "127.0.0.1",
-		ClientPort:   "12345",
 		ServerIP:     "127.0.0.2",
-		ServerPort:   "443",
 		DownloadUUID: "test-uuid",
 		Download: emitter.ValueUnitPair{
 			Value: 800.0,
