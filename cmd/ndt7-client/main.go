@@ -207,6 +207,7 @@ func main() {
 		e = emitter.NewQuiet(e)
 	}
 
+	r := runner.New(
 		runner.RunnerOptions{
 			Download: *flagDownload,
 			Upload: *flagUpload,

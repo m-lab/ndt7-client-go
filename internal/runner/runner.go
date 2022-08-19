@@ -2,10 +2,7 @@ package runner
 
 import (
 	"context"
-<<<<<<< HEAD
-=======
 	"fmt"
->>>>>>> upstream/main
 	"net"
 	"time"
 
