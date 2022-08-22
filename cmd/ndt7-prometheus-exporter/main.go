@@ -242,7 +242,7 @@ func main() {
 	}
 	defer ticker.Stop()
 
-	r := runner.NewRunner(
+	r := runner.New(
 		runner.RunnerOptions{
 			Download: *flagDownload,
 			Upload: *flagUpload,
@@ -262,5 +262,5 @@ func main() {
 		e,
 		ticker)
 
-	osExit(r.RunTestsInLoop())
+	r.RunTestsInLoop()
 }
