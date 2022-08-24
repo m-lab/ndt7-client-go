@@ -2,7 +2,6 @@ package emitter
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -230,9 +229,6 @@ func TestHumanReadableOnSummary(t *testing.T) {
 	expected := `         Server: test
          Client: test
         Latency:    10.0 ms
-       Download:   100.0 Mbit/s
-         Upload:   100.0 Mbit/s
- Retransmission:    1.00 %
 `
 	summary := &Summary{
 		ClientIP:   "test",
@@ -261,12 +257,11 @@ func TestHumanReadableOnSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(sw.Data) != 1 {
-		t.Fatal("invalid length")
+	if len(sw.Data) == 0 {
+		t.Fatal("no data written")
 	}
+
 	if string(sw.Data[0]) != expected {
-		fmt.Println(string(sw.Data[0]))
-		fmt.Println(expected)
 		t.Fatal("OnSummary(): unexpected data")
 	}
 }
