@@ -94,20 +94,40 @@ func (h HumanReadable) OnSummary(s *Summary) error {
 	const summaryFormat = `%15s: %s
 %15s: %s
 %15s: %7.1f %s
-%15s: %7.1f %s
-%15s: %7.1f %s
-%15s: %7.2f %s
 `
 	_, err := fmt.Fprintf(h.out, summaryFormat,
 		"Server", s.ServerFQDN,
 		"Client", s.ClientIP,
-		"Latency", s.MinRTT.Value, s.MinRTT.Unit,
-		"Download", s.Download.Value, s.Upload.Unit,
-		"Upload", s.Upload.Value, s.Upload.Unit,
-		"Retransmission", s.DownloadRetrans.Value, s.DownloadRetrans.Unit)
+		"Latency", s.MinRTT.Value, s.MinRTT.Unit)
 	if err != nil {
 		return err
 	}
+
+	if s.Download.Value != 0.0 {
+		_, err := fmt.Fprintf(h.out, "%15s: %7.1f %s\n",
+			"Download", s.Download.Value, s.Download.Unit)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.Upload.Value != 0.0 {
+		_, err := fmt.Fprintf(h.out, "%15s: %7.1f %s\n",
+			"Upload", s.Upload.Value, s.Upload.Unit)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.DownloadRetrans.Value != 0.0 {
+		_, err := fmt.Fprintf(h.out, "%15s: %7.2f %s\n",
+			"Retransmission", s.DownloadRetrans.Value, s.DownloadRetrans.Unit)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintln(h.out)
 
 	return nil
 }

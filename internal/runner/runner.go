@@ -14,8 +14,8 @@ import (
 
 type RunnerOptions struct {
 	Download, Upload bool
-	Timeout time.Duration
-	ClientFactory func() *ndt7.Client
+	Timeout          time.Duration
+	ClientFactory    func() *ndt7.Client
 }
 
 type Runner struct {
@@ -27,9 +27,9 @@ type Runner struct {
 
 func New(opt RunnerOptions, emitter emitter.Emitter, ticker *memoryless.Ticker) *Runner {
 	return &Runner{
-		opt: opt,
+		opt:     opt,
 		emitter: emitter,
-		ticker: ticker,
+		ticker:  ticker,
 	}
 }
 
@@ -89,7 +89,7 @@ func (r Runner) runUpload(ctx context.Context) error {
 
 func (r Runner) RunTestsOnce() []error {
 	errs := make([]error, 0)
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), r.opt.Timeout)
 	defer cancel()
 
@@ -122,7 +122,7 @@ func (r Runner) RunTestsInLoop() {
 		_ = r.RunTestsOnce()
 
 		// Wait
-		<- r.ticker.C
+		<-r.ticker.C
 	}
 }
 
@@ -183,8 +183,17 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 				Unit: "Mbit/s",
 			}
 		}
+		// If there are no download results, get MinRTT from the upload's
+		// counterflow messages.
+		if results[spec.TestDownload].Server.TCPInfo == nil {
+			if ul.Server.TCPInfo != nil {
+				s.MinRTT = emitter.ValueUnitPair{
+					Value: float64(ul.Server.TCPInfo.MinRTT) / 1000,
+					Unit:  "ms",
+				}
+			}
+		}
 	}
 
 	return s
 }
-
