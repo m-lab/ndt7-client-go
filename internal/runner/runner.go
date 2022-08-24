@@ -130,20 +130,25 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 	s := emitter.NewSummary(FQDN)
 
-	if results[spec.TestDownload] != nil &&
-		results[spec.TestDownload].ConnectionInfo != nil {
-		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
+	var server, client string
+	if results[spec.TestDownload].ConnectionInfo != nil {
+		client = results[spec.TestDownload].ConnectionInfo.Client
+		server = results[spec.TestDownload].ConnectionInfo.Server
+	} else if results[spec.TestUpload].ConnectionInfo != nil {
+		client = results[spec.TestUpload].ConnectionInfo.Client
+		server = results[spec.TestUpload].ConnectionInfo.Server
+	}
+	clientIP, _, err := net.SplitHostPort(client)
+	if err == nil {
+		s.ClientIP = clientIP
+	}
+	serverIP, _, err := net.SplitHostPort(server)
+	if err == nil {
+		s.ServerIP = serverIP
+	}
+
+	if results[spec.TestDownload].ConnectionInfo != nil {
 		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
-
-		clientIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
-		if err == nil {
-			s.ClientIP = clientIP
-		}
-
-		serverIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
-		if err == nil {
-			s.ServerIP = serverIP
-		}
 	}
 
 	// Download comes from the client-side Measurement during the download
@@ -185,7 +190,8 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 		}
 		// If there are no download results, get MinRTT from the upload's
 		// counterflow messages.
-		if results[spec.TestDownload].Server.TCPInfo == nil {
+		if dl, ok := results[spec.TestDownload]; !ok ||
+			dl.Server.TCPInfo == nil {
 			if ul.Server.TCPInfo != nil {
 				s.MinRTT = emitter.ValueUnitPair{
 					Value: float64(ul.Server.TCPInfo.MinRTT) / 1000,
