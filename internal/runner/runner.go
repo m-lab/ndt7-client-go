@@ -131,13 +131,72 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 	s := emitter.NewSummary(FQDN)
 
 	var server, client string
-	if results[spec.TestDownload].ConnectionInfo != nil {
-		client = results[spec.TestDownload].ConnectionInfo.Client
-		server = results[spec.TestDownload].ConnectionInfo.Server
-	} else if results[spec.TestUpload].ConnectionInfo != nil {
-		client = results[spec.TestUpload].ConnectionInfo.Client
-		server = results[spec.TestUpload].ConnectionInfo.Server
+
+	// If there is a download result, populate the summary.
+	if dl, ok := results[spec.TestDownload]; ok {
+		s.Download = &emitter.SubtestSummary{}
+		if dl.ConnectionInfo != nil {
+			connInfo := dl.ConnectionInfo
+			s.Download.UUID = connInfo.UUID
+			client = connInfo.Client
+			server = connInfo.Server
+		}
+		// Read the throughput at the receiver (i.e. the client).
+		if dl.Client.AppInfo != nil &&
+			dl.Client.AppInfo.ElapsedTime > 0 {
+			appInfo := dl.Client.AppInfo
+			elapsed := float64(appInfo.ElapsedTime) / 1e06
+			s.Download.Throughput = emitter.ValueUnitPair{
+				Value: (8.0 * float64(appInfo.NumBytes)) /
+					elapsed / (1000.0 * 1000.0),
+				Unit: "Mbit/s",
+			}
+		}
+		if dl.Server.TCPInfo != nil {
+			tcpInfo := dl.Server.TCPInfo
+			// Read the retransmission rate at the sender.
+			if tcpInfo.BytesSent > 0 {
+				s.Download.Retransmission = emitter.ValueUnitPair{
+					Value: float64(tcpInfo.BytesRetrans) /
+						float64(tcpInfo.BytesSent) * 100,
+					Unit: "%",
+				}
+			}
+			// Read the latency at the sender.
+			s.Download.Latency = emitter.ValueUnitPair{
+				Value: float64(tcpInfo.MinRTT) / 1000,
+				Unit:  "ms",
+			}
+		}
 	}
+
+	if ul, ok := results[spec.TestUpload]; ok {
+		s.Upload = &emitter.SubtestSummary{}
+		if ul.ConnectionInfo != nil {
+			connInfo := ul.ConnectionInfo
+			s.Upload.UUID = connInfo.UUID
+			client = connInfo.Client
+			server = connInfo.Server
+		}
+		if ul.Server.TCPInfo != nil {
+			tcpInfo := ul.Server.TCPInfo
+			// Read the throughput at the receiver (i.e. the server).
+			if tcpInfo.ElapsedTime > 0 {
+				elapsed := float64(tcpInfo.ElapsedTime) / 1e06
+				s.Upload.Throughput = emitter.ValueUnitPair{
+					Value: (8.0 * float64(tcpInfo.BytesReceived)) /
+						elapsed / (1000.0 * 1000.0),
+					Unit: "Mbit/s",
+				}
+			}
+			// Read the latency at the receiver.
+			s.Upload.Latency = emitter.ValueUnitPair{
+				Value: float64(tcpInfo.MinRTT) / 1000,
+				Unit:  "ms",
+			}
+		}
+	}
+
 	clientIP, _, err := net.SplitHostPort(client)
 	if err == nil {
 		s.ClientIP = clientIP
@@ -145,60 +204,6 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 	serverIP, _, err := net.SplitHostPort(server)
 	if err == nil {
 		s.ServerIP = serverIP
-	}
-
-	if results[spec.TestDownload].ConnectionInfo != nil {
-		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
-	}
-
-	// Download comes from the client-side Measurement during the download
-	// test. DownloadRetrans and MinRTT come from the server-side Measurement,
-	// if it includes a TCPInfo object.
-	if dl, ok := results[spec.TestDownload]; ok {
-		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
-			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
-			s.Download = emitter.ValueUnitPair{
-				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
-					elapsed / (1000.0 * 1000.0),
-				Unit: "Mbit/s",
-			}
-		}
-		if dl.Server.TCPInfo != nil {
-			if dl.Server.TCPInfo.BytesSent > 0 {
-				s.DownloadRetrans = emitter.ValueUnitPair{
-					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
-					Unit:  "%",
-				}
-			}
-			s.MinRTT = emitter.ValueUnitPair{
-				Value: float64(dl.Server.TCPInfo.MinRTT) / 1000,
-				Unit:  "ms",
-			}
-		}
-	}
-	// The upload rate comes from the receiver (the server). Currently
-	// ndt-server only provides network-level throughput via TCPInfo.
-	// TODO: Use AppInfo for application-level measurements when available.
-	if ul, ok := results[spec.TestUpload]; ok {
-		if ul.Server.TCPInfo != nil && ul.Server.TCPInfo.BytesReceived > 0 {
-			elapsed := float64(ul.Server.TCPInfo.ElapsedTime) / 1e06
-			s.Upload = emitter.ValueUnitPair{
-				Value: (8.0 * float64(ul.Server.TCPInfo.BytesReceived)) /
-					elapsed / (1000.0 * 1000.0),
-				Unit: "Mbit/s",
-			}
-		}
-		// If there are no download results, get MinRTT from the upload's
-		// counterflow messages.
-		if dl, ok := results[spec.TestDownload]; !ok ||
-			dl.Server.TCPInfo == nil {
-			if ul.Server.TCPInfo != nil {
-				s.MinRTT = emitter.ValueUnitPair{
-					Value: float64(ul.Server.TCPInfo.MinRTT) / 1000,
-					Unit:  "ms",
-				}
-			}
-		}
 	}
 
 	return s

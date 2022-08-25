@@ -6,6 +6,16 @@ type ValueUnitPair struct {
 	Unit  string
 }
 
+type SubtestSummary struct {
+	UUID       string
+	Throughput ValueUnitPair
+	// Latency is the MinRTT value of the latest measurement, in milliseconds.
+	// For uploads, this is provided by the server.
+	Latency ValueUnitPair
+	// Retransmission is BytesRetrans / BytesSent from TCPInfo
+	Retransmission ValueUnitPair
+}
+
 // Summary is a struct containing the values displayed to the user at
 // the end of an ndt7 test.
 type Summary struct {
@@ -18,24 +28,8 @@ type Summary struct {
 	// ClientIP is the (v4 or v6) IP address of the client.
 	ClientIP string
 
-	// DownloadUUID is the UUID of the download test.
-	// TODO: add UploadUUID after we start processing counterflow messages.
-	DownloadUUID string
-
-	// Download is the download speed, in Mbit/s. This is measured at the
-	// receiver.
-	Download ValueUnitPair
-
-	// Upload is the upload speed, in Mbit/s. This is measured at the sender.
-	Upload ValueUnitPair
-
-	// DownloadRetrans is the retransmission rate. This is based on the TCPInfo
-	// values provided by the server during a download test.
-	DownloadRetrans ValueUnitPair
-
-	// RTT is the round-trip time of the latest measurement, in milliseconds.
-	// This is provided by the server during a download test.
-	MinRTT ValueUnitPair
+	Download *SubtestSummary
+	Upload   *SubtestSummary
 }
 
 // NewSummary returns a new Summary struct for a given FQDN.

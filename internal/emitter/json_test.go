@@ -317,11 +317,8 @@ func TestJSONOnSummary(t *testing.T) {
 	if output.ClientIP != summary.ClientIP ||
 		output.ServerFQDN != summary.ServerFQDN ||
 		output.ServerIP != summary.ServerIP ||
-		output.DownloadUUID != summary.DownloadUUID ||
 		output.Download != summary.Download ||
-		output.Upload != summary.Upload ||
-		output.DownloadRetrans != summary.DownloadRetrans ||
-		output.MinRTT != summary.MinRTT {
+		output.Upload != summary.Upload {
 		t.Fatal("OnSummary(): unexpected output")
 	}
 

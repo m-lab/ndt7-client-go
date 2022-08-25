@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m-lab/go/testingx"
 	"github.com/m-lab/go/memoryless"
+	"github.com/m-lab/go/testingx"
 	"github.com/m-lab/locate/api/locate"
 	"github.com/m-lab/ndt-server/ndt7/ndt7test"
 	"github.com/m-lab/ndt7-client-go"
@@ -274,7 +274,7 @@ func TestBatchEmitterEventsOrderFailure(t *testing.T) {
 // We hijack the channel in a memoryless.Ticker to allow us to count the
 // number of ticks consumed (and skip the waits).
 type countingTicker struct {
-	ticker *memoryless.Ticker
+	ticker    *memoryless.Ticker
 	waitCount int
 	writeChan chan<- time.Time
 	countChan chan int
@@ -283,7 +283,7 @@ type countingTicker struct {
 func newCountingTicker(countChan chan int) *countingTicker {
 	c := make(chan time.Time)
 	ticker := &countingTicker{
-		ticker: &memoryless.Ticker{C: c},
+		ticker:    &memoryless.Ticker{C: c},
 		waitCount: 0,
 		writeChan: c,
 		countChan: countChan,
@@ -321,11 +321,11 @@ func TestRunTestsInLoopDaemon(t *testing.T) {
 
 	runner := Runner{
 		emitter: mockedEmitter{},
-		ticker: ticker.ticker,
+		ticker:  ticker.ticker,
 		opt: RunnerOptions{
-			Download: false,  // skip download test
-			Upload: false,  // skip upload test
-			Timeout: 55 * time.Second, 
+			Download: false, // skip download test
+			Upload:   false, // skip upload test
+			Timeout:  55 * time.Second,
 			ClientFactory: func() *ndt7.Client {
 				client := ndt7.NewClient(ClientName, ClientVersion)
 				client.ServiceURL = url
@@ -368,7 +368,7 @@ func TestMakeSummary(t *testing.T) {
 			ConnectionInfo: &spec.ConnectionInfo{
 				Client: "127.0.0.1:12345",
 				Server: "127.0.0.2:443",
-				UUID:   "test-uuid",
+				UUID:   "test-download-uuid",
 			},
 			Server: spec.Measurement{
 				TCPInfo: tcpInfo,
@@ -378,29 +378,43 @@ func TestMakeSummary(t *testing.T) {
 			Server: spec.Measurement{
 				TCPInfo: tcpInfo,
 			},
+			ConnectionInfo: &spec.ConnectionInfo{
+				Client: "127.0.0.1:12345",
+				Server: "127.0.0.2:443",
+				UUID:   "test-upload-uuid",
+			},
 		},
 	}
 
 	expected := &emitter.Summary{
-		ServerFQDN:   "test",
-		ClientIP:     "127.0.0.1",
-		ServerIP:     "127.0.0.2",
-		DownloadUUID: "test-uuid",
-		Download: emitter.ValueUnitPair{
-			Value: 800.0,
-			Unit:  "Mbit/s",
+		ServerFQDN: "test",
+		ClientIP:   "127.0.0.1",
+		ServerIP:   "127.0.0.2",
+		Download: &emitter.SubtestSummary{
+			UUID: "test-download-uuid",
+			Throughput: emitter.ValueUnitPair{
+				Value: 800.0,
+				Unit:  "Mbit/s",
+			},
+			Latency: emitter.ValueUnitPair{
+				Value: 10.0,
+				Unit:  "ms",
+			},
+			Retransmission: emitter.ValueUnitPair{
+				Value: 1.0,
+				Unit:  "%",
+			},
 		},
-		Upload: emitter.ValueUnitPair{
-			Value: 8.0,
-			Unit:  "Mbit/s",
-		},
-		DownloadRetrans: emitter.ValueUnitPair{
-			Value: 1.0,
-			Unit:  "%",
-		},
-		MinRTT: emitter.ValueUnitPair{
-			Value: 10.0,
-			Unit:  "ms",
+		Upload: &emitter.SubtestSummary{
+			UUID: "test-upload-uuid",
+			Throughput: emitter.ValueUnitPair{
+				Value: 8.0,
+				Unit:  "Mbit/s",
+			},
+			Latency: emitter.ValueUnitPair{
+				Value: 10.0,
+				Unit:  "ms",
+			},
 		},
 	}
 

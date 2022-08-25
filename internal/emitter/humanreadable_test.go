@@ -226,28 +226,49 @@ func TestHumanReadableOnCompleteFailure(t *testing.T) {
 }
 
 func TestHumanReadableOnSummary(t *testing.T) {
-	expected := `         Server: test
-         Client: test
+	expectedHeader := `
+Test results
+
+    Server: test
+    Client: test
+`
+	expectedUpload := `
+              Upload
+     Throughput:   100.0 Mbit/s
         Latency:    10.0 ms
+`
+	expectedDownload := `
+              Download
+     Throughput:   100.0 Mbit/s
+        Latency:    10.0 ms
+ Retransmission:     1.0 %
 `
 	summary := &Summary{
 		ClientIP:   "test",
 		ServerFQDN: "test",
-		Download: ValueUnitPair{
-			Value: 100.0,
-			Unit:  "Mbit/s",
+		Download: &SubtestSummary{
+			Throughput: ValueUnitPair{
+				Value: 100.0,
+				Unit:  "Mbit/s",
+			},
+			Latency: ValueUnitPair{
+				Value: 10.0,
+				Unit:  "ms",
+			},
+			Retransmission: ValueUnitPair{
+				Value: 1.0,
+				Unit:  "%",
+			},
 		},
-		Upload: ValueUnitPair{
-			Value: 100.0,
-			Unit:  "Mbit/s",
-		},
-		DownloadRetrans: ValueUnitPair{
-			Value: 1.0,
-			Unit:  "%",
-		},
-		MinRTT: ValueUnitPair{
-			Value: 10.0,
-			Unit:  "ms",
+		Upload: &SubtestSummary{
+			Throughput: ValueUnitPair{
+				Value: 100.0,
+				Unit:  "Mbit/s",
+			},
+			Latency: ValueUnitPair{
+				Value: 10.0,
+				Unit:  "ms",
+			},
 		},
 	}
 	sw := &mocks.SavingWriter{}
@@ -261,7 +282,9 @@ func TestHumanReadableOnSummary(t *testing.T) {
 		t.Fatal("no data written")
 	}
 
-	if string(sw.Data[0]) != expected {
+	if string(sw.Data[0]) != expectedHeader ||
+		string(sw.Data[1]) != expectedDownload ||
+		string(sw.Data[2]) != expectedUpload {
 		t.Fatal("OnSummary(): unexpected data")
 	}
 }
