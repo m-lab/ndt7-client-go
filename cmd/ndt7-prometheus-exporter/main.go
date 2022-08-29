@@ -188,29 +188,6 @@ func main() {
 		prometheus.MustRegister(lastResultGauge)
 
 		// The success gauge captures both the client IP and the server FQDN.
-		//
-		// Since its value is a timestamp, we can use it to determine the last
-		// client-server pair that successfully ran the tests. With some PromQL
-		// trickery, it is possible to join the client-server labels with test
-		// results.
-		//
-		// For example:
-		//
-		// - last download test result with client-server labels
-		//
-		//   ndt7_download_rate_bps + on () group_left(client_ip, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
-		//
-		// - last upload test result with client-server labels
-		//
-		//   ndt7_upload_rate_bps + on () group_left(client_ip, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
-		//
-		// - last rtt test result with client-server labels
-		//
-		//   ndt7_rtt_seconds + on () group_left(client_ip, server)
-		//   0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
-		//
 		lastSuccessGauge := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",

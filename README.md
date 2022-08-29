@@ -62,9 +62,12 @@ CLIENTNAME=my-custom-client-name
 go build -ldflags "-X main.ClientName=$CLIENTNAME" ./cmd/ndt7-client
 ```
 
-### Building and running using Docker
+### Prometheus Exporter
 
-To build
+While `ndt7-client` is a "single shot" ndt7 client, there is also a
+non-interactive periodic test runner `ndt7-prometheus-exporter`.
+
+#### Build and Run using Docker
 
 ```bash
 git clone https://github.com/m-lab/ndt7-client-go
@@ -77,3 +80,61 @@ To run tests repeatedly
 PORT=9191
 docker run -d -p ${PORT}:8080 ndt7-prometheus-exporter
 ```
+
+#### Sample Prometheus config
+
+```
+# scrape ndt7 test metrics
+  - job_name: ndt7
+    metrics_path: /metrics
+    static_configs:
+	  - targets:
+	    # host:port of the exporter
+	    - localhost:9191
+
+# scrape ndt7-prometheus-exporter itself
+  - job_name: ndt7-prometheus-exporter
+    static_configs:
+	  - targets:
+	    # host:port of the exporter
+		- localhost:9191
+```
+
+#### Sample Prometheus queries
+
+There is a success gauge metric which captures both the client IP and
+the server FQDN.
+
+Most recent test results
+
+- Last download test result `ndt7_download_rate_bps`
+- Last upload test result `ndt7_upload_rate_bps`
+- Last rtt test result `nd7_rtt_seonds`
+
+Since its value is a timestamp, it can be used to determine the last
+client-server pair that successfully ran the tests. With some PromQL
+trickery, it is possible to join the client-server labels with test
+results.
+
+For example:
+
+- last download test result with client-server labels
+
+  ```
+  ndt7_download_rate_bps + on () group_left(client_ip, server)
+  0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
+  ```
+
+- last upload test result with client-server labels
+
+  ```
+  ndt7_upload_rate_bps + on () group_left(client_ip, server)
+  0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
+  ```
+
+- last rtt test result with client-server labels
+
+  ```
+  ndt7_rtt_seconds + on () group_left(client_ip, server)
+  0 * topk(1, ndt7_last_success_timestamp_seconds) without (client_ip, server)
+  ```
