@@ -7,7 +7,8 @@ type ValueUnitPair struct {
 }
 
 // SubtestSummary contains all the results of a single subtest (download or
-// upload). All the values are from the server's perspective.
+// upload). All the values are from the server's perspective, except for the
+// download throughput.
 type SubtestSummary struct {
 	// UUID is the unique identified of this subtest.
 	UUID string
