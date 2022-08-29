@@ -6,11 +6,14 @@ type ValueUnitPair struct {
 	Unit  string
 }
 
+// SubtestSummary contains all the results of a single subtest (download or
+// upload). All the values are from the server's perspective.
 type SubtestSummary struct {
-	UUID       string
+	// UUID is the unique identified of this subtest.
+	UUID string
+	// Throughput is the measured throughput during this subtest.
 	Throughput ValueUnitPair
 	// Latency is the MinRTT value of the latest measurement, in milliseconds.
-	// For uploads, this is provided by the server.
 	Latency ValueUnitPair
 	// Retransmission is BytesRetrans / BytesSent from TCPInfo
 	Retransmission ValueUnitPair
@@ -28,8 +31,11 @@ type Summary struct {
 	// ClientIP is the (v4 or v6) IP address of the client.
 	ClientIP string
 
+	// Download is a summary of the download subtest.
 	Download *SubtestSummary
-	Upload   *SubtestSummary
+
+	// Upload is a summary of the upload subtest.
+	Upload *SubtestSummary
 }
 
 // NewSummary returns a new Summary struct for a given FQDN.
