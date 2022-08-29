@@ -14,8 +14,8 @@ import (
 
 type RunnerOptions struct {
 	Download, Upload bool
-	Timeout time.Duration
-	ClientFactory func() *ndt7.Client
+	Timeout          time.Duration
+	ClientFactory    func() *ndt7.Client
 }
 
 type Runner struct {
@@ -27,9 +27,9 @@ type Runner struct {
 
 func New(opt RunnerOptions, emitter emitter.Emitter, ticker *memoryless.Ticker) *Runner {
 	return &Runner{
-		opt: opt,
+		opt:     opt,
 		emitter: emitter,
-		ticker: ticker,
+		ticker:  ticker,
 	}
 }
 
@@ -89,7 +89,7 @@ func (r Runner) runUpload(ctx context.Context) error {
 
 func (r Runner) RunTestsOnce() []error {
 	errs := make([]error, 0)
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), r.opt.Timeout)
 	defer cancel()
 
@@ -122,7 +122,7 @@ func (r Runner) RunTestsInLoop() {
 		_ = r.RunTestsOnce()
 
 		// Wait
-		<- r.ticker.C
+		<-r.ticker.C
 	}
 }
 
@@ -130,61 +130,81 @@ func makeSummary(FQDN string, results map[spec.TestKind]*ndt7.LatestMeasurements
 
 	s := emitter.NewSummary(FQDN)
 
-	if results[spec.TestDownload] != nil &&
-		results[spec.TestDownload].ConnectionInfo != nil {
-		// Get UUID, ClientIP and ServerIP from ConnectionInfo.
-		s.DownloadUUID = results[spec.TestDownload].ConnectionInfo.UUID
+	var server, client string
 
-		clientIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Client)
-		if err == nil {
-			s.ClientIP = clientIP
-		}
-
-		serverIP, _, err := net.SplitHostPort(results[spec.TestDownload].ConnectionInfo.Server)
-		if err == nil {
-			s.ServerIP = serverIP
-		}
-	}
-
-	// Download comes from the client-side Measurement during the download
-	// test. DownloadRetrans and MinRTT come from the server-side Measurement,
-	// if it includes a TCPInfo object.
+	// If there is a download result, populate the summary.
 	if dl, ok := results[spec.TestDownload]; ok {
-		if dl.Client.AppInfo != nil && dl.Client.AppInfo.ElapsedTime > 0 {
-			elapsed := float64(dl.Client.AppInfo.ElapsedTime) / 1e06
-			s.Download = emitter.ValueUnitPair{
-				Value: (8.0 * float64(dl.Client.AppInfo.NumBytes)) /
+		s.Download = &emitter.SubtestSummary{}
+		if dl.ConnectionInfo != nil {
+			connInfo := dl.ConnectionInfo
+			s.Download.UUID = connInfo.UUID
+			client = connInfo.Client
+			server = connInfo.Server
+		}
+		// Read the throughput at the receiver (i.e. the client).
+		if dl.Client.AppInfo != nil &&
+			dl.Client.AppInfo.ElapsedTime > 0 {
+			appInfo := dl.Client.AppInfo
+			elapsed := float64(appInfo.ElapsedTime) / 1e06
+			s.Download.Throughput = emitter.ValueUnitPair{
+				Value: (8.0 * float64(appInfo.NumBytes)) /
 					elapsed / (1000.0 * 1000.0),
 				Unit: "Mbit/s",
 			}
 		}
 		if dl.Server.TCPInfo != nil {
-			if dl.Server.TCPInfo.BytesSent > 0 {
-				s.DownloadRetrans = emitter.ValueUnitPair{
-					Value: float64(dl.Server.TCPInfo.BytesRetrans) / float64(dl.Server.TCPInfo.BytesSent) * 100,
-					Unit:  "%",
+			tcpInfo := dl.Server.TCPInfo
+			// Read the retransmission rate at the sender.
+			if tcpInfo.BytesSent > 0 {
+				s.Download.Retransmission = emitter.ValueUnitPair{
+					Value: float64(tcpInfo.BytesRetrans) /
+						float64(tcpInfo.BytesSent) * 100,
+					Unit: "%",
 				}
 			}
-			s.MinRTT = emitter.ValueUnitPair{
-				Value: float64(dl.Server.TCPInfo.MinRTT) / 1000,
+			// Read the latency at the sender.
+			s.Download.Latency = emitter.ValueUnitPair{
+				Value: float64(tcpInfo.MinRTT) / 1000,
 				Unit:  "ms",
 			}
 		}
 	}
-	// The upload rate comes from the receiver (the server). Currently
-	// ndt-server only provides network-level throughput via TCPInfo.
-	// TODO: Use AppInfo for application-level measurements when available.
+
 	if ul, ok := results[spec.TestUpload]; ok {
-		if ul.Server.TCPInfo != nil && ul.Server.TCPInfo.BytesReceived > 0 {
-			elapsed := float64(ul.Server.TCPInfo.ElapsedTime) / 1e06
-			s.Upload = emitter.ValueUnitPair{
-				Value: (8.0 * float64(ul.Server.TCPInfo.BytesReceived)) /
-					elapsed / (1000.0 * 1000.0),
-				Unit: "Mbit/s",
+		s.Upload = &emitter.SubtestSummary{}
+		if ul.ConnectionInfo != nil {
+			connInfo := ul.ConnectionInfo
+			s.Upload.UUID = connInfo.UUID
+			client = connInfo.Client
+			server = connInfo.Server
+		}
+		if ul.Server.TCPInfo != nil {
+			tcpInfo := ul.Server.TCPInfo
+			// Read the throughput at the receiver (i.e. the server).
+			if tcpInfo.ElapsedTime > 0 {
+				elapsed := float64(tcpInfo.ElapsedTime) / 1e06
+				s.Upload.Throughput = emitter.ValueUnitPair{
+					Value: (8.0 * float64(tcpInfo.BytesReceived)) /
+						elapsed / (1000.0 * 1000.0),
+					Unit: "Mbit/s",
+				}
+			}
+			// Read the latency at the receiver.
+			s.Upload.Latency = emitter.ValueUnitPair{
+				Value: float64(tcpInfo.MinRTT) / 1000,
+				Unit:  "ms",
 			}
 		}
 	}
 
+	clientIP, _, err := net.SplitHostPort(client)
+	if err == nil {
+		s.ClientIP = clientIP
+	}
+	serverIP, _, err := net.SplitHostPort(server)
+	if err == nil {
+		s.ServerIP = serverIP
+	}
+
 	return s
 }
-

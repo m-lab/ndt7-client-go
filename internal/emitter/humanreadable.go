@@ -91,22 +91,47 @@ func (h HumanReadable) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event.
 func (h HumanReadable) OnSummary(s *Summary) error {
-	const summaryFormat = `%15s: %s
-%15s: %s
-%15s: %7.1f %s
-%15s: %7.1f %s
-%15s: %7.1f %s
-%15s: %7.2f %s
+	const summaryHeaderFormat = `
+Test results
+
+%10s: %s
+%10s: %s
 `
-	_, err := fmt.Fprintf(h.out, summaryFormat,
+	const downloadFormat = `
+%22s
+%15s: %7.1f %s
+%15s: %7.1f %s
+%15s: %7.1f %s
+`
+	const uploadFormat = `
+%20s
+%15s: %7.1f %s
+%15s: %7.1f %s
+`
+	_, err := fmt.Fprintf(h.out, summaryHeaderFormat,
 		"Server", s.ServerFQDN,
-		"Client", s.ClientIP,
-		"Latency", s.MinRTT.Value, s.MinRTT.Unit,
-		"Download", s.Download.Value, s.Upload.Unit,
-		"Upload", s.Upload.Value, s.Upload.Unit,
-		"Retransmission", s.DownloadRetrans.Value, s.DownloadRetrans.Unit)
+		"Client", s.ClientIP)
 	if err != nil {
 		return err
+	}
+
+	if s.Download != nil {
+		_, err := fmt.Fprintf(h.out, downloadFormat, "Download",
+			"Throughput", s.Download.Throughput.Value, s.Download.Throughput.Unit,
+			"Latency", s.Download.Latency.Value, s.Download.Latency.Unit,
+			"Retransmission", s.Download.Retransmission.Value, s.Download.Retransmission.Unit)
+		if err != nil {
+			return err
+		}
+	}
+
+	if s.Upload != nil {
+		_, err := fmt.Fprintf(h.out, uploadFormat, "Upload",
+			"Throughput", s.Upload.Throughput.Value, s.Upload.Throughput.Unit,
+			"Latency", s.Upload.Latency.Value, s.Upload.Latency.Unit)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
