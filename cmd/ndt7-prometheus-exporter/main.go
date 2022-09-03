@@ -145,29 +145,56 @@ func main() {
 	e := emitter.NewQuiet(emitter.NewHumanReadable())
 
 	if *flagPort > 0 {
-		downloadGauge := prometheus.NewGauge(
+		dlThroughput := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "download_rate_bps",
+				Name: "download_throughput_bps",
 				Help: "m-lab ndt7 download speed in bits/s",
+			},
+			[]string{
+				// client IP and remote server
+				"client_ip",
+				"server",
 			})
-		prometheus.MustRegister(downloadGauge)
-		uploadGauge := prometheus.NewGauge(
+		prometheus.MustRegister(dlThroughput)
+		dlLatency := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "upload_rate_bps",
+				Name: "download_latency_seconds",
+				Help: "m-lab ndt7 download latency time in seconds",
+			},
+			[]string{
+				// client IP and remote server
+				"client_ip",
+				"server",
+			})
+		prometheus.MustRegister(dlLatency)
+		ulThroughput := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "ndt7",
+				Name: "upload_throughput_bps",
 				Help: "m-lab ndt7 upload speed in bits/s",
+			},
+			[]string{
+				// client IP and remote server
+				"client_ip",
+				"server",
 			})
-		prometheus.MustRegister(uploadGauge)
-		rttGauge := prometheus.NewGauge(
+		prometheus.MustRegister(ulThroughput)
+		ulLatency := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "rtt_seconds",
-				Help: "m-lab ndt7 round-trip time in seconds",
+				Name: "upload_latency_seconds",
+				Help: "m-lab ndt7 upload latency time in seconds",
+			},
+			[]string{
+				// client IP and remote server
+				"client_ip",
+				"server",
 			})
-		prometheus.MustRegister(rttGauge)
+		prometheus.MustRegister(ulLatency)
 
-		// The result gauge captures the result of the last test attemp.
+		// The result gauge captures the result of the last test attempt.
 		//
 		// Since its value is a timestamp, the following PromQL expression will
 		// give the most recent result for each upload and download test.
@@ -187,20 +214,7 @@ func main() {
 			})
 		prometheus.MustRegister(lastResultGauge)
 
-		// The success gauge captures both the client IP and the server FQDN.
-		lastSuccessGauge := prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Namespace: "ndt7",
-				Name: "last_success_timestamp_seconds",
-				Help: "last successful m-lab ndt7 test completion time in seconds since 1970-01-01",
-			},
-			[]string{
-				// client IP and remote server
-				"client_ip",
-				"server",
-			})
-		prometheus.MustRegister(lastSuccessGauge)
-		e = emitter.NewPrometheus(e, downloadGauge, uploadGauge, rttGauge, lastResultGauge, lastSuccessGauge)
+		e = emitter.NewPrometheus(e, dlThroughput, dlLatency, ulThroughput, ulLatency, lastResultGauge)
 		http.Handle("/metrics", promhttp.Handler())
 		go func() {
 			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil))

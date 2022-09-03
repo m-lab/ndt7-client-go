@@ -12,24 +12,32 @@ import (
 // The message is actually emitted by the embedded Emitter.
 type Prometheus struct {
 	emitter Emitter
-	// Last download, upload speed in bits/s
-	download, upload prometheus.Gauge
-	// Last RTT in seconds
-	rtt prometheus.Gauge
+	// Download throughput
+	// Value: throughput in bits/s
+	// Labels: client_ip, server
+	dlTp *prometheus.GaugeVec
+	// Download latency
+	// Value: latency in secs
+	// Labels: client_ip, server
+	dlLat *prometheus.GaugeVec
+	// Upload throughput
+	// Value: throughput in bits/s
+	// Labels: client_ip, server
+	ulTp *prometheus.GaugeVec
+	// Upload latency
+	// Value: latency in secs
+	// Labels: client_ip, server
+	ulLat *prometheus.GaugeVec
 	// Last results
 	// Value: time in seconds since unix epoch
 	// labels: test, result
 	lastResult *prometheus.GaugeVec
-	// Last successful test
-	// Value: time in seconds since unix epoch
-	// labels: client_ip, server
-	lastSuccess *prometheus.GaugeVec
 }
 
 // NewPrometheus returns a Summary emitter which emits messages
 // via the passed Emitter.
-func NewPrometheus(e Emitter, download, upload, rtt prometheus.Gauge, lastResult, lastSuccess *prometheus.GaugeVec) Emitter {
-	return &Prometheus{e, download, upload, rtt, lastResult, lastSuccess}
+func NewPrometheus(e Emitter, dlThroughput, dlLatency, ulThroughput, ulLatency, lastResult *prometheus.GaugeVec) Emitter {
+	return &Prometheus{e, dlThroughput, dlLatency, ulThroughput, ulLatency, lastResult}
 }
 
 // OnStarting emits the starting event
@@ -68,17 +76,18 @@ func (p Prometheus) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event, emitted after the test is over.
 func (p *Prometheus) OnSummary(s *Summary) error {
-	// Note this assumes download and upload test result units are Mbit/s.
-	p.download.Set(s.Download.Throughput.Value * 1000.0 * 1000.0)
-	p.upload.Set(s.Upload.Throughput.Value * 1000.0 * 1000.0)
+	server := fmt.Sprintf("%s:%s", s.ServerIP, s.ServerPort)
 
-	// Note this assumes Latency units are millisecs
-	p.rtt.Set(s.Download.Latency.Value / 1000.0)
-
-	success := p.lastSuccess.WithLabelValues(
-		s.ClientIP,
-		fmt.Sprintf("%s:%s", s.ServerIP, s.ServerPort))
-	success.Set(float64(time.Now().Unix()))
+	// Note this assumes download and upload throughput units are Mbit/s
+	// and latency units are msecs.
+	p.dlTp.Reset()
+	p.dlTp.WithLabelValues(s.ClientIP, server).Set(s.Download.Throughput.Value * 1000.0 * 1000.0)
+	p.dlLat.Reset()
+	p.dlLat.WithLabelValues(s.ClientIP, server).Set(s.Download.Latency.Value / 1000.0)
+	p.ulTp.Reset()
+	p.ulTp.WithLabelValues(s.ClientIP, server).Set(s.Upload.Throughput.Value * 1000.0 * 1000.0)
+	p.ulLat.Reset()
+	p.ulLat.WithLabelValues(s.ClientIP, server).Set(s.Upload.Latency.Value / 1000.0)
 
 	return p.emitter.OnSummary(s)
 }
