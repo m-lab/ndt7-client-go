@@ -135,10 +135,7 @@ func makeUserAgent(clientName, clientVersion string) string {
 // clientName and clientVersion. M-Lab services may reject requests coming
 // from clients that do not identify themselves properly.
 func NewClient(clientName, clientVersion string) *Client {
-	results := map[spec.TestKind]*LatestMeasurements{
-		spec.TestDownload: {},
-		spec.TestUpload:   {},
-	}
+	results := map[spec.TestKind]*LatestMeasurements{}
 	return &Client{
 		ClientName:    clientName,
 		ClientVersion: clientVersion,
@@ -289,11 +286,13 @@ func (c *Client) collectData(ctx context.Context, f testFn, conn websocketx.Conn
 // is that, if you did not specify a server FQDN, we will discover a server
 // for you and store that value into the c.FQDN field.
 func (c *Client) StartDownload(ctx context.Context) (<-chan spec.Measurement, error) {
+	c.results[spec.TestDownload] = &LatestMeasurements{}
 	return c.start(ctx, c.download, params.DownloadURLPath)
 }
 
 // StartUpload is like StartDownload but for the upload.
 func (c *Client) StartUpload(ctx context.Context) (<-chan spec.Measurement, error) {
+	c.results[spec.TestUpload] = &LatestMeasurements{}
 	return c.start(ctx, c.upload, params.UploadURLPath)
 }
 

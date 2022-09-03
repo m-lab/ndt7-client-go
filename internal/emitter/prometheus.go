@@ -69,11 +69,11 @@ func (p Prometheus) OnComplete(test spec.TestKind) error {
 // OnSummary handles the summary event, emitted after the test is over.
 func (p *Prometheus) OnSummary(s *Summary) error {
 	// Note this assumes download and upload test result units are Mbit/s.
-	p.download.Set(s.Download.Value * 1000.0 * 1000.0)
-	p.upload.Set(s.Upload.Value * 1000.0 * 1000.0)
+	p.download.Set(s.Download.Throughput.Value * 1000.0 * 1000.0)
+	p.upload.Set(s.Upload.Throughput.Value * 1000.0 * 1000.0)
 
-	// Note this assumes RTT units are millisecs
-	p.rtt.Set(s.MinRTT.Value / 1000.0)
+	// Note this assumes Latency units are millisecs
+	p.rtt.Set(s.Download.Latency.Value / 1000.0)
 
 	success := p.lastSuccess.WithLabelValues(
 		s.ClientIP,

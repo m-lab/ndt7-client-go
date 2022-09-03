@@ -23,6 +23,8 @@ type SavingWriter struct {
 
 // Write appends data to sw.Data. It never fails.
 func (sw *SavingWriter) Write(data []byte) (int, error) {
-	sw.Data = append(sw.Data, data)
+	d := make([]byte, len(data))
+	copy(d, data)
+	sw.Data = append(sw.Data, d)
 	return len(data), nil
 }
