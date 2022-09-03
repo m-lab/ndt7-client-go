@@ -154,7 +154,7 @@ func main() {
 			[]string{
 				// client IP and remote server
 				"client_ip",
-				"server",
+				"server_ip",
 			})
 		prometheus.MustRegister(dlThroughput)
 		dlLatency := prometheus.NewGaugeVec(
@@ -166,7 +166,7 @@ func main() {
 			[]string{
 				// client IP and remote server
 				"client_ip",
-				"server",
+				"server_ip",
 			})
 		prometheus.MustRegister(dlLatency)
 		ulThroughput := prometheus.NewGaugeVec(
@@ -178,7 +178,7 @@ func main() {
 			[]string{
 				// client IP and remote server
 				"client_ip",
-				"server",
+				"server_ip",
 			})
 		prometheus.MustRegister(ulThroughput)
 		ulLatency := prometheus.NewGaugeVec(
@@ -190,7 +190,7 @@ func main() {
 			[]string{
 				// client IP and remote server
 				"client_ip",
-				"server",
+				"server_ip",
 			})
 		prometheus.MustRegister(ulLatency)
 

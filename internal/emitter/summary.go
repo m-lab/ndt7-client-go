@@ -29,14 +29,8 @@ type Summary struct {
 	// ServerIP is the (v4 or v6) IP address of the server.
 	ServerIP string
 
-	// ServerPort is the port of the server.
-	ServerPort string
-
 	// ClientIP is the (v4 or v6) IP address of the client.
 	ClientIP string
-
-	// ClientIP is the port of the client.
-	ClientPort string
 
 	// Download is a summary of the download subtest.
 	Download *SubtestSummary

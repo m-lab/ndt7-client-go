@@ -1,7 +1,6 @@
 package emitter
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,19 +13,19 @@ type Prometheus struct {
 	emitter Emitter
 	// Download throughput
 	// Value: throughput in bits/s
-	// Labels: client_ip, server
+	// Labels: client_ip, server_ip
 	dlTp *prometheus.GaugeVec
 	// Download latency
 	// Value: latency in secs
-	// Labels: client_ip, server
+	// Labels: client_ip, server_ip
 	dlLat *prometheus.GaugeVec
 	// Upload throughput
 	// Value: throughput in bits/s
-	// Labels: client_ip, server
+	// Labels: client_ip, server_ip
 	ulTp *prometheus.GaugeVec
 	// Upload latency
 	// Value: latency in secs
-	// Labels: client_ip, server
+	// Labels: client_ip, server_ip
 	ulLat *prometheus.GaugeVec
 	// Last results
 	// Value: time in seconds since unix epoch
@@ -76,18 +75,16 @@ func (p Prometheus) OnComplete(test spec.TestKind) error {
 
 // OnSummary handles the summary event, emitted after the test is over.
 func (p *Prometheus) OnSummary(s *Summary) error {
-	server := fmt.Sprintf("%s:%s", s.ServerIP, s.ServerPort)
-
 	// Note this assumes download and upload throughput units are Mbit/s
 	// and latency units are msecs.
 	p.dlTp.Reset()
-	p.dlTp.WithLabelValues(s.ClientIP, server).Set(s.Download.Throughput.Value * 1000.0 * 1000.0)
+	p.dlTp.WithLabelValues(s.ClientIP, s.ServerIP).Set(s.Download.Throughput.Value * 1000.0 * 1000.0)
 	p.dlLat.Reset()
-	p.dlLat.WithLabelValues(s.ClientIP, server).Set(s.Download.Latency.Value / 1000.0)
+	p.dlLat.WithLabelValues(s.ClientIP, s.ServerIP).Set(s.Download.Latency.Value / 1000.0)
 	p.ulTp.Reset()
-	p.ulTp.WithLabelValues(s.ClientIP, server).Set(s.Upload.Throughput.Value * 1000.0 * 1000.0)
+	p.ulTp.WithLabelValues(s.ClientIP, s.ServerIP).Set(s.Upload.Throughput.Value * 1000.0 * 1000.0)
 	p.ulLat.Reset()
-	p.ulLat.WithLabelValues(s.ClientIP, server).Set(s.Upload.Latency.Value / 1000.0)
+	p.ulLat.WithLabelValues(s.ClientIP, s.ServerIP).Set(s.Upload.Latency.Value / 1000.0)
 
 	return p.emitter.OnSummary(s)
 }
