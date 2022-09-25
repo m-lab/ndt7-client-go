@@ -90,6 +90,7 @@ var (
 	flagPeriodMax = flag.Duration("period_max", 15 * time.Hour, "maximum period, e.g. 15h, between speed tests, when running in daemon mode")
 
 	flagPort = flag.Int("port", 0, "if non-zero, start an HTTP server on this port to export prometheus metrics")
+	flagMaxHistory = flag.Int("max_history", 10, "Number of results to keep in memory")
 )
 
 func init() {
@@ -216,6 +217,11 @@ func main() {
 
 		e = emitter.NewPrometheus(e, dlThroughput, dlLatency, ulThroughput, ulLatency, lastResultGauge)
 		http.Handle("/metrics", promhttp.Handler())
+
+		h := newStatusHandler(e, *flagMaxHistory)
+		e = h
+		http.Handle("/", h.handler())
+
 		go func() {
 			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *flagPort), nil))
 		}()
