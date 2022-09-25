@@ -16,37 +16,37 @@ func TestCircularQueue(t * testing.T) {
 		}
 	}
 
-	tests := []struct{
+	cases := []struct{
 		size int
-		input []emitter.Summary
+		input []string
 		want []string
 	}{
 		{
-			2,
-			[]emitter.Summary{},
-			[]string{},
+			size: 2,
+			input: []string{},
+			want: []string{},
 		},
 		{
-			2,
-			[]emitter.Summary{fakeSummary("zero")},
-			[]string{"0 zero"},
+			size: 2,
+			input: []string{"zero"},
+			want: []string{"0 zero"},
 		},
 		{
-			2,
-			[]emitter.Summary{fakeSummary("zero"), fakeSummary("one")},
-			[]string{"1 one", "0 zero"},
+			size: 2,
+			input: []string{"zero", "one"},
+			want: []string{"1 one", "0 zero"},
 		},
 		{
-			2,
-			[]emitter.Summary{fakeSummary("zero"), fakeSummary("one"), fakeSummary("two")},
-			[]string{"2 two", "1 one"},
+			size: 2,
+			input: []string{"zero", "one", "two"},
+			want: []string{"2 two", "1 one"},
 		},
 	}
 
-	for _, tc := range(tests) {
+	for _, tc := range(cases) {
 		q := newCircularQueue(tc.size)
 		for i, s := range(tc.input) {
-			q.push(entry{time.Unix(int64(i), 0), s})
+			q.push(entry{time.Unix(int64(i), 0), fakeSummary(s)})
 		}
 
 		got := make([]string, 0)

@@ -19,8 +19,15 @@ type entry struct {
 
 type circularQueue struct {
 	sync.Mutex
+
+	// Underlying storage for queue elements
 	entries []entry
-	start, count int
+
+	// Index into current start of the queue
+	start int
+
+	// Number of elements in the queue
+	count int
 }
 
 func newCircularQueue(maxSize int) *circularQueue {
@@ -36,6 +43,7 @@ func (q *circularQueue) internalPop() {
 		return
 	}
 
+	// Assumes mutex is locked
 	q.start = (q.start + 1) % len(q.entries)
 	q.count--
 }
@@ -71,8 +79,12 @@ func (q *circularQueue) forEachReversed(f func(entry)) {
 	}
 }
 
+// statusHandler implements both emitter.Emitter and http.Handler interfaces
 type statusHandler struct {
+	// Chained emitter.Emitter
 	emitter emitter.Emitter
+
+	// A cache of recent test results
 	results *circularQueue
 }
 
