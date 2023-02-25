@@ -8,7 +8,8 @@ require (
 	github.com/m-lab/locate v0.4.1
 	github.com/m-lab/ndt-server v0.20.2
 	github.com/m-lab/tcp-info v1.5.2
-	golang.org/x/sys v0.0.0-20200803210538-64077c9b5642
+	github.com/prometheus/client_golang v1.7.1
+	golang.org/x/sys v0.1.0
 )
 
 require (
@@ -28,7 +29,6 @@ require (
 	github.com/m-lab/uuid v0.0.0-20191115203855-549727171666 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
-	github.com/prometheus/client_golang v1.7.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.10.0 // indirect
 	github.com/prometheus/procfs v0.1.3 // indirect
