@@ -234,7 +234,7 @@ func main() {
 				}
 				if parsedIp != nil {
 					c.Dialer.NetDialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-						fmt.Printf("INFO: using source IP: %s\n", parsedIp.String())
+						fmt.Printf("\nINFO: using source IP: %s\n", parsedIp.String())
 						dialer := net.Dialer{LocalAddr: &net.TCPAddr{IP: parsedIp}}
 						return dialer.DialContext(ctx, network, addr)
 					}
