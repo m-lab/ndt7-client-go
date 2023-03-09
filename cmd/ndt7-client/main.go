@@ -91,10 +91,12 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -138,6 +140,7 @@ var (
 	flagService  = flagx.URL{}
 	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
 	flagDownload = flag.Bool("download", true, "perform download measurement")
+	flagSourceIp = flag.String("source", "", "source IP for the test")
 )
 
 func init() {
@@ -195,6 +198,15 @@ func main() {
 		flagService.URL = nil
 	}
 
+	var parsedIp net.IP = nil
+	// source IP checking
+	if *flagSourceIp != "" {
+		parsedIp = net.ParseIP(*flagSourceIp)
+		if parsedIp == nil {
+			fmt.Printf("WARNING: ignoring unparsed source IP: %s\n", *flagSourceIp)
+		}
+	}
+
 	var e emitter.Emitter
 
 	// If -batch, force -format=json.
@@ -219,6 +231,13 @@ func main() {
 				c.Scheme = flagScheme.Value
 				c.Dialer.TLSClientConfig = &tls.Config{
 					InsecureSkipVerify: *flagNoVerify,
+				}
+				if parsedIp != nil {
+					c.Dialer.NetDialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+						fmt.Printf("INFO: using source IP: %s\n", parsedIp.String())
+						dialer := net.Dialer{LocalAddr: &net.TCPAddr{IP: parsedIp}}
+						return dialer.DialContext(ctx, network, addr)
+					}
 				}
 
 				return c
