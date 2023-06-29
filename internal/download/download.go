@@ -39,8 +39,8 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		mtype, r, err := conn.NextReader()
 		if err != nil {
 			elapsed := time.Now().Sub(start)
-			// If test finished before `params.UpdateInterval` and at least one message
-			// has been received, send its data before exiting.
+			// If the test finished before `params.UpdateInterval` and at least one message
+			// has been received, send the measurement data through the channel before exiting.
 			if elapsed <= params.UpdateInterval && total > 0 {
 				sendMeasurement(ch, elapsed, total)
 			}
