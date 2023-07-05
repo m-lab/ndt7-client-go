@@ -30,6 +30,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 	conn.SetReadLimit(params.MaxMessageSize)
 	start := time.Now()
 	prev := start
+	sent := false
 	var total int64
 	for wholectx.Err() == nil {
 		err := conn.SetReadDeadline(time.Now().Add(params.IOTimeout))
@@ -38,11 +39,10 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 		}
 		mtype, r, err := conn.NextReader()
 		if err != nil {
-			elapsed := time.Now().Sub(start)
-			// If the test finished before `params.UpdateInterval` and at least one message
-			// has been received, send the measurement data through the channel before exiting.
-			if elapsed <= params.UpdateInterval && total > 0 {
-				sendMeasurement(ch, elapsed, total)
+			// If the test finishes before any measurements have been sent through the channel,
+			// and at least one message has been received, send the measurement data before exiting.
+			if !sent && total > 0 {
+				sendMeasurement(ch, time.Now().Sub(start), total)
 			}
 			return err
 		}
@@ -68,6 +68,7 @@ func Run(ctx context.Context, conn websocketx.Conn, ch chan<- spec.Measurement) 
 			prev = now
 			elapsed := now.Sub(start)
 			sendMeasurement(ch, elapsed, total)
+			sent = true
 			// FALLTHROUGH
 		}
 		if mtype != websocket.TextMessage {
