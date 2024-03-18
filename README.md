@@ -40,7 +40,7 @@ build the client. Binaries will be placed in `$GOPATH/bin`, if
 If you're into a one-off install, this
 
 ```bash
-go install -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client
+go install -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client@latest
 ```
 
 is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
