@@ -184,10 +184,10 @@ func main() {
 	}
 
 	// If a service URL is given, then only one direction is possible.
-	if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.DownloadURLPath) {
+	if flagService.URL != nil && strings.HasSuffix(flagService.URL.Path, params.DownloadURLPath) {
 		*flagUpload = false
 		*flagDownload = true
-	} else if flagService.URL != nil && strings.Contains(flagService.URL.Path, params.UploadURLPath) {
+	} else if flagService.URL != nil && strings.HasSuffix(flagService.URL.Path, params.UploadURLPath) {
 		*flagUpload = true
 		*flagDownload = false
 	} else if flagService.URL != nil {

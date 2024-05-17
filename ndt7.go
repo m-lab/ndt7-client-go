@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -229,7 +230,7 @@ func (c *Client) start(ctx context.Context, f testFn, p string) (<-chan spec.Mea
 		}
 	}
 	// Second, check for the service url.
-	if c.ServiceURL != nil && (c.ServiceURL.Path == params.DownloadURLPath || c.ServiceURL.Path == params.UploadURLPath) {
+	if c.ServiceURL != nil && (strings.HasSuffix(c.ServiceURL.Path, params.DownloadURLPath) || strings.HasSuffix(c.ServiceURL.Path, params.UploadURLPath)) {
 		// Override scheme to match the provided service url.
 		c.Scheme = c.ServiceURL.Scheme
 		customURL = c.ServiceURL
