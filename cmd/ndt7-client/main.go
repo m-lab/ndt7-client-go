@@ -95,6 +95,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -139,6 +140,7 @@ var (
 	flagService  = flagx.URL{}
 	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
 	flagDownload = flag.Bool("download", true, "perform download measurement")
+	flagBind     = flag.String("bind", "", "local IP address to bind the outgoing connection")
 )
 
 func init() {
@@ -209,6 +211,18 @@ func main() {
 		e = emitter.NewQuiet(e)
 	}
 
+	var dialer *net.Dialer
+	if *flagBind != "" {
+		var err error
+		localAddr, err := net.ResolveTCPAddr("tcp", *flagBind+":0")
+		if err != nil {
+			log.Fatalf("Invalid bind address: %v", err)
+		}
+		dialer = &net.Dialer{
+			LocalAddr: localAddr,
+		}
+	}
+
 	r := runner.New(
 		runner.RunnerOptions{
 			Download: *flagDownload,
@@ -221,6 +235,13 @@ func main() {
 				c.Scheme = flagScheme.Value
 				c.Dialer.TLSClientConfig = &tls.Config{
 					InsecureSkipVerify: *flagNoVerify,
+				}
+
+				// Set custom NetDial if dialer is not nil
+				if dialer != nil {
+					c.Dialer.NetDial = func(network, addr string) (net.Conn, error) {
+						return dialer.Dial(network, addr)
+					}
 				}
 
 				return c
