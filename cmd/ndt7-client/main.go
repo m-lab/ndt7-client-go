@@ -114,8 +114,7 @@ const (
 )
 
 var (
-	ClientName    = "ndt7-client-go-cmd"
-	ClientVersion = "0.7.0"
+	ClientVersion = "0.9.0"
 	flagProfile   = flag.String("profile", "",
 		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 
@@ -131,9 +130,10 @@ var (
 
 	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
 		"(DEPRECATED, please use -format=json)")
-	flagNoVerify = flag.Bool("no-verify", false, "skip TLS certificate verification")
-	flagServer   = flag.String("server", "", "optional ndt7 server hostname")
-	flagTimeout  = flag.Duration(
+	flagNoVerify   = flag.Bool("no-verify", false, "skip TLS certificate verification")
+	flagServer     = flag.String("server", "", "optional ndt7 server hostname")
+	flagClientName = flag.String("client-name", "ndt7-client-go-cmd", "The client_name reported to Locate and ndt-server")
+	flagTimeout    = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
 	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
 	flagService  = flagx.URL{}
@@ -215,7 +215,7 @@ func main() {
 			Upload:   *flagUpload,
 			Timeout:  *flagTimeout,
 			ClientFactory: func() *ndt7.Client {
-				c := ndt7.NewClient(ClientName, ClientVersion)
+				c := ndt7.NewClient(*flagClientName, ClientVersion)
 				c.ServiceURL = flagService.URL
 				c.Server = *flagServer
 				c.Scheme = flagScheme.Value
