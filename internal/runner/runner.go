@@ -116,7 +116,7 @@ func (r Runner) RunTestsOnce() []error {
 
 func (r Runner) RunTestsInLoop() {
 	for {
-		// We ignore the return value here since we rely on the emiiters
+		// We ignore the return value here since we rely on the emitters
 		// to report that the measurement failed. We want to continue
 		// even when there is an error.
 		_ = r.RunTestsOnce()
