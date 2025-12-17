@@ -124,6 +124,8 @@ type Client struct {
 	tIndex  map[string]int
 
 	results map[spec.TestKind]*LatestMeasurements
+
+	Extra_metadata string //extra parameters
 }
 
 // makeUserAgent creates the user agent string
@@ -169,6 +171,11 @@ func (c *Client) doConnect(ctx context.Context, serviceURL string) (*websocket.C
 	q.Set("client_name", c.ClientName)
 	q.Set("client_os", runtime.GOOS)
 	q.Set("client_version", c.ClientVersion)
+
+	if c.Extra_metadata != "" {
+		q.Set("extra_metadata", c.Extra_metadata)
+	}
+
 	URL.RawQuery = q.Encode()
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", params.SecWebSocketProtocol)

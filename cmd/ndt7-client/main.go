@@ -135,10 +135,11 @@ var (
 	flagClientName = flag.String("client-name", "ndt7-client-go-cmd", "The client_name reported to Locate and ndt-server")
 	flagTimeout    = flag.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
-	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
-	flagService  = flagx.URL{}
-	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
-	flagDownload = flag.Bool("download", true, "perform download measurement")
+	flagQuiet         = flag.Bool("quiet", false, "emit summary and errors only")
+	flagService       = flagx.URL{}
+	flagUpload        = flag.Bool("upload", true, "perform upload measurement")
+	flagDownload      = flag.Bool("download", true, "perform download measurement")
+	flagExtraMetaData = flag.String("extra_metadata", "", "Experiment label recorded as ClientMetadata")
 )
 
 func init() {
@@ -219,6 +220,7 @@ func main() {
 				c.ServiceURL = flagService.URL
 				c.Server = *flagServer
 				c.Scheme = flagScheme.Value
+				c.Extra_metadata= *flagExtraMetaData
 				c.Dialer.TLSClientConfig = &tls.Config{
 					InsecureSkipVerify: *flagNoVerify,
 				}
