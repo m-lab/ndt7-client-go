@@ -124,4 +124,3 @@ func TestDownloadError(t *testing.T) {
 		t.Fatal("expected nonzero return code here")
 	}
 }
-

@@ -16,16 +16,12 @@ Reference ndt7 Go client implementation. Useful resources:
     https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md
 ).
 
-The master branch contains stable code. We don't promise we won't break
+The `main` branch contains stable code. We don't promise we won't break
 the API, but we'll try not to.
 
 ## Installing
 
-You need Go >= 1.12. We use modules. Make sure Go knows that:
-
-```bash
-export GO111MODULE=on
-```
+You need Go >= 1.25.5.
 
 Clone the repository wherever you want with
 
@@ -33,9 +29,8 @@ Clone the repository wherever you want with
 git clone https://github.com/m-lab/ndt7-client-go
 ```
 
-From inside the repository, use `go get ./cmd/ndt7-client` to
-build the client. Binaries will be placed in `$GOPATH/bin`, if
-`GOPATH` is set, and in `$HOME/go/bin` otherwise.
+From inside the repository, use `go build -v ./cmd/ndt7-client` to
+build the client. Binaries will be placed in `.`.
 
 If you're into a one-off install, this
 
@@ -44,7 +39,7 @@ go install -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client@latest
 ```
 
 is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
-and then cancelling the repository directory.
+installing the binary in `$HOME/go/bin` and deleting the repository.
 
 ### Building with a custom client name
 
@@ -99,3 +94,21 @@ docker run -d -p ${PORT}:8080 ndt7-prometheus-exporter
 	    # host:port of the exporter
 		- localhost:9191
 ```
+
+## Usage
+
+Run:
+
+```bash
+ndt7-client
+```
+
+to run a speedtest.
+
+Use:
+
+```bash
+ndt7-client -format json
+```
+
+to obtain output in JSON format.
