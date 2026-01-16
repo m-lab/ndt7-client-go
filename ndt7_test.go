@@ -102,17 +102,15 @@ func TestStartConnectError(t *testing.T) {
 }
 
 // newLocator returns a locate.Client that returns the given server URLs.
-func newLocator(serverURLs []string) *locatetest.Locator {
-	s := []string{}
+func newLocator(t *testing.T, serverURLs ...string) *locatetest.LocatorV2 {
+	machines := make([]string, 0, len(serverURLs))
 	for _, serverURL := range serverURLs {
-		u, err := url.Parse(serverURL)
-		if err != nil {
-			panic(err)
-		}
-		s = append(s, u.Host)
+		parsed, err := url.Parse(serverURL)
+		testingx.Must(t, err, "failed to parse URL")
+		machines = append(machines, parsed.Host)
 	}
-	return &locatetest.Locator{
-		Servers: s,
+	return &locatetest.LocatorV2{
+		TargetInfo: locatetest.NewTargetInfoNdt7(machines...),
 	}
 }
 
@@ -123,7 +121,7 @@ func TestIntegrationDownload(t *testing.T) {
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
-	l := locatetest.NewLocateServer(newLocator([]string{fs.URL}))
+	l := locatetest.NewLocateServerV2(newLocator(t, fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
@@ -157,7 +155,7 @@ func TestIntegrationUpload(t *testing.T) {
 	h, fs := ndt7test.NewNDT7Server(t)
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
-	l := locatetest.NewLocateServer(newLocator([]string{fs.URL}))
+	l := locatetest.NewLocateServerV2(newLocator(t, fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
@@ -239,7 +237,7 @@ func TestDownloadNoTargets(t *testing.T) {
 	defer os.RemoveAll(h.DataDir)
 	defer fs.Close()
 	// The first URL is intentionally invalid to test the retry loop.
-	l := locatetest.NewLocateServer(newLocator([]string{"https://invalid", fs.URL}))
+	l := locatetest.NewLocateServerV2(newLocator(t, "https://invalid", fs.URL))
 	client := NewClient(clientName, clientVersion)
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")

@@ -3,8 +3,8 @@ package emitter
 import (
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/m-lab/ndt7-client-go/spec"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Prometheus tees summary metrics as prometheus metrics.
