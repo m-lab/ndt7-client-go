@@ -13,7 +13,7 @@ Reference ndt7 Go client implementation. Useful resources:
 );
 
 - [ndt7 protocol specification](
-    https://github.com/m-lab/ndt-server/blob/master/spec/ndt7-protocol.md
+    https://github.com/m-lab/ndt-server/blob/main/spec/ndt7-protocol.md
 ).
 
 The `main` branch contains stable code. We don't promise we won't break
