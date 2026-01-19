@@ -95,6 +95,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -102,6 +103,7 @@ import (
 
 	"github.com/m-lab/go/flagx"
 	"github.com/m-lab/go/rtx"
+	"github.com/m-lab/locate/api/locate"
 	"github.com/m-lab/ndt7-client-go"
 	"github.com/m-lab/ndt7-client-go/internal/emitter"
 	"github.com/m-lab/ndt7-client-go/internal/params"
@@ -115,7 +117,10 @@ const (
 
 var (
 	ClientVersion = "0.9.0"
-	flagProfile   = flag.String("profile", "",
+
+	fset = flag.NewFlagSet("ndt7-client", flag.ExitOnError)
+
+	flagProfile = fset.String("profile", "",
 		"file where to store pprof profile (see https://blog.golang.org/pprof)")
 
 	flagScheme = flagx.Enum{
@@ -128,31 +133,44 @@ var (
 		Value:   "human",
 	}
 
-	flagBatch = flag.Bool("batch", false, "emit JSON events on stdout "+
+	flagBatch = fset.Bool("batch", false, "emit JSON events on stdout "+
 		"(DEPRECATED, please use -format=json)")
-	flagNoVerify   = flag.Bool("no-verify", false, "skip TLS certificate verification")
-	flagServer     = flag.String("server", "", "optional ndt7 server hostname")
-	flagClientName = flag.String("client-name", "ndt7-client-go-cmd", "The client_name reported to Locate and ndt-server")
-	flagTimeout    = flag.Duration(
+	flagNoVerify   = fset.Bool("no-verify", false, "skip TLS certificate verification")
+	flagServer     = fset.String("server", "", "optional ndt7 server hostname")
+	flagClientName = fset.String("client-name", "ndt7-client-go-cmd", "The client_name reported to Locate and ndt-server")
+	flagTimeout    = fset.Duration(
 		"timeout", defaultTimeout, "time after which the test is aborted")
-	flagQuiet    = flag.Bool("quiet", false, "emit summary and errors only")
+	flagQuiet    = fset.Bool("quiet", false, "emit summary and errors only")
 	flagService  = flagx.URL{}
-	flagUpload   = flag.Bool("upload", true, "perform upload measurement")
-	flagDownload = flag.Bool("download", true, "perform download measurement")
+	flagUpload   = fset.Bool("upload", true, "perform upload measurement")
+	flagDownload = fset.Bool("download", true, "perform download measurement")
+
+	flagLocateToken = fset.String(
+		"locate.token",
+		"",
+		"Optional short-lived JWT token for registered integrator access. Integrators "+
+			"typically obtain this token by interacting with their own backend.",
+	)
+	flagLocateURL = fset.String(
+		"locate.url",
+		"",
+		"Override the default locate URL. If the URL is empty, we use a suitable"+
+			"https://locate.measurementlab.net/{path} URL where the {path} depends on"+
+			"whether you specified `-locate.token` or not.")
 )
 
 func init() {
-	flag.Var(
+	fset.Var(
 		&flagScheme,
 		"scheme",
 		`WebSocket scheme to use: either "wss" or "ws"`,
 	)
-	flag.Var(
+	fset.Var(
 		&flagFormat,
 		"format",
 		"output format to use: 'human' or 'json' for batch processing",
 	)
-	flag.Var(
+	fset.Var(
 		&flagService,
 		"service-url",
 		"Service URL specifies target hostname and other URL fields like access token. Overrides -server.",
@@ -169,11 +187,14 @@ func defaultSchemeForArch() string {
 	return "ws"
 }
 
-var osExit = os.Exit
+var (
+	osExit = os.Exit
+	osArgs = os.Args
+)
 
 func main() {
-	flag.Parse()
-	rtx.Must(flagx.ArgsFromEnvWithLog(flag.CommandLine, false), "failed to parse flags")
+	_ = fset.Parse(osArgs[1:]) // we're using [flag.ExitOnError]
+	rtx.Must(flagx.ArgsFromEnvWithLog(fset, false), "failed to parse flags")
 
 	if *flagProfile != "" {
 		log.Printf("warning: using -profile will reduce the performance")
@@ -211,23 +232,48 @@ func main() {
 
 	r := runner.New(
 		runner.RunnerOptions{
-			Download: *flagDownload,
-			Upload:   *flagUpload,
-			Timeout:  *flagTimeout,
-			ClientFactory: func() *ndt7.Client {
-				c := ndt7.NewClient(*flagClientName, ClientVersion)
-				c.ServiceURL = flagService.URL
-				c.Server = *flagServer
-				c.Scheme = flagScheme.Value
-				c.Dialer.TLSClientConfig = &tls.Config{
-					InsecureSkipVerify: *flagNoVerify,
-				}
-
-				return c
-			},
+			Download:      *flagDownload,
+			Upload:        *flagUpload,
+			Timeout:       *flagTimeout,
+			ClientFactory: clientFactory,
 		},
 		e,
 		nil)
 
 	osExit(len(r.RunTestsOnce()))
+}
+
+// clientFactory constructs a [*ndt7.Client] given command line flags values
+func clientFactory() *ndt7.Client {
+	// Preserve legacy behavior: -locate.url sets the full URL including path.
+	// Only auto-select the path when -locate.url was not provided.
+	locateURL := *flagLocateURL
+	if locateURL == "" {
+		locateURL = "https://locate.measurementlab.net"
+		if *flagLocateToken != "" {
+			locateURL += "/v2/priority/nearest"
+		} else {
+			locateURL += "/v2/nearest"
+		}
+	}
+	parsedLocateURL, err := url.Parse(locateURL)
+	rtx.Must(err, "failed to parse locate URL %q", locateURL)
+
+	c := ndt7.NewClient(*flagClientName, ClientVersion)
+
+	c.ServiceURL = flagService.URL
+	c.Server = *flagServer
+	c.Scheme = flagScheme.Value
+	c.Dialer.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: *flagNoVerify,
+	}
+
+	// Reconstruct the proper default locate client based on settings
+	// using the token and URL configured using flags
+	loc := locate.NewClient(ndt7.MakeUserAgent(c.ClientName, c.ClientVersion))
+	loc.BaseURL = parsedLocateURL
+	loc.Authorization = *flagLocateToken
+	c.Locate = loc
+
+	return c
 }

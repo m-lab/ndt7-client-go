@@ -34,7 +34,7 @@ func (x *f) Nearest(ctx context.Context, service string) ([]v2.Target, error) {
 	}, nil
 }
 
-func newMockedClient(ctx context.Context) *Client {
+func newMockedClient() *Client {
 	client := NewClient(clientName, clientVersion)
 	// Override locate to return a fake IP address
 	client.Locate = &f{}
@@ -60,7 +60,7 @@ func newMockedClient(ctx context.Context) *Client {
 
 func TestDownloadCase(t *testing.T) {
 	ctx := context.Background()
-	client := newMockedClient(ctx)
+	client := newMockedClient()
 	ch, err := client.StartDownload(ctx)
 	testingx.Must(t, err, "failed to start download")
 	for range ch {
@@ -70,7 +70,7 @@ func TestDownloadCase(t *testing.T) {
 
 func TestUploadCase(t *testing.T) {
 	ctx := context.Background()
-	client := newMockedClient(ctx)
+	client := newMockedClient()
 	ch, err := client.StartUpload(ctx)
 	testingx.Must(t, err, "failed to start upload")
 	for range ch {
@@ -82,7 +82,7 @@ func TestStartDiscoverServerError(t *testing.T) {
 	ctx := context.Background()
 	client := NewClient(clientName, clientVersion)
 	badURL := &url.URL{Path: "\t"}
-	l := locate.NewClient(makeUserAgent(clientName, clientVersion))
+	l := locate.NewClient(MakeUserAgent(clientName, clientVersion))
 	l.BaseURL = badURL
 	client.Locate = l // cause URL parse to fail
 	_, err := client.start(ctx, nil, "")
@@ -127,7 +127,7 @@ func TestIntegrationDownload(t *testing.T) {
 	u, err := url.Parse(l.URL + "/v2/nearest")
 	testingx.Must(t, err, "failed to parse locatetest url")
 
-	loc := locate.NewClient(makeUserAgent(clientName, clientVersion))
+	loc := locate.NewClient(MakeUserAgent(clientName, clientVersion))
 	loc.BaseURL = u
 	client.Locate = loc
 
@@ -161,7 +161,7 @@ func TestIntegrationUpload(t *testing.T) {
 	u, err := url.Parse(l.URL + "/v2/nearest")
 	testingx.Must(t, err, "failed to parse locate URL: %s", l.URL+"/v2/nearest")
 
-	loc := locate.NewClient(makeUserAgent(clientName, clientVersion))
+	loc := locate.NewClient(MakeUserAgent(clientName, clientVersion))
 	loc.BaseURL = u
 	client.Locate = loc
 
@@ -242,7 +242,7 @@ func TestDownloadNoTargets(t *testing.T) {
 	client.Scheme = "ws"
 	u, err := url.Parse(l.URL + "/v2/nearest")
 	testingx.Must(t, err, "failed to parse locate URL: %s", l.URL+"/v2/nearest")
-	loc := locate.NewClient(makeUserAgent(clientName, clientVersion))
+	loc := locate.NewClient(MakeUserAgent(clientName, clientVersion))
 	loc.BaseURL = u
 	client.Locate = loc
 

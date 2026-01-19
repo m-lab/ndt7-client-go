@@ -38,7 +38,7 @@ If you're into a one-off install, this
 go install -v github.com/m-lab/ndt7-client-go/cmd/ndt7-client@latest
 ```
 
-is equivalent to cloning the repository, running `go get ./cmd/ndt7-client`,
+is equivalent to cloning the repository, running `go build -v ./cmd/ndt7-client`,
 installing the binary in `$HOME/go/bin` and deleting the repository.
 
 ### Building with a custom client name

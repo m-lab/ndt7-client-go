@@ -126,8 +126,8 @@ type Client struct {
 	results map[spec.TestKind]*LatestMeasurements
 }
 
-// makeUserAgent creates the user agent string
-func makeUserAgent(clientName, clientVersion string) string {
+// MakeUserAgent creates the user agent string.
+func MakeUserAgent(clientName, clientVersion string) string {
 	return clientName + "/" + clientVersion + " " + libraryName + "/" + libraryVersion
 }
 
@@ -150,7 +150,7 @@ func NewClient(clientName, clientVersion string) *Client {
 		},
 		download: download.Run,
 		Locate: locate.NewClient(
-			makeUserAgent(clientName, clientVersion),
+			MakeUserAgent(clientName, clientVersion),
 		),
 		tIndex:  map[string]int{},
 		upload:  upload.Run,
@@ -172,7 +172,7 @@ func (c *Client) doConnect(ctx context.Context, serviceURL string) (*websocket.C
 	URL.RawQuery = q.Encode()
 	headers := http.Header{}
 	headers.Add("Sec-WebSocket-Protocol", params.SecWebSocketProtocol)
-	headers.Add("User-Agent", makeUserAgent(c.ClientName, c.ClientVersion))
+	headers.Add("User-Agent", MakeUserAgent(c.ClientName, c.ClientVersion))
 	conn, _, err := c.connect(c.Dialer, ctx, URL.String(), headers)
 	return conn, err
 }

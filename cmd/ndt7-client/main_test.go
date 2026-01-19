@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/m-lab/go/testingx"
+	"github.com/m-lab/locate/api/locate"
 	"github.com/m-lab/ndt-server/ndt7/ndt7test"
 	"github.com/m-lab/ndt7-client-go/internal/params"
 )
@@ -33,9 +34,12 @@ func TestNormalUsage(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
+	savedArgs := osArgs
+	osArgs = []string{"ndt7-client"}
 	main()
 	flagService.URL = nil
 	osExit = savedFunc
+	osArgs = savedArgs
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
 	}
@@ -64,11 +68,14 @@ func TestQuietUsage(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
+	savedArgs := osArgs
+	osArgs = []string{"ndt7-client"}
 	*flagQuiet = true
 	main()
 	flagService.URL = nil
 	*flagQuiet = false
 	osExit = savedFunc
+	osArgs = savedArgs
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
 	}
@@ -97,11 +104,14 @@ func TestBatchUsage(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
+	savedArgs := osArgs
+	osArgs = []string{"ndt7-client"}
 	*flagBatch = true
 	main()
 	*flagBatch = false
 	flagService.URL = nil
 	osExit = savedFunc
+	osArgs = savedArgs
 	if exitval != 0 {
 		t.Fatal("expected zero return code here")
 	}
@@ -116,11 +126,96 @@ func TestDownloadError(t *testing.T) {
 	osExit = func(code int) {
 		exitval = code
 	}
+	savedArgs := osArgs
+	osArgs = []string{"ndt7-client"}
 	*flagServer = "\t" // fail parsing
 	main()
 	*flagServer = ""
 	osExit = savedFunc
+	osArgs = savedArgs
 	if exitval == 0 {
 		t.Fatal("expected nonzero return code here")
+	}
+}
+
+func TestClientFactory_WithTokenNoURL(t *testing.T) {
+	// Just save the two flags we're testing
+	origToken := *flagLocateToken
+	origURL := *flagLocateURL
+	defer func() {
+		*flagLocateToken = origToken
+		*flagLocateURL = origURL
+	}()
+
+	*flagLocateToken = "test-jwt"
+	*flagLocateURL = ""
+
+	c := clientFactory()
+
+	// Type assert to get the concrete locate.Client
+	loc, ok := c.Locate.(*locate.Client)
+	if !ok {
+		t.Fatalf("expected *locate.Client, got %T", c.Locate)
+	}
+
+	if loc.Authorization != "test-jwt" {
+		t.Errorf("got auth %q, want %q", loc.Authorization, "test-jwt")
+	}
+	if loc.BaseURL.Path != "/v2/priority/nearest" {
+		t.Errorf("got path %q, want %q", loc.BaseURL.Path, "/v2/priority/nearest")
+	}
+}
+
+func TestClientFactory_NoTokenNoURL(t *testing.T) {
+	origToken := *flagLocateToken
+	origURL := *flagLocateURL
+	defer func() {
+		*flagLocateToken = origToken
+		*flagLocateURL = origURL
+	}()
+
+	*flagLocateToken = ""
+	*flagLocateURL = ""
+
+	c := clientFactory()
+
+	// Type assert to get the concrete locate.Client
+	loc, ok := c.Locate.(*locate.Client)
+	if !ok {
+		t.Fatalf("expected *locate.Client, got %T", c.Locate)
+	}
+
+	if loc.Authorization != "" {
+		t.Errorf("got auth %q, want empty", loc.Authorization)
+	}
+	if loc.BaseURL.Path != "/v2/nearest" {
+		t.Errorf("got path %q, want %q", loc.BaseURL.Path, "/v2/nearest")
+	}
+}
+
+func TestClientFactory_WithCustomURL(t *testing.T) {
+	origToken := *flagLocateToken
+	origURL := *flagLocateURL
+	defer func() {
+		*flagLocateToken = origToken
+		*flagLocateURL = origURL
+	}()
+
+	*flagLocateToken = "test-jwt"
+	*flagLocateURL = "http://custom.example.com/my/path"
+
+	c := clientFactory()
+
+	// Type assert to get the concrete locate.Client
+	loc, ok := c.Locate.(*locate.Client)
+	if !ok {
+		t.Fatalf("expected *locate.Client, got %T", c.Locate)
+	}
+
+	if loc.Authorization != "test-jwt" {
+		t.Errorf("got auth %q, want %q", loc.Authorization, "test-jwt")
+	}
+	if loc.BaseURL.Path != "/my/path" {
+		t.Errorf("got path %q, want %q", loc.BaseURL.Path, "/my/path")
 	}
 }
