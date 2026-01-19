@@ -2,7 +2,7 @@
 //
 // Usage:
 //
-//    ndt7-prometheus-exporter
+//	ndt7-prometheus-exporter
 //
 // The default behavior is for ndt7-client to discover a suitable server using
 // Measurement Lab's locate service. This behavior may be overridden using
@@ -85,9 +85,9 @@ var (
 	flagDownload = flag.Bool("download", true, "perform download measurement")
 
 	// The flag values below implement rate limiting at the recommended rate
-	flagPeriodMean = flag.Duration("period_mean", 6 * time.Hour, "mean period, e.g. 6h, between speed tests, when running in daemon mode")
-	flagPeriodMin = flag.Duration("period_min", 36 * time.Minute, "minimum period, e.g. 36m, between speed tests, when running in daemon mode")
-	flagPeriodMax = flag.Duration("period_max", 15 * time.Hour, "maximum period, e.g. 15h, between speed tests, when running in daemon mode")
+	flagPeriodMean = flag.Duration("period_mean", 6*time.Hour, "mean period, e.g. 6h, between speed tests, when running in daemon mode")
+	flagPeriodMin  = flag.Duration("period_min", 36*time.Minute, "minimum period, e.g. 36m, between speed tests, when running in daemon mode")
+	flagPeriodMax  = flag.Duration("period_max", 15*time.Hour, "maximum period, e.g. 15h, between speed tests, when running in daemon mode")
 
 	flagPort = flag.Int("port", 0, "if non-zero, start an HTTP server on this port to export prometheus metrics")
 )
@@ -148,8 +148,8 @@ func main() {
 		dlThroughput := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "download_throughput_bps",
-				Help: "m-lab ndt7 download speed in bits/s",
+				Name:      "download_throughput_bps",
+				Help:      "m-lab ndt7 download speed in bits/s",
 			},
 			[]string{
 				// client IP and remote server
@@ -160,8 +160,8 @@ func main() {
 		dlLatency := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "download_latency_seconds",
-				Help: "m-lab ndt7 download latency time in seconds",
+				Name:      "download_latency_seconds",
+				Help:      "m-lab ndt7 download latency time in seconds",
 			},
 			[]string{
 				// client IP and remote server
@@ -172,8 +172,8 @@ func main() {
 		ulThroughput := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "upload_throughput_bps",
-				Help: "m-lab ndt7 upload speed in bits/s",
+				Name:      "upload_throughput_bps",
+				Help:      "m-lab ndt7 upload speed in bits/s",
 			},
 			[]string{
 				// client IP and remote server
@@ -184,8 +184,8 @@ func main() {
 		ulLatency := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "upload_latency_seconds",
-				Help: "m-lab ndt7 upload latency time in seconds",
+				Name:      "upload_latency_seconds",
+				Help:      "m-lab ndt7 upload latency time in seconds",
 			},
 			[]string{
 				// client IP and remote server
@@ -203,8 +203,8 @@ func main() {
 		lastResultGauge := prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "ndt7",
-				Name: "result_timestamp_seconds",
-				Help: "m-lab ndt7 test completion time in seconds since 1970-01-01",
+				Name:      "result_timestamp_seconds",
+				Help:      "m-lab ndt7 test completion time in seconds since 1970-01-01",
 			},
 			[]string{
 				// which test completed
@@ -225,8 +225,8 @@ func main() {
 		context.Background(),
 		memoryless.Config{
 			Expected: *flagPeriodMean,
-			Min: *flagPeriodMin,
-			Max: *flagPeriodMax,
+			Min:      *flagPeriodMin,
+			Max:      *flagPeriodMax,
 		})
 	if err != nil {
 		log.Fatalf("Failed to create memoryless.Ticker: %v", err)
@@ -236,8 +236,8 @@ func main() {
 	r := runner.New(
 		runner.RunnerOptions{
 			Download: *flagDownload,
-			Upload: *flagUpload,
-			Timeout: *flagTimeout,
+			Upload:   *flagUpload,
+			Timeout:  *flagTimeout,
 			ClientFactory: func() *ndt7.Client {
 				c := ndt7.NewClient(ClientName, ClientVersion)
 				c.ServiceURL = flagService.URL

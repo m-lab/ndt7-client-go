@@ -168,43 +168,48 @@ func TestReadMessageError(t *testing.T) {
 }
 
 func TestReaderError(t *testing.T) {
-	outch := make(chan spec.Measurement)
-	ctx, cancel := context.WithTimeout(
-		context.Background(), time.Duration(time.Second),
-	)
-	defer cancel()
-	// Test when type is websocket.TextMessage
-	conn := mocks.Conn{
-		NextReaderMessageType: websocket.TextMessage,
-		NextReaderMustFail:    true,
+	// define the structure used by test cases
+	type testCase struct {
+		// name of the test case
+		name string
+
+		// message type to test for
+		mType int
 	}
-	go func() {
-		for range outch {
-			t.Error("We didn't expect measurements here")
-		}
-	}()
-	err := Run(ctx, &conn, outch)
-	if err != mocks.ErrReadFailed {
-		t.Fatal("Not the error that we were expecting")
+
+	// define the test cases we want to run
+	cases := []testCase{
+		{
+			name:  "for TextMessage",
+			mType: websocket.TextMessage,
+		}, {
+			name:  "for BinaryMessage",
+			mType: websocket.BinaryMessage,
+		},
 	}
-	// Test when type is websocket.BinaryMessage
-	outch = make(chan spec.Measurement)
-	ctx, cancel = context.WithTimeout(
-		context.Background(), time.Duration(time.Second),
-	)
-	defer cancel()
-	conn = mocks.Conn{
-		NextReaderMessageType: websocket.BinaryMessage,
-		NextReaderMustFail:    true,
-	}
-	go func() {
-		for range outch {
-			t.Error("We didn't expect measurements here")
-		}
-	}()
-	err = Run(ctx, &conn, outch)
-	if err != mocks.ErrReadFailed {
-		t.Fatal("Not the error that we were expecting")
+
+	// run all test cases
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			outch := make(chan spec.Measurement)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Second))
+			defer cancel()
+
+			conn := mocks.Conn{
+				NextReaderMessageType: tc.mType,
+				NextReaderMustFail:    true,
+			}
+
+			go func() {
+				for range outch {
+					t.Error("We didn't expect measurements here")
+				}
+			}()
+
+			if err := Run(ctx, &conn, outch); !errors.Is(err, mocks.ErrReadFailed) {
+				t.Fatal("Not the error that we were expecting", err)
+			}
+		})
 	}
 }
 
