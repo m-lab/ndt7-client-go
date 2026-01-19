@@ -154,9 +154,9 @@ var (
 	flagLocateURL = fset.String(
 		"locate.url",
 		"",
-		"Override the default locate URL. If the URL is empty, we use a suitable"+
-			"https://locate.measurementlab.net/{path} URL where the {path} depends on"+
-			"whether you specified `-locate.token` or not.")
+		"Override the default locate URL. If the URL is empty, we use a suitable "+
+			"https://locate.measurementlab.net/{path} URL where the {path} depends on "+
+			"whether you specified -locate.token or not.")
 )
 
 func init() {
