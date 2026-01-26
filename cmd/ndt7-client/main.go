@@ -116,7 +116,7 @@ const (
 )
 
 var (
-	ClientVersion = "0.10.0"
+	ClientVersion = "0.10.1"
 
 	fset = flag.NewFlagSet("ndt7-client", flag.ExitOnError)
 
